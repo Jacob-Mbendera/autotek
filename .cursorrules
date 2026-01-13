@@ -8,6 +8,29 @@
 - **Styling**: Tailwind CSS
 - **Icons**: lucide-react (NO emojis in code)
 
+## Git Workflow & Branching
+
+**CRITICAL RULE**: Always push to `dev` branch, NEVER directly to `main`
+
+```bash
+# Correct workflow
+git checkout dev
+git add .
+git commit -m "feat: description"
+git push origin dev
+
+# When ready for production
+git checkout main
+git merge dev
+git push origin main
+```
+
+**Branch Strategy:**
+- `main` - Production-ready code only
+- `dev` - Active development (default branch)
+- `feature/*` - Individual features (optional, for larger features)
+- `bugfix/*` - Bug fixes (optional)
+
 ## UI/Icon Guidelines
 
 **CRITICAL**: Do NOT use emojis in code (TSX, TS, JSX, JS files). Use lucide-react icons instead.
