@@ -1,0 +1,61 @@
+# Project Rules
+
+## Application Context
+- **Country**: Malawi
+- **Currency**: MWK (Malawi Kwacha)
+- **Phone Format**: +265XXXXXXXXX or 0XXXXXXXXX
+- **Payment Methods**: Airtel Money, Bank Transfer
+
+## Best Coding Practices
+
+**CRITICAL RULE**: Before submitting code for review, always ask yourself: "Have I followed the best programming practices?"
+
+This includes but is not limited to:
+
+### Code Quality
+- ✅ Proper error handling with meaningful error messages
+- ✅ Input validation for all user inputs and API endpoints
+- ✅ Type safety (TypeScript types/interfaces properly defined)
+- ✅ No hardcoded values (use environment variables or constants)
+- ✅ Proper separation of concerns (controllers, services, models, etc.)
+- ✅ DRY (Don't Repeat Yourself) principle
+- ✅ Meaningful variable and function names
+- ✅ Proper code organization and structure
+
+### Security
+- ✅ Input sanitization and validation
+- ✅ Authentication and authorization checks
+- ✅ Password hashing (never store plain text passwords)
+- ✅ SQL injection prevention (use parameterized queries/ORM)
+- ✅ XSS prevention
+- ✅ CORS configuration
+- ✅ Environment variables for sensitive data
+
+### Performance
+- ✅ Efficient database queries (avoid N+1 queries)
+- ✅ Proper indexing where needed
+- ✅ Pagination for large datasets
+- ✅ Caching where appropriate
+- ✅ Optimized imports and bundle size
+
+### Maintainability
+- ✅ Code comments for complex logic
+- ✅ Consistent code formatting
+- ✅ Proper error messages for debugging
+- ✅ Logging for important operations
+- ✅ Consistent naming conventions
+
+### Testing & Reliability
+- ✅ Handle edge cases
+- ✅ Validate all required fields
+- ✅ Proper error responses with appropriate HTTP status codes
+- ✅ Transaction handling for database operations where needed
+
+### API Design
+- ✅ RESTful conventions
+- ✅ Consistent response formats
+- ✅ Proper HTTP status codes
+- ✅ Request/response validation
+- ✅ API documentation considerations
+
+**Remember**: Code review is not just about functionality - it's about writing code that is secure, maintainable, performant, and follows industry best practices.
