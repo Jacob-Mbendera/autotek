@@ -5,6 +5,37 @@
 - **Currency**: MWK (Malawi Kwacha)
 - **Phone Format**: +265XXXXXXXXX or 0XXXXXXXXX
 - **Payment Methods**: Airtel Money, Bank Transfer
+- **Styling**: Tailwind CSS
+- **Icons**: lucide-react (NO emojis in code)
+
+## UI/Icon Guidelines
+
+**CRITICAL**: Do NOT use emojis in code (TSX, TS, JSX, JS files). Use lucide-react icons instead.
+
+### Icon Usage
+```tsx
+// ✅ GOOD - Use lucide-react icons
+import { Heart, User, Calendar, ShoppingCart } from 'lucide-react';
+
+<Heart className="h-5 w-5 text-teal-600" />
+<User className="h-4 w-4" />
+<ShoppingCart className="h-6 w-6 text-blue-500" />
+
+// ❌ BAD - Don't use emojis in UI code
+<span>❤️</span>
+<span>🛒</span>
+<div>👤 User</div>
+```
+
+### Emoji Usage
+- ✅ **Allowed**: Only in markdown files (README.md, documentation, comments in markdown)
+- ❌ **Forbidden**: In any code files (TSX, TS, JSX, JS, CSS, etc.)
+
+### Styling
+- Use **Tailwind CSS** for all styling
+- Follow Tailwind utility-first approach
+- Use Tailwind classes for responsive design
+- Custom colors should be defined in Tailwind config if needed
 
 ## Best Coding Practices
 
