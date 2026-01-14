@@ -4,7 +4,7 @@ import Payment from '../models/Payment';
 import Order from '../models/Order';
 import TowingService from '../models/TowingService';
 import CarService from '../models/CarService';
-import { PaymentMethod, PaymentStatus } from '../../shared/types';
+import { PaymentMethod, PaymentStatus } from '../types/shared';
 import { initiatePayment } from '../utils/paymentGateways';
 
 export const initiatePaymentRequest = async (
@@ -157,10 +157,14 @@ export const getPayment = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-export const paymentCallback = async (req: Request, res: Response): Promise<void> => {
+export const paymentCallback = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // This endpoint will be called by payment gateways via webhook
-    const { transactionId, status, reference } = req.body;
+    const { transactionId, status, reference } = req.body as {
+      transactionId?: string;
+      status?: string;
+      reference?: string;
+    };
 
     if (!transactionId) {
       res.status(400).json({ message: 'Transaction ID is required' });
@@ -181,7 +185,7 @@ export const paymentCallback = async (req: Request, res: Response): Promise<void
       if (payment.type === 'order' && payment.order) {
         const order = await Order.findById(payment.order);
         if (order) {
-          order.paymentStatus = 'completed';
+          order.paymentStatus = PaymentStatus.COMPLETED;
           await order.save();
         }
       } else if (payment.type === 'towing' && payment.towingService) {
@@ -232,7 +236,7 @@ export const verifyPayment = async (req: AuthRequest, res: Response): Promise<vo
       if (payment.type === 'order' && payment.order) {
         const order = await Order.findById(payment.order);
         if (order) {
-          order.paymentStatus = 'completed';
+          order.paymentStatus = PaymentStatus.COMPLETED;
           await order.save();
         }
       } else if (payment.type === 'towing' && payment.towingService) {

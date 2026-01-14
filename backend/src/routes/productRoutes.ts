@@ -8,14 +8,15 @@ import {
   getCategories,
 } from '../controllers/productController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
+import { uploadMultiple } from '../middleware/upload';
 
 const router = Router();
 
 router.get('/', getProducts);
 router.get('/categories', getCategories);
 router.get('/:id', getProduct);
-router.post('/', authMiddleware, adminMiddleware, createProduct);
-router.put('/:id', authMiddleware, adminMiddleware, updateProduct);
+router.post('/', authMiddleware, adminMiddleware, uploadMultiple, createProduct);
+router.put('/:id', authMiddleware, adminMiddleware, uploadMultiple, updateProduct);
 router.delete('/:id', authMiddleware, adminMiddleware, deleteProduct);
 
 export default router;

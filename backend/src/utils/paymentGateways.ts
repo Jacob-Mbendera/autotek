@@ -1,4 +1,4 @@
-import { PaymentMethod } from '../../shared/types';
+import { PaymentMethod } from '../types/shared';
 import { requestToPay as airtelRequestToPay } from '../services/airtelMoneyService';
 import { formatAmount } from './currency';
 
@@ -49,6 +49,16 @@ export const initiateAirtelMoneyPayment = async (
     };
   } catch (error: any) {
     console.error('Error in initiateAirtelMoneyPayment:', error);
+    
+    // Provide more helpful error message for missing credentials
+    if (error.message && error.message.includes('credentials not configured')) {
+      return {
+        success: false,
+        message: 'Airtel Money API credentials not configured. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in .env file',
+        error: error.message,
+      };
+    }
+    
     return {
       success: false,
       message: error.message || 'Failed to initiate Airtel Money payment',

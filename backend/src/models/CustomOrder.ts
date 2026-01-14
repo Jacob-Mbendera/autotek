@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { CustomOrderStatus } from '../../shared/types';
+import { CustomOrderStatus } from '../types/shared';
 
 export interface ICustomOrder extends Document {
   user: Types.ObjectId;

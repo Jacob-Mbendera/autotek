@@ -1,5 +1,5 @@
 import { body } from 'express-validator';
-import { UserRole } from '../../shared/types';
+import { UserRole } from '../types/shared';
 
 export const validateRegister = [
   body('email')

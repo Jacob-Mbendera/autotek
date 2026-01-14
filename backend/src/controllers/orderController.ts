@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Order from '../models/Order';
 import Product from '../models/Product';
-import { OrderStatus } from '../../shared/types';
+import { OrderStatus } from '../types/shared';
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

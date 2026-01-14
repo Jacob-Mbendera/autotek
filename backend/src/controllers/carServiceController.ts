@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import CarService from '../models/CarService';
-import { ServiceStatus, ServiceType } from '../../shared/types';
+import { ServiceStatus, ServiceType } from '../types/shared';
 
 export const createCarService = async (
   req: AuthRequest,

@@ -7,7 +7,7 @@ import CarService from '../models/CarService';
 import Payment from '../models/Payment';
 import Product from '../models/Product';
 import User from '../models/User';
-import { OrderStatus, CustomOrderStatus, ServiceStatus, PaymentStatus } from '../../shared/types';
+import { OrderStatus, CustomOrderStatus, ServiceStatus, PaymentStatus } from '../types/shared';
 import { parsePagination, createPaginationResponse } from '../utils/pagination';
 
 /**
@@ -217,8 +217,8 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
         : Promise.resolve([[], 0]),
     ]);
 
-    const [towingServices, towingTotal] = towingResult;
-    const [carServices, carServiceTotal] = carServiceResult;
+    const [towingServices, towingTotal] = towingResult as [any[], number];
+    const [carServices, carServiceTotal] = carServiceResult as [any[], number];
 
     res.json({
       towingServices,

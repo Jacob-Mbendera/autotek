@@ -1,5 +1,5 @@
 import { query } from 'express-validator';
-import { OrderStatus, CustomOrderStatus, ServiceStatus } from '../../shared/types';
+import { OrderStatus, CustomOrderStatus, ServiceStatus } from '../types/shared';
 
 export const validateGetAllOrders = [
   query('status')

@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import CustomOrder from '../models/CustomOrder';
-import { CustomOrderStatus } from '../../shared/types';
+import { CustomOrderStatus } from '../types/shared';
 
 export const createCustomOrder = async (
   req: AuthRequest,

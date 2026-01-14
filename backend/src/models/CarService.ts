@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { ServiceStatus, ServiceType } from '../../shared/types';
+import { ServiceStatus, ServiceType } from '../types/shared';
 
 export interface ICarService extends Document {
   user: Types.ObjectId;

@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { ServiceStatus } from '../../shared/types';
+import { ServiceStatus } from '../types/shared';
 
 export interface ITowingService extends Document {
   user: Types.ObjectId;

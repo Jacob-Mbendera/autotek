@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import User from '../models/User';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
-import { UserRole } from '../../shared/types';
+import { UserRole } from '../types/shared';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {

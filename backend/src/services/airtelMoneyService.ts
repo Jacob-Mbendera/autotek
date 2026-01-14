@@ -34,7 +34,7 @@ const getAuthToken = async (): Promise<string> => {
     const { AIRTEL_BASE_URL, CLIENT_ID, CLIENT_SECRET, GRANT_TYPE } = getConfig();
 
     if (!CLIENT_ID || !CLIENT_SECRET) {
-      throw new Error('Airtel Money API credentials not configured');
+      throw new Error('Airtel Money API credentials not configured. Please set AIRTEL_CLIENT_ID and AIRTEL_CLIENT_SECRET in .env file');
     }
 
     const response = await axios.post(
@@ -52,11 +52,16 @@ const getAuthToken = async (): Promise<string> => {
       }
     );
 
-    cachedToken = response.data.access_token;
+    const accessToken = response.data.access_token;
+    if (!accessToken || typeof accessToken !== 'string') {
+      throw new Error('No access token received from Airtel Money API');
+    }
+    
+    cachedToken = accessToken;
     const expiresIn = response.data.expires_in || 3600;
     tokenExpiry = Date.now() + expiresIn * 1000;
 
-    return cachedToken;
+    return accessToken;
   } catch (error: any) {
     console.error('Error getting Airtel auth token:', error.response?.data || error.message);
     throw new Error('Failed to authenticate with Airtel Money');

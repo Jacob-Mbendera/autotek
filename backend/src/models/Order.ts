@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { OrderStatus, PaymentMethod, PaymentStatus } from '../../shared/types';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '../types/shared';
 
 export interface IOrderItem {
   product: Types.ObjectId;
