@@ -1,5 +1,13 @@
 import { Request, Response } from 'express';
 import Product from '../models/Product';
+import { uploadImage, uploadMultipleImages, deleteImage, extractPublicId } from '../config/cloudinary';
+import { cleanupFile } from '../middleware/upload';
+import path from 'path';
+
+// Extend Request type to include files
+interface MulterRequest extends Request {
+  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
+}
 
 export const getProducts = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -74,9 +82,46 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const createProduct = async (req: Request, res: Response): Promise<void> => {
+export const createProduct = async (req: MulterRequest, res: Response): Promise<void> => {
   try {
-    const product = new Product(req.body);
+    const { name, description, category, price, stock, supplier } = req.body;
+    const uploadedImages: string[] = [];
+
+    // Handle image uploads if files are present
+    if (req.files) {
+      const files = Array.isArray(req.files) 
+        ? req.files 
+        : (typeof req.files === 'object' ? Object.values(req.files).flat() : []);
+      const filePaths = files.map((file: Express.Multer.File) => path.join(process.cwd(), 'uploads', file.filename));
+
+      try {
+        const uploadResults = await uploadMultipleImages(filePaths, 'autotek/products');
+        uploadedImages.push(...uploadResults.map((result) => result.secure_url));
+
+        // Clean up local files after upload
+        filePaths.forEach((filePath) => cleanupFile(filePath));
+      } catch (uploadError: any) {
+        // Clean up local files on error
+        filePaths.forEach((filePath) => cleanupFile(filePath));
+        res.status(500).json({ message: `Image upload failed: ${uploadError.message}` });
+        return;
+      }
+    }
+
+    // If images are provided as URLs in request body, use those
+    const imageUrls = req.body.images ? (Array.isArray(req.body.images) ? req.body.images : [req.body.images]) : [];
+    const allImages = [...uploadedImages, ...imageUrls];
+
+    const product = new Product({
+      name,
+      description,
+      category,
+      price: Number(price),
+      stock: Number(stock) || 0,
+      supplier,
+      images: allImages,
+    });
+
     await product.save();
     res.status(201).json(product);
   } catch (error: any) {
@@ -84,17 +129,80 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const updateProduct = async (req: Request, res: Response): Promise<void> => {
+export const updateProduct = async (req: MulterRequest, res: Response): Promise<void> => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const product = await Product.findById(req.params.id);
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
       return;
     }
-    res.json(product);
+
+    const uploadedImages: string[] = [];
+    const imagesToDelete: string[] = [];
+
+    // Handle new image uploads if files are present
+    if (req.files) {
+      const files = Array.isArray(req.files) 
+        ? req.files 
+        : (typeof req.files === 'object' ? Object.values(req.files).flat() : []);
+      const filePaths = files.map((file: Express.Multer.File) => path.join(process.cwd(), 'uploads', file.filename));
+
+      try {
+        const uploadResults = await uploadMultipleImages(filePaths, 'autotek/products');
+        uploadedImages.push(...uploadResults.map((result) => result.secure_url));
+
+        // Clean up local files after upload
+        filePaths.forEach((filePath) => cleanupFile(filePath));
+      } catch (uploadError: any) {
+        // Clean up local files on error
+        filePaths.forEach((filePath) => cleanupFile(filePath));
+        res.status(500).json({ message: `Image upload failed: ${uploadError.message}` });
+        return;
+      }
+    }
+
+    // Handle image deletion if imagesToDelete is provided
+    if (req.body.imagesToDelete && Array.isArray(req.body.imagesToDelete)) {
+      imagesToDelete.push(...req.body.imagesToDelete);
+    }
+
+    // Delete old images from Cloudinary
+    for (const imageUrl of imagesToDelete) {
+      const publicId = extractPublicId(imageUrl);
+      if (publicId) {
+        try {
+          await deleteImage(publicId);
+        } catch (error) {
+          console.error(`Failed to delete image ${publicId}:`, error);
+        }
+      }
+    }
+
+    // Update images array
+    let updatedImages = product.images.filter((img) => !imagesToDelete.includes(img));
+    
+    // Add new uploaded images
+    if (uploadedImages.length > 0) {
+      updatedImages = [...updatedImages, ...uploadedImages];
+    }
+
+    // If images are provided as URLs in request body, use those
+    if (req.body.images && Array.isArray(req.body.images)) {
+      updatedImages = req.body.images;
+    }
+
+    // Update product
+    const updateData: any = { ...req.body };
+    if (uploadedImages.length > 0 || imagesToDelete.length > 0) {
+      updateData.images = updatedImages;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.json(updatedProduct);
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to update product' });
   }
@@ -102,11 +210,28 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
 
 export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
       res.status(404).json({ message: 'Product not found' });
       return;
     }
+
+    // Delete images from Cloudinary
+    if (product.images && product.images.length > 0) {
+      for (const imageUrl of product.images) {
+        const publicId = extractPublicId(imageUrl);
+        if (publicId) {
+          try {
+            await deleteImage(publicId);
+          } catch (error) {
+            console.error(`Failed to delete image ${publicId}:`, error);
+          }
+        }
+      }
+    }
+
+    // Delete product from database
+    await Product.findByIdAndDelete(req.params.id);
     res.json({ message: 'Product deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to delete product' });
