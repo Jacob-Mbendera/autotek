@@ -190,6 +190,63 @@ if (process.env.NODE_ENV === 'development') {
 - ✅ Follow existing patterns in codebase
 - ✅ Maintain consistency with current code style
 
+## React Best Practices
+
+**CRITICAL RULE**: Follow React best practices as outlined in `react-best-practices.md`. See that document for comprehensive guidelines.
+
+### Component Structure
+- ✅ **ALWAYS** use functional components with hooks (no class components)
+- ✅ One component per file, file name matches component name (PascalCase)
+- ✅ Define TypeScript interfaces for all component props
+- ✅ Keep components focused and single-purpose (max ~200 lines)
+- ✅ Extract complex logic into custom hooks
+
+### Hooks Usage
+- ✅ **CRITICAL**: Follow Rules of Hooks - only call hooks at top level, never in conditions/loops
+- ✅ Use descriptive names for state variables
+- ✅ Always include correct dependencies in `useEffect` - don't silence lint warnings
+- ✅ Clean up subscriptions in `useEffect` (return cleanup function)
+- ✅ Don't overuse `useEffect` - only for side effects, not for deriving state
+
+### Performance
+- ✅ Use `React.memo` for components that don't need frequent re-renders
+- ✅ Use `useMemo` for expensive computations
+- ✅ Use `useCallback` when passing callbacks to memoized children
+- ✅ Implement code splitting with `React.lazy()` for routes
+- ✅ Don't over-optimize - measure first, optimize when needed
+
+### State Management
+- ✅ Use `useState` for local UI state (modals, form inputs, toggles)
+- ✅ Use Redux Toolkit + RTK Query for global state and server state
+- ✅ Use Context API sparingly (only for rarely-changing global values)
+- ✅ Keep Redux state minimal - only what needs to be global
+
+### Security
+- ✅ **ALWAYS** validate user input on frontend (in addition to backend)
+- ✅ **NEVER** use `dangerouslySetInnerHTML` unless absolutely necessary and sanitized
+- ✅ Use HTTPS for all API calls
+- ✅ Include authentication tokens in headers (not URLs)
+- ✅ Handle errors gracefully (don't expose sensitive information)
+
+### Code Quality
+- ✅ **ALWAYS** use TypeScript for component props, state, and function types
+- ✅ Handle errors gracefully with try/catch and error states
+- ✅ Use semantic HTML elements for accessibility
+- ✅ Comment **why**, not **what**
+- ✅ Remove commented-out code before committing
+
+### Styling
+- ✅ Use Tailwind CSS utility classes (current approach)
+- ✅ Use design system components from `components/ui/` when available
+- ✅ Use `cn()` utility for conditional classes
+- ✅ Follow design tokens from `utils/designSystem.ts`
+
+### Testing
+- ⚠️ Unit tests will be written later (not current priority for MVP)
+- When implementing tests: Use Jest + React Testing Library, test behavior not implementation
+
+**Reference**: See `react-best-practices.md` for detailed guidelines and examples.
+
 ## Project Documentation
 
 **CRITICAL FILE PROTECTION RULES - PROJECTPLAN.MD CONTENT PROTECTION:**

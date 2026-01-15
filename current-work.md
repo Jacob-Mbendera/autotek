@@ -100,8 +100,9 @@
 1. Complete checkout flow
 2. Build order tracking UI
 3. Create admin dashboard
-4. End-to-end testing
+4. End-to-end testing (manual)
 5. MVP launch preparation
+6. Write unit tests for critical components (authentication, payment flow)
 
 ### Medium-term (Next Month)
 1. User feedback collection
@@ -126,10 +127,16 @@
 - **Payment Methods**: Starting with Airtel Money and Bank Transfer (most common in Malawi)
 - **PWA First**: Building as PWA before native app for faster deployment
 
+### Testing Strategy
+- **Unit Tests**: Will be written later for critical components (not current priority for MVP)
+- **Testing Framework**: Jest + React Testing Library (when implemented)
+- **Current Focus**: Feature development and functionality over test coverage
+- **Future**: Comprehensive test suite will be added before production launch
+
 ## Daily Progress Log
 
 ### January 15, 2025 - Wednesday
-**Focus**: Design System & Authentication UI Implementation
+**Focus**: Design System, Authentication UI, and React Best Practices Documentation
 
 **Completed**:
 - [x] Installed and configured Tailwind CSS v3.4.19 with PostCSS
@@ -141,6 +148,12 @@
 - [x] Set up React Router with authentication flow
 - [x] Fixed Tailwind CSS v4 compatibility issues (downgraded to v3)
 - [x] Resolved PostCSS configuration for ES modules
+- [x] Created comprehensive React best practices document (`react-best-practices.md`)
+- [x] Updated project rules (`.cursorrules`) with React-specific guidelines
+- [x] Reviewed current code against best practices
+- [x] Created code review checklist (`code-review-checklist.md`)
+- [x] Documented code review findings (`code-review-findings.md`)
+- [x] Updated current-work.md with testing strategy notes
 
 **Blockers**:
 - None
