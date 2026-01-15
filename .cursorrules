@@ -181,4 +181,62 @@ if (process.env.NODE_ENV === 'development') {
 - ✅ Request/response validation
 - ✅ API documentation considerations
 
+## When Implementing Features
+
+**CRITICAL RULE**: Keep implementation focused and consistent with existing codebase.
+
+- ✅ Keep changes minimal and focused
+- ✅ Don't over-engineer solutions
+- ✅ Follow existing patterns in codebase
+- ✅ Maintain consistency with current code style
+
+## Project Documentation
+
+**CRITICAL FILE PROTECTION RULES - PROJECTPLAN.MD CONTENT PROTECTION:**
+
+`projectplan.md` is the **MASTER PLAN** - its structure and original content must be preserved.
+
+**ALLOWED:**
+- ✅ Update status markers (Pending to Completed)
+- ✅ Add new sections, phases, or enhance existing features
+- ✅ Modify plan content when requirements evolve
+- ✅ Update timelines and milestones
+
+**FORBIDDEN:**
+- ❌ Replace entire document content or major structural overhaul
+- ❌ Delete original sections or completely rewrite the plan
+- ❌ Remove core features or roadmap phases without user approval
+
+**BEFORE EDITING ANY .MD FILE - MANDATORY CHECK:**
+
+1. Ask yourself: **"Am I enhancing/updating OR completely replacing?"**
+2. If **ENHANCING** - Proceed with `projectplan.md` updates
+3. If **REPLACING** - Use `current-work.md` or create new file instead
+4. When in doubt, ask user: **"Should I enhance projectplan.md or use current-work.md?"**
+
+**SELF-CHECK BEFORE ANY MARKDOWN EDIT:**
+
+State explicitly: **"I am about to enhance/update [filename] with [brief description]"**
+- If major changes to `projectplan.md`, confirm it's enhancement not replacement
+- Preserve original plan structure while allowing evolution
+
+**ALWAYS maintain these files:**
+
+#### projectplan.md
+- **Purpose:** Master plan with all features, roadmap, business model
+- **Update When:** Adding/removing features, changing priorities
+- **Structure:** Keep organized by phases (MVP, Phase 2, Phase 3)
+- **Rule:** This is the source of truth for project scope
+
+#### current-work.md
+- **Purpose:** Track daily progress and development sessions
+- **Update When:** After completing tasks, at end of each session
+- **Format:** Date-stamped entries with what was done
+- **Rule:** Document decisions, blockers, and next steps
+
+#### ui-ux-guide.md
+- **Purpose:** Design system, colors, fonts, component guidelines
+- **Update When:** Adding new UI components, changing design patterns
+- **Rule:** All UI changes must follow these guidelines
+
 **Remember**: Code review is not just about functionality - it's about writing code that is secure, maintainable, performant, and follows industry best practices.
