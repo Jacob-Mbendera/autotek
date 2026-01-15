@@ -8,6 +8,18 @@
 - **Styling**: Tailwind CSS
 - **Icons**: lucide-react (NO emojis in code)
 
+## Communication Guidelines
+
+**CRITICAL RULE**: Please every step of the way just give me a high level explanation of what changes you made.
+
+When making changes, provide:
+- High-level summary of what was changed
+- Why the changes were made
+- Key files affected
+- Any important considerations
+
+Keep explanations concise and focused on the big picture rather than line-by-line details.
+
 ## Git Workflow & Branching
 
 **CRITICAL RULE**: Always push to `dev` branch, NEVER directly to `main`
@@ -76,6 +88,37 @@ This includes but is not limited to:
 - ✅ Meaningful variable and function names
 - ✅ Proper code organization and structure
 
+### Code Quality Standards
+
+#### JavaScript/TypeScript
+```javascript
+// ✅ GOOD: Clear, simple, readable
+const fetchProfessionals = async (location, category) => {
+  try {
+    const response = await professionalService.getByLocation(location, category);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching professionals:', error);
+    throw error;
+  }
+};
+
+// ❌ BAD: Over-complicated, unclear
+const fetchProfessionals = async (location, category) => {
+  return await professionalService.getByLocation(location, category).then(response => response.data).catch(error => { console.error('Error fetching professionals:', error); throw error; });
+};
+```
+
+#### Naming Conventions
+- **Variables:** `camelCase` - `professionalData`, `bookingStatus`
+- **Functions:** `camelCase` - `fetchProfessionals()`, `handleBooking()`
+- **Components:** `PascalCase` - `ProfessionalCard`, `BookingModal`
+- **Constants:** `UPPER_SNAKE_CASE` - `MAX_FILE_SIZE`, `API_BASE_URL`
+- **Files:**
+  - Components: `PascalCase.tsx` - `ProfessionalCard.tsx`
+  - Utilities: `camelCase.ts` - `dateHelpers.ts`
+  - Routes: `camelCase.js` - `professionals.js`
+
 ### Security
 - ✅ Input sanitization and validation
 - ✅ Authentication and authorization checks
@@ -104,6 +147,32 @@ This includes but is not limited to:
 - ✅ Validate all required fields
 - ✅ Proper error responses with appropriate HTTP status codes
 - ✅ Transaction handling for database operations where needed
+
+### Testing & Quality Assurance
+
+**Before Committing Code:**
+- [ ] Test the feature
+- [ ] Check for console errors
+- [ ] Test on mobile view (responsive design)
+- [ ] Verify authentication works
+- [ ] Test edge cases (empty states, errors)
+
+**Remove Before Commit:**
+- All `console.log()` statements (unless intentional for debugging)
+- Commented-out code blocks
+- Unused imports
+- Test data hardcoded in components
+
+```javascript
+// ❌ BAD - Remove before commit
+console.log('User data:', userData);
+// const oldFunction = () => { ... };
+
+// ✅ GOOD - Keep if needed
+if (process.env.NODE_ENV === 'development') {
+  console.log('Debug: User authenticated');
+}
+```
 
 ### API Design
 - ✅ RESTful conventions

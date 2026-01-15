@@ -1,0 +1,87 @@
+import { baseApi } from './baseApi';
+import type { OrderStatus, PaymentMethod, PaymentStatus } from '../../../../shared/types';
+
+export interface OrderItem {
+  product: {
+    _id: string;
+    name: string;
+    images: string[];
+  };
+  quantity: number;
+  price: number;
+}
+
+export interface Order {
+  _id: string;
+  user: string;
+  items: OrderItem[];
+  totalAmount: number;
+  status: OrderStatus;
+  paymentMethod?: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  shippingAddress: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CreateOrderRequest {
+  items: Array<{
+    product: string;
+    quantity: number;
+    price: number;
+  }>;
+  shippingAddress: string;
+  paymentMethod?: PaymentMethod;
+}
+
+interface OrdersResponse {
+  orders: Order[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+interface OrdersQueryParams {
+  page?: number;
+  limit?: number;
+  status?: OrderStatus;
+}
+
+export const orderApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    createOrder: builder.mutation<{ order: Order }, CreateOrderRequest>({
+      query: (body) => ({
+        url: '/orders',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Order'],
+    }),
+    getOrders: builder.query<OrdersResponse, OrdersQueryParams | void>({
+      query: (params) => {
+        if (!params) {
+          return '/orders';
+        }
+        const searchParams = new URLSearchParams();
+        if (params.page) searchParams.append('page', params.page.toString());
+        if (params.limit) searchParams.append('limit', params.limit.toString());
+        if (params.status) searchParams.append('status', params.status);
+
+        return {
+          url: `/orders?${searchParams.toString()}`,
+          method: 'GET',
+        };
+      },
+      providesTags: ['Order'],
+    }),
+    getOrder: builder.query<{ order: Order }, string>({
+      query: (id) => `/orders/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Order', id }],
+    }),
+  }),
+});
+
+export const { useCreateOrderMutation, useGetOrdersQuery, useGetOrderQuery } = orderApi;
