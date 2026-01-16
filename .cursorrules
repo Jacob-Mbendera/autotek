@@ -1,5 +1,7 @@
 # Project Rules
 
+> **NOTE**: These rules are specific to the AutoTek project. Rules for Git Workflow, Naming Conventions, and Project Documentation defined here should NOT be duplicated in user rules (Cursor settings). This file is the single source of truth for project-specific guidelines.
+
 ## Application Context
 - **Country**: Malawi
 - **Currency**: MWK (Malawi Kwacha)
