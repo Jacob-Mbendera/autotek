@@ -8,6 +8,7 @@ import { Button } from './ui/Button';
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const cart = useAppSelector((state) => state.cart);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -57,15 +58,18 @@ export const Header = () => {
           {/* Right side - Cart and User Menu */}
           <div className="flex items-center space-x-4">
             {/* Shopping Cart */}
-            <button
+            <Link
+              to={isAuthenticated ? '/checkout' : '/login?returnUrl=/checkout'}
               className="relative p-2 text-gray-700 hover:text-teal-600 transition-colors"
               aria-label="Shopping cart"
             >
               <ShoppingCart className="h-6 w-6" />
-              <span className="absolute top-0 right-0 h-4 w-4 bg-teal-500 text-white text-xs rounded-full flex items-center justify-center">
-                0
-              </span>
-            </button>
+              {cart.totalItems > 0 && (
+                <span className="absolute top-0 right-0 h-5 w-5 bg-teal-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                  {cart.totalItems}
+                </span>
+              )}
+            </Link>
 
             {/* User Menu - Desktop */}
             {isAuthenticated && user ? (

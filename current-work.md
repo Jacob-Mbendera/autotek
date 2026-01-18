@@ -2,24 +2,40 @@
 
 ## Current Sprint/Phase
 
-**Phase**: MVP Frontend Development  
-**Sprint Start**: [Date]  
+**Phase**: MVP Frontend Development - Public Browsing & PayChangu Integration  
+**Sprint Start**: January 2025  
 **Sprint End**: [Date]  
 **Status**: In Progress
 
 ## Active Tasks (In Progress)
 
-### Frontend Development
-- [ ] Product browsing UI
-  - [ ] Product listing page
-  - [ ] Product detail page
-  - [ ] Search and filters
-- [ ] Product browsing UI
-  - [ ] Product listing page
-  - [ ] Product detail page
-  - [ ] Search and filters
-- [ ] Shopping cart implementation
-- [ ] Checkout flow
+### Public Product & Service Browsing (Amazon-like Flow)
+- [ ] Make product routes public (remove ProtectedRoute)
+- [ ] Make service routes public (remove ProtectedRoute)
+- [ ] Create Products listing page (public access)
+- [ ] Create ProductDetail page (public access)
+- [ ] Create Services listing page (public access)
+- [ ] Update ProtectedRoute to support return URL parameter
+- [ ] Update Login page to handle return URL and redirect after login
+- [ ] Update Register page to handle return URL and redirect after registration
+- [ ] Create Checkout page (protected route)
+- [ ] Update Header component with cart display and checkout button
+- [ ] Ensure cart persists for unauthenticated users (localStorage via Redux Persist)
+- [ ] Backend: Remove authMiddleware from service GET routes (towingServiceRoutes, carServiceRoutes)
+
+### PayChangu Payment Gateway Integration
+- [ ] Add PayChangu to PaymentMethod enum (shared/types/index.ts)
+- [ ] Backend: Implement PayChangu API integration (paymentGateways.ts)
+- [ ] Backend: Update payment controller to handle PayChangu
+- [ ] Backend: Add PayChangu webhook endpoint
+- [ ] Frontend: Add PayChangu payment option in checkout
+- [ ] Frontend: Implement PayChangu redirect flow (Standard Checkout)
+- [ ] Frontend: Handle PayChangu return URL and payment verification
+- [ ] Add PayChangu environment variables to ENV_TEMPLATE.md
+- [ ] Update documentation with PayChangu setup guide
+
+### Frontend Development (General)
+- [ ] Shopping cart UI improvements
 - [ ] Order tracking UI
 - [ ] Admin dashboard UI
 
@@ -65,6 +81,18 @@
   - [x] ProtectedRoute component
   - [x] React Router setup
   - [x] Integration with Redux auth state
+- [x] Home page visual enhancements
+  - [x] Hero section with call-to-action
+  - [x] Trust indicators (statistics)
+  - [x] Featured categories with images
+  - [x] How it works section
+  - [x] Enhanced feature cards
+  - [x] Testimonials section
+  - [x] CSS animations (fadeIn, slideInUp, blob)
+- [x] Layout and navigation
+  - [x] Header component with responsive navigation
+  - [x] Layout wrapper component
+  - [x] Footer component
 
 ### Documentation (✅ Completed)
 - [x] README.md
@@ -134,6 +162,31 @@
 - **Future**: Comprehensive test suite will be added before production launch
 
 ## Daily Progress Log
+
+### January 2025 - Current Session
+**Focus**: Public Product Browsing & PayChangu Integration Planning
+
+**Plan Created**:
+- [x] Created comprehensive plan for public product/service browsing (Amazon-like flow)
+- [x] Created plan for PayChangu payment gateway integration
+- [x] Updated plan to clarify: Both authenticated and unauthenticated users can browse products and services
+- [x] Only checkout requires authentication (with redirect to login/register and return URL)
+
+**Key Decisions**:
+- Product and service browsing will be public (no authentication required)
+- Both authenticated and unauthenticated users can browse, add to cart, and view details
+- Cart state persists in localStorage for unauthenticated users (Redux Persist)
+- Checkout requires authentication - redirects to login/register with return URL
+- After login/register, users are redirected back to checkout page
+- PayChangu will be integrated as third payment option (alongside Airtel Money and Bank Transfer)
+- PayChangu Standard Checkout (hosted page) will be used for easier implementation
+
+**Next Steps**:
+- [ ] Implement Phase 1: Make product and service routes public
+- [ ] Implement Phase 2: Add return URL support to authentication flow
+- [ ] Implement Phase 3: Integrate PayChangu payment gateway
+
+---
 
 ### January 15, 2025 - Wednesday
 **Focus**: Design System, Authentication UI, and React Best Practices Documentation

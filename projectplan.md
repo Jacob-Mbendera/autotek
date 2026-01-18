@@ -24,14 +24,22 @@ Make automotive maintenance accessible and convenient for all Malawians through 
 - [x] User registration with phone number (+265 format)
 - [x] JWT-based authentication
 - [x] User profile management
+- [x] Public browsing (products and services accessible without authentication)
+- [x] Amazon-like checkout flow (authentication required only at checkout)
+- [x] Return URL handling (redirect back to checkout after login/register)
 - [ ] Password reset functionality
 - [ ] Email verification (optional)
+
+**Note**: Both authenticated and unauthenticated users can browse products and services. Authentication is only required when proceeding to checkout. Users can login or register at checkout, and will be redirected back to complete their purchase.
 
 #### Product Browsing & Shopping
 - [x] Product catalog with categories
 - [x] Product search and filtering
 - [x] Product detail pages with images
 - [x] Shopping cart functionality
+- [x] Public product browsing (no authentication required)
+- [x] Public service browsing (no authentication required)
+- [x] Amazon-like checkout flow (login/register at checkout with return URL)
 - [ ] Product reviews and ratings
 - [ ] Wishlist/favorites
 - [ ] Recently viewed products
@@ -63,9 +71,13 @@ Make automotive maintenance accessible and convenient for all Malawians through 
 - [x] Airtel Money integration
 - [x] Bank transfer option
 - [x] Payment status tracking
+- [ ] PayChangu integration (in progress)
+  - [ ] PayChangu Standard Checkout (hosted page)
+  - [ ] Support for cards, mobile money, and bank transfers
+  - [ ] Webhook handling for payment callbacks
 - [ ] Payment history
 - [ ] Refund processing
-- [ ] Multiple payment methods support
+- [x] Multiple payment methods support
 
 #### Progressive Web App (PWA)
 - [ ] Service worker implementation
@@ -145,13 +157,39 @@ Make automotive maintenance accessible and convenient for all Malawians through 
 **Frontend**:
 - [x] Redux Toolkit state management setup
 - [x] RTK Query API integration
-- [ ] Design system implementation
-- [ ] Authentication UI
-- [ ] Product browsing UI
+- [x] Design system implementation
+- [x] Authentication UI
+- [x] Home page with visual enhancements
+- [x] Layout and navigation components
+- [ ] Product browsing UI (public access)
+- [ ] Service browsing UI (public access)
 - [ ] Shopping cart UI
-- [ ] Checkout flow
+- [ ] Checkout flow (with Amazon-like authentication flow)
 - [ ] Order tracking UI
 - [ ] Admin dashboard UI
+
+### Phase 1.5: Public Browsing & PayChangu Integration (In Progress)
+**Timeline**: Before MVP launch
+**Status**: Planning Complete, Implementation In Progress
+
+**Public Browsing (Amazon-like Flow)**:
+- [ ] Make product routes public (both authenticated and unauthenticated users can browse)
+- [ ] Make service routes public (both authenticated and unauthenticated users can browse)
+- [ ] Product listing page (public access)
+- [ ] Product detail page (public access)
+- [ ] Service listing page (public access)
+- [ ] Shopping cart persistence for unauthenticated users (localStorage)
+- [ ] Checkout requires authentication (redirects to login/register with return URL)
+- [ ] Login/Register pages handle return URL and redirect back to checkout
+- [ ] Backend: Remove authMiddleware from service GET routes
+
+**PayChangu Payment Gateway**:
+- [ ] Add PayChangu to PaymentMethod enum
+- [ ] Backend PayChangu API integration (Standard Checkout)
+- [ ] PayChangu webhook endpoint for payment callbacks
+- [ ] Frontend PayChangu payment option in checkout
+- [ ] PayChangu redirect flow and payment verification
+- [ ] Documentation and setup guide
 
 ### Phase 2: Enhanced Features
 **Timeline**: After MVP launch
@@ -186,7 +224,7 @@ Make automotive maintenance accessible and convenient for all Malawians through 
 - **Authentication**: JWT (JSON Web Tokens)
 - **Validation**: express-validator
 - **File Storage**: Cloudinary
-- **Payment**: Airtel Money API
+- **Payment**: Airtel Money API, Bank Transfer, PayChangu (in progress)
 
 ### Frontend Stack
 - **Framework**: React with TypeScript
@@ -291,6 +329,7 @@ Make automotive maintenance accessible and convenient for all Malawians through 
 - **MongoDB Atlas**: Database hosting
 - **Cloudinary**: Image storage and CDN
 - **Airtel Money API**: Payment processing
+- **PayChangu**: Payment gateway (cards, mobile money, bank transfers) - in progress
 - **GitHub**: Version control and hosting
 
 ## Risk Management

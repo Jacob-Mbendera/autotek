@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLoginMutation } from '../store/api/authApi';
 import { useAppDispatch } from '../store/types';
 import { setUser } from '../store/slices/authSlice';
@@ -12,7 +12,10 @@ import { LogIn } from 'lucide-react';
 export const Login = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams();
   const [login, { isLoading }] = useLoginMutation();
+  
+  const returnUrl = searchParams.get('returnUrl');
   
   const [formData, setFormData] = useState({
     email: '',
@@ -27,7 +30,9 @@ export const Login = () => {
     try {
       const result = await login(formData).unwrap();
       dispatch(setUser({ user: result.user, token: result.token }));
-      navigate('/');
+      // Redirect to returnUrl if provided, otherwise to home
+      const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
+      navigate(redirectTo, { replace: true });
     } catch (err: any) {
       setError(err.data?.message || 'Login failed. Please try again.');
     }
@@ -40,6 +45,12 @@ export const Login = () => {
           <LogIn className="h-6 w-6 text-teal-600" />
           <H1 className="text-2xl">Login</H1>
         </div>
+
+        {returnUrl && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-600">Please login to continue checkout</p>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -80,7 +91,10 @@ export const Login = () => {
         <div className="mt-6 text-center">
           <Body className="text-gray-600">
             Don't have an account?{' '}
-            <Link to="/register" className="text-teal-600 hover:text-teal-700 font-medium">
+            <Link 
+              to={returnUrl ? `/register?returnUrl=${returnUrl}` : '/register'} 
+              className="text-teal-600 hover:text-teal-700 font-medium"
+            >
               Register here
             </Link>
           </Body>

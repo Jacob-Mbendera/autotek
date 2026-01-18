@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRegisterMutation } from '../store/api/authApi';
 import { useAppDispatch } from '../store/types';
 import { setUser } from '../store/slices/authSlice';
@@ -12,7 +12,10 @@ import { UserPlus } from 'lucide-react';
 export const Register = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams();
   const [register, { isLoading }] = useRegisterMutation();
+  
+  const returnUrl = searchParams.get('returnUrl');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -48,7 +51,9 @@ export const Register = () => {
       }).unwrap();
       
       dispatch(setUser({ user: result.user, token: result.token }));
-      navigate('/');
+      // Redirect to returnUrl if provided, otherwise to home
+      const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
+      navigate(redirectTo, { replace: true });
     } catch (err: any) {
       setError(err.data?.message || 'Registration failed. Please try again.');
     }
@@ -61,6 +66,12 @@ export const Register = () => {
           <UserPlus className="h-6 w-6 text-teal-600" />
           <H1 className="text-2xl">Create Account</H1>
         </div>
+
+        {returnUrl && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-600">Create an account to continue checkout</p>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -136,7 +147,10 @@ export const Register = () => {
         <div className="mt-6 text-center">
           <Body className="text-gray-600">
             Already have an account?{' '}
-            <Link to="/login" className="text-teal-600 hover:text-teal-700 font-medium">
+            <Link 
+              to={returnUrl ? `/login?returnUrl=${returnUrl}` : '/login'} 
+              className="text-teal-600 hover:text-teal-700 font-medium"
+            >
               Login here
             </Link>
           </Body>

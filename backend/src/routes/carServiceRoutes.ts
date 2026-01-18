@@ -10,8 +10,8 @@ import { authMiddleware } from '../middleware/auth';
 const router = Router();
 
 router.post('/', authMiddleware, createCarService);
-router.get('/', authMiddleware, getCarServices);
-router.get('/:id', authMiddleware, getCarService);
+router.get('/', getCarServices); // Public - browsing allowed
+router.get('/:id', getCarService); // Public - browsing allowed
 router.put('/:id', authMiddleware, updateCarService);
 
 export default router;
