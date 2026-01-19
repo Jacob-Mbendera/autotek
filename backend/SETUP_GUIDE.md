@@ -4,9 +4,10 @@ This guide will help you configure Airtel Money API and Cloudinary for the AutoT
 
 ## Table of Contents
 1. [Airtel Money API Setup](#airtel-money-api-setup)
-2. [Cloudinary Setup](#cloudinary-setup)
-3. [Environment Variables Configuration](#environment-variables-configuration)
-4. [Testing the Configuration](#testing-the-configuration)
+2. [PayChangu Payment Gateway Setup](#paychangu-payment-gateway-setup)
+3. [Cloudinary Setup](#cloudinary-setup)
+4. [Environment Variables Configuration](#environment-variables-configuration)
+5. [Testing the Configuration](#testing-the-configuration)
 
 ---
 
@@ -64,6 +65,121 @@ npm run dev
 # In another terminal
 ./test-endpoints.sh
 ```
+
+---
+
+## PayChangu Payment Gateway Setup
+
+PayChangu is a payment gateway that supports multiple payment methods including cards, mobile money, and bank transfers. This guide will help you set up PayChangu for AutoTek.
+
+### Step 1: Register for PayChangu Account
+
+1. Visit the [PayChangu website](https://paychangu.com) or contact PayChangu support
+2. Click on **"Sign Up"** or **"Register"** to create a merchant account
+3. Fill in your business details:
+   - Company name
+   - Business registration number
+   - Contact information
+   - Business address
+   - Bank account details (for payouts)
+
+### Step 2: Complete Merchant Onboarding
+
+1. Submit required business documents:
+   - Business registration certificate
+   - Tax identification number
+   - Bank account verification
+   - Identity verification for business owners
+2. Wait for PayChangu's approval (usually 1-3 business days)
+3. Once approved, you'll receive access to the merchant dashboard
+
+### Step 3: Get Your API Credentials
+
+1. After logging into the PayChangu merchant dashboard
+2. Navigate to **"Settings"** → **"API Keys"** or **"Developer Settings"**
+3. You'll find:
+   - **API Key** (`PAYCHANGU_API_KEY`)
+   - **API Secret** (`PAYCHANGU_API_SECRET`)
+   - **Webhook Secret** (`PAYCHANGU_WEBHOOK_SECRET`) - for verifying webhook requests
+   - **Base URL** (usually `https://api.paychangu.com`)
+
+**Important Notes:**
+- Keep your credentials secure and never commit them to version control
+- The API Secret is sensitive - save it immediately
+- Webhook Secret is used to verify that webhook requests come from PayChangu
+
+### Step 4: Configure Webhook URL
+
+1. In the PayChangu dashboard, go to **"Settings"** → **"Webhooks"**
+2. Add your webhook URL:
+   - **Development**: `http://your-domain.com/api/payments/webhook/paychangu`
+   - **Production**: `https://your-domain.com/api/payments/webhook/paychangu`
+3. Select events to receive:
+   - Payment completed
+   - Payment failed
+   - Payment cancelled
+4. Save the webhook configuration
+
+### Step 5: Test Your Configuration
+
+1. Use PayChangu's test mode (if available) to test payments
+2. Test the Standard Checkout flow:
+   - Create a test order
+   - Select PayChangu as payment method
+   - Complete the payment on PayChangu's hosted page
+   - Verify webhook is received and payment status is updated
+
+### Step 6: Go Live
+
+1. Complete all verification steps
+2. Switch from test mode to production mode
+3. Update your `.env` file with production credentials
+4. Update webhook URL to production domain
+5. Test with a small real transaction first
+
+### PayChangu Standard Checkout Flow
+
+AutoTek uses PayChangu's Standard Checkout (hosted page) for easier implementation:
+
+1. **Customer selects PayChangu** at checkout
+2. **Backend creates checkout session** via PayChangu API
+3. **Customer is redirected** to PayChangu's hosted payment page
+4. **Customer completes payment** on PayChangu's page
+5. **PayChangu redirects back** to AutoTek with payment status
+6. **Webhook is sent** to AutoTek backend to confirm payment
+7. **Order status is updated** based on payment result
+
+### Supported Payment Methods
+
+PayChangu supports:
+- **Credit/Debit Cards** (Visa, Mastercard)
+- **Mobile Money** (Airtel Money, TNM Mpamba, etc.)
+- **Bank Transfers**
+
+### Common Issues
+
+**Error: "PayChangu API credentials not configured"**
+- ✅ Check that `PAYCHANGU_API_KEY` and `PAYCHANGU_API_SECRET` are set in `.env`
+- ✅ Verify there are no extra spaces or quotes in `.env` file
+- ✅ Ensure credentials are correct from PayChangu dashboard
+
+**Error: "Failed to create PayChangu checkout session"**
+- ✅ Verify API credentials are correct
+- ✅ Check that `PAYCHANGU_BASE_URL` is correct
+- ✅ Ensure your PayChangu account is active and approved
+- ✅ Check PayChangu API status/downtime
+
+**Webhook not received**
+- ✅ Verify webhook URL is correctly configured in PayChangu dashboard
+- ✅ Check that your server is accessible from the internet (for production)
+- ✅ Ensure webhook endpoint is public (no authentication required)
+- ✅ Check server logs for webhook requests
+
+**Payment status not updating**
+- ✅ Verify webhook is being received
+- ✅ Check webhook secret verification (if implemented)
+- ✅ Review webhook handler logs
+- ✅ Manually verify payment status in PayChangu dashboard
 
 ---
 
@@ -154,6 +270,15 @@ AIRTEL_API_URL=https://openapiuat.airtel.africa
 AIRTEL_CLIENT_ID=your_airtel_client_id
 AIRTEL_CLIENT_SECRET=your_airtel_client_secret
 
+# PayChangu Payment Gateway Configuration
+PAYCHANGU_API_KEY=your_paychangu_api_key
+PAYCHANGU_API_SECRET=your_paychangu_api_secret
+PAYCHANGU_BASE_URL=https://api.paychangu.com
+PAYCHANGU_WEBHOOK_SECRET=your_paychangu_webhook_secret
+
+# Frontend URL (for payment redirects)
+FRONTEND_URL=http://localhost:5173
+
 # Cloudinary Configuration
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
@@ -176,6 +301,12 @@ Replace the placeholder values with your actual credentials:
 - Copy from your Airtel Developer Portal application
 - Use UAT URL for testing: `https://openapiuat.airtel.africa`
 - Use Production URL for live: `https://openapi.airtel.africa`
+
+#### PayChangu Credentials
+- Copy from PayChangu merchant dashboard → Settings → API Keys
+- Base URL is usually `https://api.paychangu.com`
+- Webhook Secret is used to verify webhook requests from PayChangu
+- Frontend URL should match your frontend domain (for payment redirects)
 
 #### Cloudinary Credentials
 - Copy from Cloudinary Dashboard → Settings → API Keys
@@ -292,6 +423,11 @@ After configuring both services:
 - [Airtel Developer Portal](https://developers.airtel.africa)
 - [Airtel Money API Documentation](https://developers.airtel.africa/docs)
 - Support: Contact through Developer Portal
+
+### PayChangu
+- [PayChangu Website](https://paychangu.com)
+- PayChangu Merchant Dashboard (login required)
+- Support: Contact through merchant dashboard or support email
 
 ### Cloudinary
 - [Cloudinary Documentation](https://cloudinary.com/documentation)

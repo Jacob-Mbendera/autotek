@@ -1,0 +1,16 @@
+{
+  "name": "AutoTek",
+  "short_name": "AutoTek",
+  "description": "AutoTek - Spare Parts Online Shop",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d9488",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

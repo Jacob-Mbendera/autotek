@@ -3,3 +3,5 @@ export { Register } from './Register';
 export { Home } from './Home';
 export { Products } from './Products';
 export { Services } from './Services';
+export { PaymentSuccess } from './PaymentSuccess';
+export { PaymentCancel } from './PaymentCancel';

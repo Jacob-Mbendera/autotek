@@ -18,6 +18,8 @@ interface InitiatePaymentRequest {
   orderId: string;
   paymentMethod: PaymentMethod;
   phoneNumber?: string;
+  returnUrl?: string;
+  cancelUrl?: string;
 }
 
 interface InitiatePaymentResponse {
@@ -42,6 +44,10 @@ export const paymentApi = baseApi.injectEndpoints({
       query: (id) => `/payments/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Payment', id }],
     }),
+    getPaymentByOrder: builder.query<{ payment: Payment }, string>({
+      query: (orderId) => `/payments/order/${orderId}`,
+      providesTags: (_result, _error, orderId) => [{ type: 'Payment', id: orderId }],
+    }),
     verifyPayment: builder.mutation<{ payment: Payment; verified: boolean }, string>({
       query: (id) => ({
         url: `/payments/verify`,
@@ -53,5 +59,9 @@ export const paymentApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useInitiatePaymentMutation, useGetPaymentQuery, useVerifyPaymentMutation } =
-  paymentApi;
+export const {
+  useInitiatePaymentMutation,
+  useGetPaymentQuery,
+  useGetPaymentByOrderQuery,
+  useVerifyPaymentMutation,
+} = paymentApi;

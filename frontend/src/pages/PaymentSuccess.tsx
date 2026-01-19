@@ -1,0 +1,140 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAppDispatch } from '../store/types';
+import { useGetOrderQuery } from '../store/api/orderApi';
+import { useGetPaymentByOrderQuery } from '../store/api/paymentApi';
+import { clearCart } from '../store/slices/cartSlice';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { H1, Body } from '../components/ui/Typography';
+import { CheckCircle, Package, Loader2 } from 'lucide-react';
+import { PaymentStatus } from '@shared/types';
+
+export const PaymentSuccess = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get('orderId');
+  const [paymentVerified, setPaymentVerified] = useState(false);
+
+  const { data: orderData, isLoading: isLoadingOrder, error: orderError } = useGetOrderQuery(
+    orderId || '',
+    { skip: !orderId }
+  );
+
+  // Get payment associated with order
+  const { data: paymentData, isLoading: isLoadingPayment } = useGetPaymentByOrderQuery(
+    orderId || '',
+    { skip: !orderId }
+  );
+
+  useEffect(() => {
+    if (!orderId) {
+      navigate('/');
+      return;
+    }
+
+    // Verify payment status
+    if (paymentData?.payment) {
+      const payment = paymentData.payment;
+      if (payment.status === PaymentStatus.COMPLETED) {
+        setPaymentVerified(true);
+        // Clear cart on successful payment
+        dispatch(clearCart());
+      } else if (payment.status === PaymentStatus.FAILED) {
+        // Payment failed, redirect to cancel page
+        navigate(`/payment/cancel?orderId=${orderId}`);
+      }
+    }
+  }, [orderId, paymentData, dispatch, navigate]);
+
+  if (!orderId) {
+    return null;
+  }
+
+  if (isLoadingOrder || isLoadingPayment) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Card variant="md" className="text-center">
+          <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
+          <Body className="text-gray-600">Verifying payment...</Body>
+        </Card>
+      </div>
+    );
+  }
+
+  if (orderError) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Card variant="md" className="text-center">
+          <H1 className="text-2xl mb-4 text-red-600">Error</H1>
+          <Body className="text-gray-600 mb-6">
+            Unable to verify your order. Please contact support if you have any questions.
+          </Body>
+          <Button variant="primary" onClick={() => navigate('/orders')}>
+            View Orders
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const order = orderData?.order;
+  const payment = paymentData?.payment;
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <Card variant="md" className="text-center">
+        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+        <H1 className="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</H1>
+        <Body className="text-gray-600 mb-6">
+          Thank you for your purchase. Your payment has been processed successfully.
+        </Body>
+
+        {order && (
+          <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
+            <div className="flex items-center gap-2 mb-4">
+              <Package className="h-5 w-5 text-teal-600" />
+              <H1 className="text-xl font-semibold">Order Details</H1>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Order ID:</span>
+                <span className="font-medium text-gray-900">{order._id.slice(0, 8)}...</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Amount:</span>
+                <span className="font-medium text-gray-900">
+                  MWK {order.totalAmount.toLocaleString()}
+                </span>
+              </div>
+              {payment && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Payment Method:</span>
+                  <span className="font-medium text-gray-900 capitalize">
+                    {payment.paymentMethod.replace('-', ' ')}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-600">Status:</span>
+                <span className="font-medium text-green-600 capitalize">
+                  {paymentVerified ? 'Paid' : 'Processing'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button variant="primary" onClick={() => navigate(`/orders/${orderId}`)}>
+            View Order Details
+          </Button>
+          <Button variant="secondary" onClick={() => navigate('/products')}>
+            Continue Shopping
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+};

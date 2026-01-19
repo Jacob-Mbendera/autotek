@@ -74,12 +74,13 @@ export const Checkout = () => {
           orderId: orderResult.order._id,
           paymentMethod: paymentMethod as PaymentMethod,
           phoneNumber: user?.phone,
+          returnUrl,
+          cancelUrl,
         }).unwrap();
 
         // If we get a redirect URL, redirect to PayChangu
-        if (paymentResult.paymentUrl || (paymentResult as any).redirectUrl) {
-          const redirectUrl = paymentResult.paymentUrl || (paymentResult as any).redirectUrl;
-          window.location.href = redirectUrl;
+        if (paymentResult.redirectUrl) {
+          window.location.href = paymentResult.redirectUrl;
           return; // Don't clear cart yet, wait for payment confirmation
         }
       }

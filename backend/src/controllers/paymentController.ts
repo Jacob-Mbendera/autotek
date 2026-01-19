@@ -169,6 +169,33 @@ export const getPayment = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
+export const getPaymentByOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+
+    const payment = await Payment.findOne({ order: orderId, type: 'order' })
+      .populate('order')
+      .sort({ createdAt: -1 }); // Get the most recent payment
+
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found for this order' });
+      return;
+    }
+
+    // Check if user has access to this payment
+    if (payment.order && (payment.order as any).user.toString() !== req.user!._id.toString()) {
+      if (req.user!.role !== 'admin') {
+        res.status(403).json({ message: 'Access denied' });
+        return;
+      }
+    }
+
+    res.json({ payment });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to fetch payment' });
+  }
+};
+
 export const paymentCallback = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     // This endpoint will be called by payment gateways via webhook
