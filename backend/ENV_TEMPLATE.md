@@ -29,6 +29,16 @@ AIRTEL_CLIENT_SECRET=your_airtel_client_secret
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# PayChangu Payment Gateway Configuration
+# Get these from: https://paychangu.com (or your PayChangu dashboard)
+PAYCHANGU_API_KEY=your_paychangu_api_key
+PAYCHANGU_API_SECRET=your_paychangu_api_secret
+PAYCHANGU_BASE_URL=https://api.paychangu.com
+PAYCHANGU_WEBHOOK_SECRET=your_paychangu_webhook_secret
+
+# Frontend URL (for payment redirects)
+FRONTEND_URL=http://localhost:5173
 ```
 
 ## Instructions

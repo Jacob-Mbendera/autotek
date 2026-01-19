@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation } from '../store/api/orderApi';
+import { useInitiatePaymentMutation } from '../store/api/paymentApi';
 import { clearCart } from '../store/slices/cartSlice';
 import type { PaymentMethod } from '../../../shared/types';
 import { Button } from '../components/ui/Button';
@@ -15,16 +16,20 @@ export const Checkout = () => {
   const cart = useAppSelector((state) => state.cart);
   const { user } = useAppSelector((state) => state.auth);
   
-  const [createOrder, { isLoading }] = useCreateOrderMutation();
+  const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
+  const [initiatePayment, { isLoading: isInitiatingPayment }] = useInitiatePaymentMutation();
   
   const [shippingAddress, setShippingAddress] = useState(user?.address || '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
   const [error, setError] = useState('');
+  
+  const isLoading = isCreatingOrder || isInitiatingPayment;
 
   // Payment method constants
   const PAYMENT_METHODS = {
     AIRTEL_MONEY: 'airtel-money' as PaymentMethod,
     BANK_TRANSFER: 'bank-transfer' as PaymentMethod,
+    PAYCHANGU: 'paychangu' as PaymentMethod,
   };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -53,17 +58,35 @@ export const Checkout = () => {
         price: item.price,
       }));
 
-      const result = await createOrder({
+      // Create order first
+      const orderResult = await createOrder({
         items: orderItems,
         shippingAddress: shippingAddress.trim(),
         paymentMethod: paymentMethod as PaymentMethod,
       }).unwrap();
 
-      // Clear cart after successful order
-      dispatch(clearCart());
+      // If PayChangu, initiate payment and redirect to PayChangu checkout
+      if (paymentMethod === PAYMENT_METHODS.PAYCHANGU) {
+        const returnUrl = `${window.location.origin}/payment/success?orderId=${orderResult.order._id}`;
+        const cancelUrl = `${window.location.origin}/payment/cancel?orderId=${orderResult.order._id}`;
+        
+        const paymentResult = await initiatePayment({
+          orderId: orderResult.order._id,
+          paymentMethod: paymentMethod as PaymentMethod,
+          phoneNumber: user?.phone,
+        }).unwrap();
 
-      // Redirect to order confirmation
-      navigate(`/orders/${result.order._id}`);
+        // If we get a redirect URL, redirect to PayChangu
+        if (paymentResult.paymentUrl || (paymentResult as any).redirectUrl) {
+          const redirectUrl = paymentResult.paymentUrl || (paymentResult as any).redirectUrl;
+          window.location.href = redirectUrl;
+          return; // Don't clear cart yet, wait for payment confirmation
+        }
+      }
+
+      // For other payment methods, clear cart and redirect to order confirmation
+      dispatch(clearCart());
+      navigate(`/orders/${orderResult.order._id}`);
     } catch (err: any) {
       setError(err.data?.message || 'Failed to place order. Please try again.');
     }
@@ -148,6 +171,21 @@ export const Checkout = () => {
                 <div className="flex-1">
                   <div className="font-semibold text-gray-900">Bank Transfer</div>
                   <div className="text-sm text-gray-600">Bank Transfer (Manual verification)</div>
+                </div>
+              </label>
+
+              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={PAYMENT_METHODS.PAYCHANGU}
+                  checked={paymentMethod === PAYMENT_METHODS.PAYCHANGU}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="mr-3"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-900">PayChangu</div>
+                  <div className="text-sm text-gray-600">Pay with card, mobile money, or bank transfer</div>
                 </div>
               </label>
             </div>

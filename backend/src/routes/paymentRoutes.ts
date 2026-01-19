@@ -3,6 +3,7 @@ import {
   initiatePaymentRequest,
   getPayment,
   paymentCallback,
+  payChanguWebhook,
   verifyPayment,
 } from '../controllers/paymentController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
@@ -11,7 +12,8 @@ const router = Router();
 
 router.post('/initiate', authMiddleware, initiatePaymentRequest);
 router.get('/:id', authMiddleware, getPayment);
-router.post('/callback', paymentCallback as any); // Public endpoint for webhooks
+router.post('/callback', paymentCallback as any); // Public endpoint for webhooks (Airtel Money, etc.)
+router.post('/webhook/paychangu', payChanguWebhook as any); // PayChangu webhook endpoint
 router.post('/verify', authMiddleware, adminMiddleware, verifyPayment);
 
 export default router;

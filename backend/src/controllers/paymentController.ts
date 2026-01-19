@@ -12,7 +12,7 @@ export const initiatePaymentRequest = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { orderId, towingServiceId, carServiceId, method, phoneNumber } = req.body;
+    const { orderId, towingServiceId, carServiceId, method, phoneNumber, returnUrl, cancelUrl } = req.body;
 
     if (!method || !Object.values(PaymentMethod).includes(method)) {
       res.status(400).json({ message: 'Valid payment method is required' });
@@ -84,12 +84,23 @@ export const initiatePaymentRequest = async (
 
     // Initiate payment with gateway
     const reference = `${type.toUpperCase()}_${entityId}_${Date.now()}`;
-    const paymentResponse = await initiatePayment(method, {
-      amount,
-      phoneNumber: phoneNumber || req.user!.phone,
-      reference,
-      description: `Payment for ${type}`,
-    });
+    
+    // For PayChangu, construct return and cancel URLs if not provided
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const finalReturnUrl = returnUrl || `${baseUrl}/payment/success?paymentId={PAYMENT_ID}`;
+    const finalCancelUrl = cancelUrl || `${baseUrl}/payment/cancel?paymentId={PAYMENT_ID}`;
+    
+    const paymentResponse = await initiatePayment(
+      method,
+      {
+        amount,
+        phoneNumber: phoneNumber || req.user!.phone,
+        reference,
+        description: `Payment for ${type}`,
+      },
+      method === PaymentMethod.PAYCHANGU ? finalReturnUrl : undefined,
+      method === PaymentMethod.PAYCHANGU ? finalCancelUrl : undefined
+    );
 
     if (!paymentResponse.success) {
       res.status(400).json({ message: paymentResponse.message });
@@ -116,6 +127,7 @@ export const initiatePaymentRequest = async (
       payment,
       paymentInstructions: paymentResponse.paymentInstructions,
       transactionId: paymentResponse.transactionId,
+      redirectUrl: paymentResponse.redirectUrl, // For PayChangu Standard Checkout
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to initiate payment' });
@@ -210,6 +222,74 @@ export const paymentCallback = async (req: Request, res: Response): Promise<Resp
     res.json({ success: true, payment });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to process callback' });
+  }
+};
+
+export const payChanguWebhook = async (req: Request, res: Response): Promise<Response | void> => {
+  try {
+    // PayChangu webhook handler
+    // PayChangu will send webhook with payment status updates
+    const { sessionId, status, transactionId, reference, amount } = req.body as {
+      sessionId?: string;
+      status?: string;
+      transactionId?: string;
+      reference?: string;
+      amount?: number;
+    };
+
+    // Verify webhook signature (if PayChangu provides one)
+    const webhookSecret = process.env.PAYCHANGU_WEBHOOK_SECRET;
+    // TODO: Implement signature verification when PayChangu provides webhook signature
+
+    // Find payment by transactionId or sessionId
+    const payment = await Payment.findOne({
+      $or: [
+        { transactionId: transactionId || sessionId },
+        { transactionId: { $regex: reference } },
+      ],
+    });
+
+    if (!payment) {
+      console.warn('PayChangu webhook: Payment not found', { sessionId, transactionId, reference });
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    // Update payment status based on PayChangu response
+    if (status === 'success' || status === 'completed' || status === 'paid') {
+      payment.status = PaymentStatus.COMPLETED;
+      payment.transactionId = transactionId || payment.transactionId;
+
+      // Update related entity payment status
+      if (payment.type === 'order' && payment.order) {
+        const order = await Order.findById(payment.order);
+        if (order) {
+          order.paymentStatus = PaymentStatus.COMPLETED;
+          await order.save();
+        }
+      } else if (payment.type === 'towing' && payment.towingService) {
+        const towingService = await TowingService.findById(payment.towingService);
+        if (towingService) {
+          towingService.paymentStatus = 'completed';
+          await towingService.save();
+        }
+      } else if (payment.type === 'car-service' && payment.carService) {
+        const carService = await CarService.findById(payment.carService);
+        if (carService) {
+          carService.paymentStatus = 'completed';
+          await carService.save();
+        }
+      }
+    } else if (status === 'failed' || status === 'cancelled') {
+      payment.status = PaymentStatus.FAILED;
+    }
+
+    await payment.save();
+
+    res.json({ success: true, payment });
+  } catch (error: any) {
+    console.error('PayChangu webhook error:', error);
+    res.status(500).json({ message: error.message || 'Failed to process PayChangu webhook' });
   }
 };
 

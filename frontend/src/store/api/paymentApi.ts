@@ -23,6 +23,8 @@ interface InitiatePaymentRequest {
 interface InitiatePaymentResponse {
   payment: Payment;
   paymentUrl?: string;
+  redirectUrl?: string; // For PayChangu Standard Checkout
+  paymentInstructions?: string;
   instructions?: string;
 }
 

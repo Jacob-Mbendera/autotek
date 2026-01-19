@@ -10,28 +10,28 @@
 ## Active Tasks (In Progress)
 
 ### Public Product & Service Browsing (Amazon-like Flow)
-- [ ] Make product routes public (remove ProtectedRoute)
-- [ ] Make service routes public (remove ProtectedRoute)
-- [ ] Create Products listing page (public access)
-- [ ] Create ProductDetail page (public access)
-- [ ] Create Services listing page (public access)
-- [ ] Update ProtectedRoute to support return URL parameter
-- [ ] Update Login page to handle return URL and redirect after login
-- [ ] Update Register page to handle return URL and redirect after registration
-- [ ] Create Checkout page (protected route)
-- [ ] Update Header component with cart display and checkout button
-- [ ] Ensure cart persists for unauthenticated users (localStorage via Redux Persist)
-- [ ] Backend: Remove authMiddleware from service GET routes (towingServiceRoutes, carServiceRoutes)
+- [x] Make product routes public (remove ProtectedRoute)
+- [x] Make service routes public (remove ProtectedRoute)
+- [x] Create Products listing page (public access)
+- [x] Create ProductDetail page (public access)
+- [x] Create Services listing page (public access)
+- [x] Update ProtectedRoute to support return URL parameter
+- [x] Update Login page to handle return URL and redirect after login
+- [x] Update Register page to handle return URL and redirect after registration
+- [x] Create Checkout page (protected route)
+- [x] Update Header component with cart display and checkout button
+- [x] Ensure cart persists for unauthenticated users (localStorage via Redux Persist)
+- [x] Backend: Remove authMiddleware from service GET routes (towingServiceRoutes, carServiceRoutes)
 
 ### PayChangu Payment Gateway Integration
-- [ ] Add PayChangu to PaymentMethod enum (shared/types/index.ts)
-- [ ] Backend: Implement PayChangu API integration (paymentGateways.ts)
-- [ ] Backend: Update payment controller to handle PayChangu
-- [ ] Backend: Add PayChangu webhook endpoint
-- [ ] Frontend: Add PayChangu payment option in checkout
+- [x] Add PayChangu to PaymentMethod enum (shared/types/index.ts)
+- [x] Backend: Implement PayChangu API integration (paymentGateways.ts)
+- [x] Backend: Update payment controller to handle PayChangu
+- [x] Backend: Add PayChangu webhook endpoint
+- [x] Frontend: Add PayChangu payment option in checkout
 - [ ] Frontend: Implement PayChangu redirect flow (Standard Checkout)
 - [ ] Frontend: Handle PayChangu return URL and payment verification
-- [ ] Add PayChangu environment variables to ENV_TEMPLATE.md
+- [x] Add PayChangu environment variables to ENV_TEMPLATE.md
 - [ ] Update documentation with PayChangu setup guide
 
 ### Frontend Development (General)
@@ -164,27 +164,49 @@
 ## Daily Progress Log
 
 ### January 2025 - Current Session
-**Focus**: Public Product Browsing & PayChangu Integration Planning
+**Focus**: Public Product Browsing & PayChangu Integration Implementation
 
-**Plan Created**:
-- [x] Created comprehensive plan for public product/service browsing (Amazon-like flow)
-- [x] Created plan for PayChangu payment gateway integration
-- [x] Updated plan to clarify: Both authenticated and unauthenticated users can browse products and services
-- [x] Only checkout requires authentication (with redirect to login/register and return URL)
+**Completed - Public Browsing**:
+- [x] Made product routes public (removed ProtectedRoute from /products and /products/:id)
+- [x] Made service routes public (removed ProtectedRoute from /services)
+- [x] Created Products listing page with filters, search, and pagination
+- [x] Created ProductDetail page with image gallery and add to cart
+- [x] Created Services listing page with towing and car services
+- [x] Updated ProtectedRoute to support return URL parameter
+- [x] Updated Login page to handle return URL and redirect after login
+- [x] Updated Register page to handle return URL and redirect after registration
+- [x] Created Checkout page with shipping address and payment method selection
+- [x] Updated Header component with cart badge showing total items
+- [x] Cart persists for unauthenticated users via Redux Persist
+- [x] Backend: Removed authMiddleware from service GET routes
+
+**Completed - PayChangu Integration (Backend)**:
+- [x] Added PayChangu to PaymentMethod enum in shared/types/index.ts
+- [x] Implemented PayChangu API integration function in paymentGateways.ts
+- [x] Updated payment controller to handle PayChangu redirect URLs
+- [x] Added PayChangu webhook endpoint (/api/payments/webhook/paychangu)
+- [x] Added PayChangu environment variables to ENV_TEMPLATE.md
+- [x] Updated Checkout page to include PayChangu payment option
+
+**In Progress**:
+- [ ] Frontend: Implement PayChangu redirect flow (Standard Checkout)
+- [ ] Frontend: Handle PayChangu return URL and payment verification
+- [ ] Update documentation with PayChangu setup guide
 
 **Key Decisions**:
-- Product and service browsing will be public (no authentication required)
+- Product and service browsing is now public (no authentication required)
 - Both authenticated and unauthenticated users can browse, add to cart, and view details
 - Cart state persists in localStorage for unauthenticated users (Redux Persist)
 - Checkout requires authentication - redirects to login/register with return URL
 - After login/register, users are redirected back to checkout page
-- PayChangu will be integrated as third payment option (alongside Airtel Money and Bank Transfer)
-- PayChangu Standard Checkout (hosted page) will be used for easier implementation
+- PayChangu integrated as third payment option (alongside Airtel Money and Bank Transfer)
+- PayChangu Standard Checkout (hosted page) used for easier implementation
+- PayChangu requires returnUrl and cancelUrl for redirect flow
 
 **Next Steps**:
-- [ ] Implement Phase 1: Make product and service routes public
-- [ ] Implement Phase 2: Add return URL support to authentication flow
-- [ ] Implement Phase 3: Integrate PayChangu payment gateway
+- [ ] Complete PayChangu frontend redirect flow
+- [ ] Test end-to-end payment flow with PayChangu
+- [ ] Update documentation with PayChangu setup instructions
 
 ---
 
@@ -239,8 +261,8 @@
 
 ### Current Branch
 - **Active Branch**: `dev`
-- **Last Commit**: feat: add project documentation and design system setup
-- **Status**: Modified (authentication UI ready to commit)
+- **Last Commit**: feat: implement public browsing and PayChangu integration (backend)
+- **Status**: Ready to commit
 
 ### Branch Strategy
 - `main`: Production-ready code
