@@ -76,7 +76,7 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({ message: 'Product not found' });
       return;
     }
-    res.json(product);
+    res.json({ product });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch product' });
   }

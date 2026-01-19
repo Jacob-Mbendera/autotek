@@ -139,7 +139,7 @@ export const initiatePayChanguPayment = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
       return {
         success: false,
         message: errorData.message || 'Failed to create PayChangu checkout session',
@@ -147,7 +147,13 @@ export const initiatePayChanguPayment = async (
       };
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      success?: boolean;
+      checkoutUrl?: string;
+      sessionId?: string;
+      message?: string;
+      error?: string;
+    };
 
     if (data.success && data.checkoutUrl) {
       return {
