@@ -3,5 +3,8 @@ export { Register } from './Register';
 export { Home } from './Home';
 export { Products } from './Products';
 export { Services } from './Services';
+export { Cart } from './Cart';
+export { Orders } from './Orders';
+export { OrderDetail } from './OrderDetail';
 export { PaymentSuccess } from './PaymentSuccess';
 export { PaymentCancel } from './PaymentCancel';

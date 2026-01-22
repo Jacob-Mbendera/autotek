@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck } from 'lucide-react';
+import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
+import { UserRole } from '../../../../shared/types';
 import { Button } from './ui/Button';
 
 export const Header = () => {
@@ -59,7 +60,7 @@ export const Header = () => {
           <div className="flex items-center space-x-4">
             {/* Shopping Cart */}
             <Link
-              to={isAuthenticated ? '/checkout' : '/login?returnUrl=/checkout'}
+              to="/cart"
               className="relative p-2 text-gray-700 hover:text-teal-600 transition-colors"
               aria-label="Shopping cart"
             >
@@ -74,6 +75,14 @@ export const Header = () => {
             {/* User Menu - Desktop */}
             {isAuthenticated && user ? (
               <div className="hidden md:flex md:items-center md:space-x-4">
+                {user.role === UserRole.ADMIN && (
+                  <Link to="/admin/dashboard">
+                    <Button variant="ghost" size="small">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 <div className="flex items-center space-x-2 text-gray-700">
                   <User className="h-5 w-5" />
                   <span className="font-medium">{user.name}</span>
@@ -131,6 +140,16 @@ export const Header = () => {
               })}
               {isAuthenticated && user ? (
                 <>
+                  {user.role === UserRole.ADMIN && (
+                    <Link
+                      to="/admin/dashboard"
+                      className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Settings className="h-5 w-5" />
+                      <span className="font-medium">Admin</span>
+                    </Link>
+                  )}
                   <div className="px-4 py-2 border-t border-gray-200 mt-2">
                     <div className="flex items-center space-x-2 text-gray-700 mb-2">
                       <User className="h-5 w-5" />

@@ -5,11 +5,16 @@ import { Home } from './pages/Home';
 import { Products } from './pages/Products';
 import { ProductDetail } from './pages/ProductDetail';
 import { Services } from './pages/Services';
+import { Cart } from './pages/Cart';
 import { Checkout } from './pages/Checkout';
+import { Orders } from './pages/Orders';
+import { OrderDetail } from './pages/OrderDetail';
 import { PaymentSuccess } from './pages/PaymentSuccess';
 import { PaymentCancel } from './pages/PaymentCancel';
+import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders } from './pages/admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
+import { AdminLayout } from './components/AdminLayout';
 
 function App() {
   return (
@@ -58,6 +63,14 @@ function App() {
             </Layout>
           }
         />
+        <Route
+          path="/cart"
+          element={
+            <Layout>
+              <Cart />
+            </Layout>
+          }
+        />
         
         {/* Protected routes with layout */}
         <Route
@@ -75,11 +88,70 @@ function App() {
           element={
             <ProtectedRoute>
               <Layout>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                  <h1 className="text-4xl font-bold text-gray-900 mb-4">Orders</h1>
-                  <p className="text-gray-600">Order tracking page coming soon...</p>
-                </div>
+                <Orders />
               </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders/:id"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <OrderDetail />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Admin routes */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminDashboard />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminProducts />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminOrders />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/services"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminServices />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/custom-orders"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminCustomOrders />
+              </AdminLayout>
             </ProtectedRoute>
           }
         />

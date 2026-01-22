@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '../store/types';
 import { useGetOrderQuery } from '../store/api/orderApi';
-import { useGetPaymentByOrderQuery } from '../store/api/paymentApi';
+import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/api/paymentApi';
 import { clearCart } from '../store/slices/cartSlice';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
-import { CheckCircle, Package, Loader2 } from 'lucide-react';
+import { CheckCircle, Package, Loader2, AlertCircle } from 'lucide-react';
 import { PaymentStatus } from '@shared/types';
 
 export const PaymentSuccess = () => {
@@ -16,17 +16,21 @@ export const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const [paymentVerified, setPaymentVerified] = useState(false);
+  const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const maxVerificationAttempts = 5;
 
   const { data: orderData, isLoading: isLoadingOrder, error: orderError } = useGetOrderQuery(
     orderId || '',
     { skip: !orderId }
   );
 
-  // Get payment associated with order
-  const { data: paymentData, isLoading: isLoadingPayment } = useGetPaymentByOrderQuery(
+  // Get payment associated with order - refetch every 3 seconds if pending
+  const { data: paymentData, isLoading: isLoadingPayment, refetch: refetchPayment } = useGetPaymentByOrderQuery(
     orderId || '',
     { skip: !orderId }
   );
+
+  const [verifyPayment, { isLoading: isVerifying }] = useVerifyPaymentMutation();
 
   useEffect(() => {
     if (!orderId) {
@@ -44,9 +48,40 @@ export const PaymentSuccess = () => {
       } else if (payment.status === PaymentStatus.FAILED) {
         // Payment failed, redirect to cancel page
         navigate(`/payment/cancel?orderId=${orderId}`);
+      } else if (payment.status === PaymentStatus.PENDING && verificationAttempts < maxVerificationAttempts) {
+        // For PayChangu, payment might be pending - try to verify
+        const verifyTimer = setTimeout(async () => {
+          try {
+            await verifyPayment(payment._id).unwrap();
+            setVerificationAttempts(prev => prev + 1);
+            refetchPayment();
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            setVerificationAttempts(prev => prev + 1);
+          }
+        }, 2000);
+
+        return () => clearTimeout(verifyTimer);
       }
     }
-  }, [orderId, paymentData, dispatch, navigate]);
+  }, [orderId, paymentData, dispatch, navigate, verifyPayment, refetchPayment, verificationAttempts]);
+
+  // Poll for payment status if still pending
+  useEffect(() => {
+    if (!paymentData?.payment || paymentData.payment.status !== PaymentStatus.PENDING) {
+      return;
+    }
+
+    if (verificationAttempts >= maxVerificationAttempts) {
+      return;
+    }
+
+    const pollInterval = setInterval(() => {
+      refetchPayment();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [paymentData, refetchPayment, verificationAttempts]);
 
   if (!orderId) {
     return null;
@@ -91,6 +126,18 @@ export const PaymentSuccess = () => {
           Thank you for your purchase. Your payment has been processed successfully.
         </Body>
 
+        {payment?.status === PaymentStatus.PENDING && !paymentVerified && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Loader2 className="h-5 w-5 text-amber-600 animate-spin" />
+              <Body className="font-medium text-amber-800">Verifying Payment</Body>
+            </div>
+            <Body className="text-sm text-amber-700">
+              Your payment is being verified. This may take a few moments. Please do not close this page.
+            </Body>
+          </div>
+        )}
+
         {order && (
           <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
             <div className="flex items-center gap-2 mb-4">
@@ -119,9 +166,25 @@ export const PaymentSuccess = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
                 <span className="font-medium text-green-600 capitalize">
-                  {paymentVerified ? 'Paid' : 'Processing'}
+                  {paymentVerified ? 'Paid' : payment?.status === PaymentStatus.PENDING ? 'Verifying...' : 'Processing'}
                 </span>
               </div>
+              {payment?.transactionId && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Transaction ID:</span>
+                  <span className="font-medium text-gray-900 font-mono text-xs">
+                    {payment.transactionId}
+                  </span>
+                </div>
+              )}
+              {payment?.reference && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Reference:</span>
+                  <span className="font-medium text-gray-900 font-mono text-xs">
+                    {payment.reference}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
