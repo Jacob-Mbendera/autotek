@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, Package } from 'lucide-react';
-import { OrderStatus } from '../../../../shared/types';
+import { OrderStatus } from '@shared/types';
 
 export const AdminOrders = () => {
   const navigate = useNavigate();

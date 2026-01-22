@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../store/types';
-import { UserRole } from '../../../../shared/types';
+import { UserRole } from '@shared/types';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

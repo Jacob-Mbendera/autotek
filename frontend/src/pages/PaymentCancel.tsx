@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
 import { XCircle, ArrowLeft, CreditCard, Loader2, AlertCircle } from 'lucide-react';
-import { PaymentStatus } from '../../../../shared/types';
+import { PaymentStatus } from '@shared/types';
 
 export const PaymentCancel = () => {
   const navigate = useNavigate();

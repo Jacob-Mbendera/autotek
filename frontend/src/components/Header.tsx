@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
-import { UserRole } from '../../../../shared/types';
+import { UserRole } from '@shared/types';
 import { Button } from './ui/Button';
 
 export const Header = () => {

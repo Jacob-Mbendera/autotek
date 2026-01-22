@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, FileText, Package } from 'lucide-react';
-import { CustomOrderStatus } from '../../../../shared/types';
+import { CustomOrderStatus } from '@shared/types';
 
 export const AdminCustomOrders = () => {
   const [page, setPage] = useState(1);

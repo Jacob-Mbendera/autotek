@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
 import { Package, Loader2, Filter, ChevronRight } from 'lucide-react';
-import type { OrderStatus } from '../../../../shared/types';
+import type { OrderStatus } from '@shared/types';
 
 // Helper function to get status badge colors
 const getStatusBadgeColor = (status: OrderStatus) => {

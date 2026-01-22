@@ -17,7 +17,7 @@ import {
   XCircle,
   Truck,
 } from 'lucide-react';
-import { OrderStatus, PaymentStatus } from '../../../../shared/types';
+import { OrderStatus, PaymentStatus } from '@shared/types';
 
 // Helper function to get status badge colors
 const getStatusBadgeColor = (status: OrderStatus) => {
