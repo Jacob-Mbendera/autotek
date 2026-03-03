@@ -54,10 +54,13 @@ export const getCarServices = async (
     const query: any = {};
     const { status, serviceType } = req.query;
 
-    // If not admin, only show user's own services
-    if (req.user!.role !== 'admin') {
-      query.user = req.user!._id;
+    // If authenticated and not admin, only show user's own services
+    // If not authenticated (public), show all services
+    // Use optional chaining to safely access user role
+    if (req.user?.role && req.user.role !== 'admin') {
+      query.user = req.user._id;
     }
+    // If no user (public access), show all services (no filter)
 
     if (status) {
       query.status = status;
@@ -85,10 +88,13 @@ export const getCarService = async (
   try {
     const query: any = { _id: req.params.id };
 
-    // If not admin, only allow access to own services
-    if (req.user!.role !== 'admin') {
-      query.user = req.user!._id;
+    // If authenticated and not admin, only allow access to own services
+    // If not authenticated (public), allow access to all services
+    // Use optional chaining to safely access user role
+    if (req.user?.role && req.user.role !== 'admin') {
+      query.user = req.user._id;
     }
+    // If no user (public access), allow viewing any service
 
     const carService = await CarService.findOne(query)
       .populate('user', 'name email phone address')

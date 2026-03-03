@@ -7,16 +7,21 @@ export interface CartItem {
   price: number;
   quantity: number;
   image?: string;
+  note?: string;
+  stock?: number;
+  stockStatus?: 'in-stock' | 'low-stock' | 'out-of-stock';
 }
 
 interface CartState {
   items: CartItem[];
+  savedForLater: CartItem[];
   totalAmount: number;
   totalItems: number;
 }
 
 const initialState: CartState = {
   items: [],
+  savedForLater: [],
   totalAmount: 0,
   totalItems: 0,
 };
@@ -70,8 +75,37 @@ const cartSlice = createSlice({
       state.totalAmount = 0;
       state.totalItems = 0;
     },
+    saveForLater: (state, action: PayloadAction<string>) => {
+      const item = state.items.find((item) => item.productId === action.payload);
+      if (item) {
+        state.savedForLater.push(item);
+        state.items = state.items.filter((item) => item.productId !== action.payload);
+        const { totalAmount, totalItems } = calculateTotals(state.items);
+        state.totalAmount = totalAmount;
+        state.totalItems = totalItems;
+      }
+    },
+    moveToCart: (state, action: PayloadAction<string>) => {
+      const item = state.savedForLater.find((item) => item.productId === action.payload);
+      if (item) {
+        state.items.push(item);
+        state.savedForLater = state.savedForLater.filter((item) => item.productId !== action.payload);
+        const { totalAmount, totalItems } = calculateTotals(state.items);
+        state.totalAmount = totalAmount;
+        state.totalItems = totalItems;
+      }
+    },
+    updateItemNote: (state, action: PayloadAction<{ productId: string; note: string }>) => {
+      const item = state.items.find((item) => item.productId === action.payload.productId);
+      if (item) {
+        item.note = action.payload.note;
+      }
+    },
+    removeFromSaved: (state, action: PayloadAction<string>) => {
+      state.savedForLater = state.savedForLater.filter((item) => item.productId !== action.payload);
+    },
   },
 });
 
-export const { addItem, removeItem, updateQuantity, clearCart } = cartSlice.actions;
+export const { addItem, removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved } = cartSlice.actions;
 export default cartSlice.reducer;

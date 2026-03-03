@@ -2,14 +2,27 @@ import { baseApi } from './baseApi';
 import type { OrderStatus, CustomOrderStatus, ServiceStatus } from '../../../../shared/types';
 
 export interface AdminStats {
-  totalUsers: number;
-  totalOrders: number;
-  totalProducts: number;
-  totalRevenue: number;
-  pendingOrders: number;
-  completedOrders: number;
-  activeServices: number;
-  pendingCustomOrders: number;
+  orders: {
+    total: number;
+    pending: number;
+  };
+  products: {
+    total: number;
+    outOfStock: number;
+  };
+  users: {
+    total: number;
+  };
+  services: {
+    towing: number;
+    carService: number;
+  };
+  revenue: {
+    total: number;
+  };
+  payments: {
+    pending: number;
+  };
 }
 
 interface GetAllOrdersQueryParams {
@@ -39,7 +52,7 @@ interface GetAllServicesQueryParams {
 
 export const adminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getStats: builder.query<{ stats: AdminStats }, void>({
+    getStats: builder.query<AdminStats, void>({
       query: () => '/admin/stats',
       providesTags: ['Admin'],
     }),
