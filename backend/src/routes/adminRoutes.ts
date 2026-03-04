@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getStats,
   getAllOrders,
+  getOrder,
   getAllCustomOrders,
   getAllServices,
   getAllUsers,
@@ -24,6 +25,7 @@ router.use(adminMiddleware);
 
 router.get('/stats', getStats);
 router.get('/orders', validate(validateGetAllOrders), getAllOrders);
+router.get('/orders/:id', getOrder);
 router.get('/custom-orders', validate(validateGetAllCustomOrders), getAllCustomOrders);
 router.get('/services', validate(validateGetAllServices), getAllServices);
 router.get('/users', getAllUsers);

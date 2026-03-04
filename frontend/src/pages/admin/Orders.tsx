@@ -5,7 +5,7 @@ import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Package } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Package, Calendar } from 'lucide-react';
 import { OrderStatus } from '@shared/types';
 
 export const AdminOrders = () => {
@@ -14,11 +14,15 @@ export const AdminOrders = () => {
   const [limit] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const { data, isLoading } = useGetAllOrdersQuery({
     page,
     limit,
     status: statusFilter || undefined,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
   });
 
   const getStatusColor = (status: OrderStatus) => {
@@ -50,6 +54,16 @@ export const AdminOrders = () => {
       })
     : [];
 
+  const hasActiveFilters = searchTerm || statusFilter || startDate || endDate;
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -59,7 +73,7 @@ export const AdminOrders = () => {
 
       {/* Filters */}
       <AdminCard variant="default" className="mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Search</label>
             <div className="relative">
@@ -67,7 +81,10 @@ export const AdminOrders = () => {
               <Input
                 dark
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search by order ID, customer name or email"
                 className="pl-10"
               />
@@ -77,7 +94,10 @@ export const AdminOrders = () => {
             <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as OrderStatus | '')}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as OrderStatus | '');
+                setPage(1);
+              }}
               className="w-full px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
             >
               <option value="">All Statuses</option>
@@ -87,21 +107,53 @@ export const AdminOrders = () => {
               <option value={OrderStatus.CANCELLED}>Cancelled</option>
             </select>
           </div>
-          <div className="flex items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                dark
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                dark
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-10"
+                min={startDate || undefined}
+              />
+            </div>
+          </div>
+        </div>
+        {hasActiveFilters && (
+          <div className="mt-4 flex items-center justify-end">
             <Button
               variant="secondary"
+              size="small"
               dark
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('');
-              }}
-              className="w-full"
+              onClick={handleClearFilters}
             >
               <Filter className="h-4 w-4 mr-2" />
               Clear Filters
             </Button>
           </div>
-        </div>
+        )}
       </AdminCard>
 
       {isLoading ? (
@@ -128,7 +180,11 @@ export const AdminOrders = () => {
                   <tr>
                     <td colSpan={7} className="py-12 text-center">
                       <Package className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-                      <Body className="text-gray-400">No orders found</Body>
+                      <Body className="text-gray-400">
+                        {hasActiveFilters
+                          ? 'No orders found matching your filters'
+                          : 'No orders found'}
+                      </Body>
                     </td>
                   </tr>
                 ) : (
@@ -174,7 +230,7 @@ export const AdminOrders = () => {
                           variant="ghost"
                           size="small"
                           dark
-                          onClick={() => navigate(`/orders/${order._id}`)}
+                          onClick={() => navigate(`/admin/orders/${order._id}`)}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View

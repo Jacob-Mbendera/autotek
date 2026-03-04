@@ -1,5 +1,6 @@
 import { baseApi } from './baseApi';
 import type { OrderStatus, CustomOrderStatus, ServiceStatus, UserRole } from '../../../../shared/types';
+import type { Order } from './orderApi';
 
 export interface AdminStats {
   orders: {
@@ -96,6 +97,25 @@ export const adminApi = baseApi.injectEndpoints({
       },
       providesTags: ['Admin'],
     }),
+    getAdminOrder: builder.query<{ order: Order }, string>({
+      query: (id) => `/admin/orders/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Admin', id }],
+    }),
+    updateOrderStatus: builder.mutation<
+      { order: unknown },
+      { id: string; status: OrderStatus }
+    >({
+      query: ({ id, status }) => ({
+        url: `/orders/${id}/status`,
+        method: 'PUT',
+        body: { status },
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        'Admin',
+        { type: 'Admin', id },
+        'Order',
+      ],
+    }),
     getAllCustomOrders: builder.query<
       { customOrders: unknown[]; pagination: unknown },
       GetAllCustomOrdersQueryParams | void
@@ -183,6 +203,8 @@ export const adminApi = baseApi.injectEndpoints({
 export const {
   useGetStatsQuery,
   useGetAllOrdersQuery,
+  useGetAdminOrderQuery,
+  useUpdateOrderStatusMutation,
   useGetAllCustomOrdersQuery,
   useGetAllServicesQuery,
   useGetAllUsersQuery,

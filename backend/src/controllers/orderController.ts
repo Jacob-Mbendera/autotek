@@ -75,30 +75,40 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
       query.status = status;
     }
 
+    console.log('[Orders] Fetching orders for user:', req.user!._id, 'with query:', query);
+
     const orders = await Order.find(query)
       .populate('items.product', 'name images price')
       .sort({ createdAt: -1 });
 
-    res.json(orders);
+    console.log('[Orders] Found orders:', orders.length);
+
+    res.json({ orders });
   } catch (error: any) {
+    console.error('[Orders] Error fetching orders:', error);
     res.status(500).json({ message: error.message || 'Failed to fetch orders' });
   }
 };
 
 export const getOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    console.log('[Order Detail] Fetching order:', req.params.id, 'for user:', req.user!._id);
+
     const order = await Order.findOne({
       _id: req.params.id,
       user: req.user!._id,
     }).populate('items.product', 'name images price description');
 
     if (!order) {
+      console.log('[Order Detail] Order not found');
       res.status(404).json({ message: 'Order not found' });
       return;
     }
 
-    res.json(order);
+    console.log('[Order Detail] Order found:', order._id);
+    res.json({ order });
   } catch (error: any) {
+    console.error('[Order Detail] Error:', error);
     res.status(500).json({ message: error.message || 'Failed to fetch order' });
   }
 };

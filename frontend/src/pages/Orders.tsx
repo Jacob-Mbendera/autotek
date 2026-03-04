@@ -334,9 +334,9 @@ export const Orders = () => {
             </Button>
           ))}
           {selectedStatuses.size > 0 && (
-            <Button
+          <Button
               variant="ghost"
-              size="small"
+            size="small"
               onClick={() => {
                 setSelectedStatuses(new Set());
                 setStatusFilter(undefined);
@@ -459,68 +459,68 @@ export const Orders = () => {
                 </button>
               )}
               <Link to={`/orders/${order._id}`}>
-                <Card
-                  variant="md"
+              <Card
+                variant="md"
                   className={`hover:shadow-lg transition-all cursor-pointer h-full ${
                     selectedOrders.has(order._id) ? 'ring-2 ring-teal-500' : ''
                   }`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <Body className="text-xs text-gray-500 mb-1">Order ID</Body>
-                      <Body className="text-sm font-semibold text-gray-900">
-                        #{order._id.slice(-8).toUpperCase()}
-                      </Body>
-                    </div>
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <Body className="text-xs text-gray-500 mb-1">Order ID</Body>
+                    <Body className="text-sm font-semibold text-gray-900">
+                      #{order._id.slice(-8).toUpperCase()}
+                    </Body>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
+                      order.status
+                    )}`}
+                  >
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  </span>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Date:</span>
+                    <span className="text-gray-900 font-medium">
+                      {formatDate(order.createdAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Items:</span>
+                    <span className="text-gray-900 font-medium">
+                      {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Total:</span>
+                    <span className="text-lg font-bold text-teal-600">
+                      MWK {order.totalAmount.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Payment:</span>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
-                        order.status
+                      className={`px-2 py-1 rounded text-xs font-medium ${getPaymentStatusBadgeColor(
+                        order.paymentStatus
                       )}`}
                     >
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      {order.paymentStatus.charAt(0).toUpperCase() +
+                        order.paymentStatus.slice(1)}
                     </span>
                   </div>
+                </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Date:</span>
-                      <span className="text-gray-900 font-medium">
-                        {formatDate(order.createdAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Items:</span>
-                      <span className="text-gray-900 font-medium">
-                        {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Total:</span>
-                      <span className="text-lg font-bold text-teal-600">
-                        MWK {order.totalAmount.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Payment:</span>
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${getPaymentStatusBadgeColor(
-                          order.paymentStatus
-                        )}`}
-                      >
-                        {order.paymentStatus.charAt(0).toUpperCase() +
-                          order.paymentStatus.slice(1)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end pt-4 border-t border-gray-200">
-                    <span className="text-sm text-teal-600 font-medium flex items-center gap-1">
-                      View Details
-                      <ChevronRight className="h-4 w-4" />
-                    </span>
-                  </div>
-                </Card>
-              </Link>
+                <div className="flex items-center justify-end pt-4 border-t border-gray-200">
+                  <span className="text-sm text-teal-600 font-medium flex items-center gap-1">
+                    View Details
+                    <ChevronRight className="h-4 w-4" />
+                  </span>
+                </div>
+              </Card>
+            </Link>
             </div>
           ))}
         </div>

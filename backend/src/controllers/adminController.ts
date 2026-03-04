@@ -83,19 +83,32 @@ export const getStats = async (req: AuthRequest, res: Response): Promise<void> =
  */
 export const getAllOrders = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status } = req.query;
+    const { status, startDate, endDate } = req.query;
     const { page, limit, skip } = parsePagination({
       page: req.query.page as string | undefined,
       limit: req.query.limit as string | undefined,
     });
 
     // Build query with type safety
-    const query: { status?: OrderStatus } = {};
+    const query: { status?: OrderStatus; createdAt?: { $gte?: Date; $lte?: Date } } = {};
     if (status && Object.values(OrderStatus).includes(status as OrderStatus)) {
       query.status = status as OrderStatus;
     }
 
-    console.log(`[Admin] Fetching orders - page: ${page}, limit: ${limit}, status: ${status || 'all'}`);
+    // Date range filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        const endDateObj = new Date(endDate as string);
+        endDateObj.setHours(23, 59, 59, 999); // Set to end of day
+        query.createdAt.$lte = endDateObj;
+      }
+    }
+
+    console.log(`[Admin] Fetching orders - page: ${page}, limit: ${limit}, status: ${status || 'all'}, dateRange: ${startDate || 'none'} to ${endDate || 'none'}`);
 
     const [orders, total] = await Promise.all([
       Order.find(query)
@@ -114,6 +127,32 @@ export const getAllOrders = async (req: AuthRequest, res: Response): Promise<voi
   } catch (error: any) {
     console.error('[Admin] Error fetching orders:', error);
     res.status(500).json({ message: error.message || 'Failed to fetch orders' });
+  }
+};
+
+/**
+ * Get a single order by ID (admin only)
+ * @param id - Order ID
+ */
+export const getOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    console.log(`[Admin] Fetching order: ${id}`);
+
+    const order = await Order.findById(id)
+      .populate('user', 'name email phone address')
+      .populate('items.product', 'name images price description');
+
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+
+    res.json({ order });
+  } catch (error: any) {
+    console.error('[Admin] Error fetching order:', error);
+    res.status(500).json({ message: error.message || 'Failed to fetch order' });
   }
 };
 

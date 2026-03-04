@@ -1,9 +1,14 @@
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGetOrderQuery } from '../store/api/orderApi';
+import { useGetAdminOrderQuery, useUpdateOrderStatusMutation } from '../store/api/adminApi';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { ConfirmationModal } from '../components/ui/ConfirmationModal';
+import { useAppDispatch } from '../store/types';
+import { showNotification } from '../store/slices/uiSlice';
 import {
   ArrowLeft,
   Package,
@@ -76,11 +81,53 @@ const formatPaymentMethod = (method?: string) => {
     .join(' ');
 };
 
-export const OrderDetail = () => {
+interface OrderDetailProps {
+  isAdmin?: boolean;
+}
+
+export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useAppDispatch();
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus | ''>('');
 
-  const { data, isLoading, error } = useGetOrderQuery(id!);
+  // Determine if this is an admin route by checking the pathname FIRST
+  // Calculate synchronously (not in useMemo) to ensure it's available immediately
+  // This must be calculated before hooks to ensure correct query selection
+  const isAdminRoute = location.pathname.startsWith('/admin/orders/');
+  const isAdmin = Boolean(isAdminProp || isAdminRoute);
+
+  // Use admin API if admin, otherwise use regular order API
+  // CRITICAL: Use very strict skip conditions to prevent both queries from running
+  // When isAdmin is true, userQuery MUST be skipped (skip: true)
+  // When isAdmin is false, adminQuery MUST be skipped (skip: true)
+  // Calculate skip values synchronously to ensure they're evaluated before hooks run
+  const shouldSkipAdmin = !isAdmin || !id;
+  const shouldSkipUser = isAdmin || !id;
+
+  // Only call the appropriate query - use strict skip to prevent both from running
+  const adminQueryResult = useGetAdminOrderQuery(id || '', { 
+    skip: shouldSkipAdmin,
+  });
+  
+  // CRITICAL: This query should NEVER run when isAdmin is true
+  // Using strict skip condition - if isAdmin is true, skip MUST be true
+  const userQueryResult = useGetOrderQuery(id || '', { 
+    skip: shouldSkipUser, // Must be true when isAdmin is true
+  });
+
+  // Determine which data to use based on isAdmin
+  // Only use the query result that should be active
+  const activeQuery = isAdmin ? adminQueryResult : userQueryResult;
+  const data = activeQuery.data;
+  const isLoading = activeQuery.isLoading;
+  const error = activeQuery.error;
+
+  // Admin-only: Order status update mutation
+  const [updateOrderStatus, { isLoading: isUpdatingStatus }] = useUpdateOrderStatusMutation();
 
   if (isLoading) {
     return (
@@ -98,7 +145,7 @@ export const OrderDetail = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Card variant="md" className="text-center">
           <Body className="text-red-600 mb-4">Order not found.</Body>
-          <Button variant="secondary" onClick={() => navigate('/orders')}>
+          <Button variant="secondary" onClick={() => navigate(isAdmin ? '/admin/orders' : '/orders')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Orders
           </Button>
@@ -111,7 +158,7 @@ export const OrderDetail = () => {
 
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
-    { label: 'Orders', href: '/orders' },
+    { label: isAdmin ? 'Admin Orders' : 'Orders', href: isAdmin ? '/admin/orders' : '/orders' },
     { label: `Order #${order._id.slice(-8).toUpperCase()}` },
   ];
 
@@ -207,15 +254,53 @@ export const OrderDetail = () => {
   };
 
   const handleCancelOrder = () => {
-    // Cancel order logic would go here
-    if (window.confirm('Are you sure you want to cancel this order?')) {
-      // Cancel order API call
-    }
+    setShowCancelModal(true);
+  };
+
+  const handleCancelConfirm = () => {
+    // Cancel order API call would go here
+    setShowCancelModal(false);
+    // TODO: Implement cancel order API call
   };
 
   const handleCopyOrderId = () => {
     navigator.clipboard.writeText(order._id);
-    // Show toast notification
+    dispatch(showNotification({
+      message: 'Order ID copied to clipboard',
+      type: 'success',
+    }));
+  };
+
+  const handleStatusUpdateClick = () => {
+    if (!selectedStatus) {
+      dispatch(showNotification({
+        message: 'Please select a status',
+        type: 'warning',
+      }));
+      return;
+    }
+    setShowStatusUpdateModal(true);
+  };
+
+  const handleStatusUpdateConfirm = async () => {
+    if (!selectedStatus || !id) return;
+
+    try {
+      await updateOrderStatus({ id, status: selectedStatus as OrderStatus }).unwrap();
+      setShowStatusUpdateModal(false);
+      setSelectedStatus('');
+      dispatch(showNotification({
+        message: 'Order status updated successfully!',
+        type: 'success',
+      }));
+    } catch (error: any) {
+      console.error('Failed to update order status:', error);
+      setShowStatusUpdateModal(false);
+      dispatch(showNotification({
+        message: error.data?.message || error.message || 'Failed to update order status',
+        type: 'error',
+      }));
+    }
   };
 
   return (
@@ -227,7 +312,7 @@ export const OrderDetail = () => {
       <Button
         variant="ghost"
         size="small"
-        onClick={() => navigate('/orders')}
+        onClick={() => navigate(isAdmin ? '/admin/orders' : '/orders')}
         className="mb-6"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -239,8 +324,8 @@ export const OrderDetail = () => {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <H1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Order #{order._id.slice(-8).toUpperCase()}
-            </H1>
+            Order #{order._id.slice(-8).toUpperCase()}
+          </H1>
             <button
               onClick={handleCopyOrderId}
               className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
@@ -251,8 +336,8 @@ export const OrderDetail = () => {
           </div>
           <div className="flex items-center gap-4 text-gray-600 flex-wrap">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <Body className="text-sm">Placed on {formatDate(order.createdAt)}</Body>
+            <Calendar className="h-4 w-4" />
+            <Body className="text-sm">Placed on {formatDate(order.createdAt)}</Body>
             </div>
             {order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED && (
               <div className="flex items-center gap-2 text-teal-600">
@@ -341,14 +426,14 @@ export const OrderDetail = () => {
                     <div className="flex-1 pb-6 sm:pb-8 last:pb-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2 flex-1">
-                          <H1
+                        <H1
                             className={`text-base sm:text-lg font-semibold ${
-                              isCompleted || isActive ? 'text-gray-900' : 'text-gray-500'
-                            }`}
-                          >
-                            {step.label}
-                          </H1>
-                          {isCompleted && !isActive && (
+                            isCompleted || isActive ? 'text-gray-900' : 'text-gray-500'
+                          }`}
+                        >
+                          {step.label}
+                        </H1>
+                        {isCompleted && !isActive && (
                             <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
                           )}
                         </div>
@@ -411,37 +496,51 @@ export const OrderDetail = () => {
           <Card variant="md">
             <H1 className="text-xl font-bold text-gray-900 mb-6">Order Items</H1>
             <div className="space-y-4">
-              {order.items.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0 last:pb-0"
-                >
-                  {item.product.images && item.product.images.length > 0 ? (
-                    <img
-                      src={item.product.images[0]}
-                      alt={item.product.name}
-                      className="w-20 h-20 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Package className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <Body className="font-semibold text-gray-900 mb-1">
-                      {item.product.name}
-                    </Body>
-                    <div className="flex items-center justify-between">
-                      <Body className="text-sm text-gray-600">
-                        Quantity: {item.quantity} × MWK {item.price.toLocaleString()}
+              {order.items.map((item, index) => {
+                const product = item.product;
+                const isProductDeleted = !product || !product.name;
+
+                return (
+                  <div
+                    key={index}
+                    className="flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0 last:pb-0"
+                  >
+                    {product?.images && product.images.length > 0 ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name || 'Product'}
+                        className="w-20 h-20 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <Package className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <Body className="font-semibold text-gray-900 mb-1">
+                        {isProductDeleted ? (
+                          <span className="text-gray-500 italic">Product no longer available</span>
+                        ) : (
+                          product.name
+                        )}
                       </Body>
-                      <Body className="font-semibold text-gray-900">
-                        MWK {(item.price * item.quantity).toLocaleString()}
-                      </Body>
+                      {isProductDeleted && (
+                        <Body className="text-xs text-amber-600 mb-1">
+                          This product has been removed from the catalog
+                        </Body>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <Body className="text-sm text-gray-600">
+                          Quantity: {item.quantity} × MWK {item.price.toLocaleString()}
+                        </Body>
+                        <Body className="font-semibold text-gray-900">
+                          MWK {(item.price * item.quantity).toLocaleString()}
+                        </Body>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </div>
@@ -506,6 +605,49 @@ export const OrderDetail = () => {
             </div>
           </Card>
 
+          {/* Admin: Update Order Status */}
+          {isAdmin && (
+            <Card variant="md">
+              <H1 className="text-lg font-bold text-gray-900 mb-4">Update Order Status</H1>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Status: <span className="font-bold text-teal-600">{order.status.toUpperCase()}</span>
+                  </label>
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value as OrderStatus)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                  >
+                    <option value="">Select new status...</option>
+                    <option value={OrderStatus.PENDING}>Pending</option>
+                    <option value={OrderStatus.PROCESSING}>Processing</option>
+                    <option value={OrderStatus.COMPLETED}>Completed</option>
+                    <option value={OrderStatus.CANCELLED}>Cancelled</option>
+                  </select>
+                </div>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={handleStatusUpdateClick}
+                  disabled={!selectedStatus || isUpdatingStatus}
+                >
+                  {isUpdatingStatus ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Update Status
+                    </>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          )}
+
           {/* Quick Actions */}
           <Card variant="md">
             <H1 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</H1>
@@ -528,8 +670,8 @@ export const OrderDetail = () => {
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reorder Items
               </Button>
-              <Button
-                variant="secondary"
+            <Button
+              variant="secondary"
                 className="w-full flex items-center justify-center"
                 onClick={() => {
                   // Contact support logic
@@ -541,19 +683,43 @@ export const OrderDetail = () => {
               </Button>
               <Button
                 variant="ghost"
-                className="w-full flex items-center justify-center"
-                disabled
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Download Invoice
-              </Button>
-              <Body className="text-xs text-gray-500 text-center mt-2">
-                Invoice generation coming soon
-              </Body>
+              className="w-full flex items-center justify-center"
+              disabled
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Download Invoice
+            </Button>
+            <Body className="text-xs text-gray-500 text-center mt-2">
+              Invoice generation coming soon
+            </Body>
             </div>
           </Card>
         </div>
       </div>
+
+      {/* Cancel Order Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleCancelConfirm}
+        title="Cancel Order"
+        message="Are you sure you want to cancel this order? This action cannot be undone."
+        confirmText="Cancel Order"
+        cancelText="Keep Order"
+        variant="warning"
+      />
+
+      {/* Update Status Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showStatusUpdateModal}
+        onClose={() => setShowStatusUpdateModal(false)}
+        onConfirm={handleStatusUpdateConfirm}
+        title="Update Order Status"
+        message={`Are you sure you want to change the order status from "${order.status.toUpperCase()}" to "${selectedStatus.toUpperCase()}"?`}
+        confirmText="Update Status"
+        cancelText="Cancel"
+        variant="info"
+      />
     </div>
   );
 };
