@@ -9,6 +9,7 @@ export interface IProduct extends Document {
   images: string[];
   supplier?: string;
   status: 'available' | 'out-of-stock';
+  badge?: 'new' | 'sale' | 'featured';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +51,10 @@ const ProductSchema = new Schema<IProduct>(
       type: String,
       enum: ['available', 'out-of-stock'],
       default: 'available',
+    },
+    badge: {
+      type: String,
+      enum: ['new', 'sale', 'featured'],
     },
   },
   {

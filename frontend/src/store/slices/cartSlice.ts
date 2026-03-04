@@ -36,6 +36,12 @@ const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
+    // Ensure savedForLater exists (for migration from old cart state)
+    _ensureSavedForLater: (state) => {
+      if (!state.savedForLater) {
+        state.savedForLater = [];
+      }
+    },
     addItem: (state, action: PayloadAction<CartItem>) => {
       const existingItem = state.items.find(
         (item) => item.productId === action.payload.productId

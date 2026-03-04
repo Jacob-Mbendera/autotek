@@ -94,7 +94,9 @@ export const AdminProducts = () => {
       }
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving product:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error saving product:', error);
+      }
     }
   };
 
@@ -103,7 +105,9 @@ export const AdminProducts = () => {
       try {
         await deleteProduct(id).unwrap();
       } catch (error) {
-        console.error('Error deleting product:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error deleting product:', error);
+        }
       }
     }
   };
@@ -296,11 +300,14 @@ export const AdminProducts = () => {
                   className="w-full px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                 >
                   <option value="">Select category</option>
-                  {categoriesData?.categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
+                  {categoriesData?.categories.map((cat: { name: string; count: number } | string) => {
+                    const categoryName = typeof cat === 'string' ? cat : cat.name;
+                    return (
+                      <option key={categoryName} value={categoryName}>
+                        {categoryName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

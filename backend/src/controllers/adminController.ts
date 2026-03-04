@@ -7,7 +7,7 @@ import CarService from '../models/CarService';
 import Payment from '../models/Payment';
 import Product from '../models/Product';
 import User from '../models/User';
-import { OrderStatus, CustomOrderStatus, ServiceStatus, PaymentStatus } from '../types/shared';
+import { OrderStatus, CustomOrderStatus, ServiceStatus, PaymentStatus, UserRole } from '../types/shared';
 import { parsePagination, createPaginationResponse } from '../utils/pagination';
 
 /**
@@ -235,5 +235,115 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
   } catch (error: any) {
     console.error('[Admin] Error fetching services:', error);
     res.status(500).json({ message: error.message || 'Failed to fetch services' });
+  }
+};
+
+/**
+ * Get all users with pagination and optional filters
+ * @param role - Optional user role filter
+ * @param search - Optional search term (name, email, phone)
+ * @param page - Page number (default: 1)
+ * @param limit - Items per page (default: 20, max: 100)
+ */
+export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { role, search } = req.query;
+    const { page, limit, skip } = parsePagination({
+      page: req.query.page as string | undefined,
+      limit: req.query.limit as string | undefined,
+    });
+
+    // Build query
+    const query: any = {};
+    
+    if (role && Object.values(UserRole).includes(role as UserRole)) {
+      query.role = role;
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(search as string, 'i');
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+      ];
+    }
+
+    console.log(`[Admin] Fetching users - page: ${page}, limit: ${limit}, role: ${role || 'all'}, search: ${search || 'none'}`);
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('-password') // Exclude password from response
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
+      User.countDocuments(query),
+    ]);
+
+    res.json({
+      users,
+      pagination: createPaginationResponse(page, limit, total),
+    });
+  } catch (error: any) {
+    console.error('[Admin] Error fetching users:', error);
+    res.status(500).json({ message: error.message || 'Failed to fetch users' });
+  }
+};
+
+/**
+ * Get user by ID
+ */
+export const getUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select('-password');
+    
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    res.json({ user });
+  } catch (error: any) {
+    console.error('[Admin] Error fetching user:', error);
+    res.status(500).json({ message: error.message || 'Failed to fetch user' });
+  }
+};
+
+/**
+ * Update user role
+ */
+export const updateUserRole = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role || !Object.values(UserRole).includes(role as UserRole)) {
+      res.status(400).json({ message: 'Invalid role' });
+      return;
+    }
+
+    // Prevent changing own role
+    if (id === req.user!._id.toString()) {
+      res.status(400).json({ message: 'Cannot change your own role' });
+      return;
+    }
+
+    const user = await User.findById(id);
+    
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    user.role = role as any;
+    await user.save();
+
+    const updatedUser = await User.findById(id).select('-password');
+    res.json({ user: updatedUser });
+  } catch (error: any) {
+    console.error('[Admin] Error updating user role:', error);
+    res.status(500).json({ message: error.message || 'Failed to update user role' });
   }
 };

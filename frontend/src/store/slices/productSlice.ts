@@ -16,19 +16,40 @@ interface PaginationState {
   totalPages?: number;
 }
 
+type ViewMode = 'grid' | 'list';
+
 interface ProductState {
   filters: ProductFilters;
   pagination: PaginationState;
   selectedProductId: string | null;
+  viewMode: ViewMode;
 }
+
+const getInitialViewMode = (): ViewMode => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('productViewMode');
+    return (saved === 'grid' || saved === 'list') ? saved : 'grid';
+  }
+  return 'grid';
+};
+
+const getInitialLimit = (): number => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('productsPerPage');
+    const parsed = saved ? parseInt(saved, 10) : 12;
+    return [12, 24, 48, 96].includes(parsed) ? parsed : 12;
+  }
+  return 12;
+};
 
 const initialState: ProductState = {
   filters: {},
   pagination: {
     page: 1,
-    limit: 12,
+    limit: getInitialLimit(),
   },
   selectedProductId: null,
+  viewMode: getInitialViewMode(),
 };
 
 const productSlice = createSlice({
@@ -45,13 +66,22 @@ const productSlice = createSlice({
     },
     setPagination: (state, action: PayloadAction<Partial<PaginationState>>) => {
       state.pagination = { ...state.pagination, ...action.payload };
+      if (action.payload.limit && typeof window !== 'undefined') {
+        localStorage.setItem('productsPerPage', action.payload.limit.toString());
+      }
     },
     setSelectedProduct: (state, action: PayloadAction<string | null>) => {
       state.selectedProductId = action.payload;
     },
+    setViewMode: (state, action: PayloadAction<ViewMode>) => {
+      state.viewMode = action.payload;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('productViewMode', action.payload);
+      }
+    },
   },
 });
 
-export const { setFilters, clearFilters, setPagination, setSelectedProduct } =
+export const { setFilters, clearFilters, setPagination, setSelectedProduct, setViewMode } =
   productSlice.actions;
 export default productSlice.reducer;

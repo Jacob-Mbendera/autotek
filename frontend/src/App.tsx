@@ -3,6 +3,8 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Home } from './pages/Home';
 import { Products } from './pages/Products';
+import { Wishlist } from './pages/Wishlist';
+import { CompareProducts } from './pages/CompareProducts';
 import { ProductDetail } from './pages/ProductDetail';
 import { Services } from './pages/Services';
 import { Cart } from './pages/Cart';
@@ -11,7 +13,7 @@ import { Orders } from './pages/Orders';
 import { OrderDetail } from './pages/OrderDetail';
 import { PaymentSuccess } from './pages/PaymentSuccess';
 import { PaymentCancel } from './pages/PaymentCancel';
-import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders } from './pages/admin';
+import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers } from './pages/admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
@@ -151,6 +153,16 @@ function App() {
             <ProtectedRoute adminOnly>
               <AdminLayout>
                 <AdminCustomOrders />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminUsers />
               </AdminLayout>
             </ProtectedRoute>
           }

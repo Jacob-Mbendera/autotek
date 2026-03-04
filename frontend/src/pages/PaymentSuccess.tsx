@@ -56,7 +56,9 @@ export const PaymentSuccess = () => {
             setVerificationAttempts(prev => prev + 1);
             refetchPayment();
           } catch (error) {
-            console.error('Payment verification error:', error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Payment verification error:', error);
+            }
             setVerificationAttempts(prev => prev + 1);
           }
         }, 2000);

@@ -17,6 +17,7 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
       minPrice,
       maxPrice,
       search,
+      stockStatus,
       page = '1',
       limit = '20',
     } = req.query;
@@ -42,6 +43,22 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
       ];
+    }
+
+    // Stock status filter
+    if (stockStatus && stockStatus !== 'all') {
+      if (stockStatus === 'out-of-stock') {
+        query.$or = [
+          { status: 'out-of-stock' },
+          { stock: 0 },
+        ];
+      } else if (stockStatus === 'low-stock') {
+        query.stock = { $gt: 0, $lte: 10 };
+        query.status = 'available';
+      } else if (stockStatus === 'in-stock') {
+        query.stock = { $gt: 10 };
+        query.status = 'available';
+      }
     }
 
     const pageNum = parseInt(page as string, 10);
@@ -241,7 +258,16 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
 export const getCategories = async (req: Request, res: Response): Promise<void> => {
   try {
     const categories = await Product.distinct('category');
-    res.json(categories);
+    
+    // Get product count for each category
+    const categoriesWithCounts = await Promise.all(
+      categories.map(async (category) => {
+        const count = await Product.countDocuments({ category, status: 'available' });
+        return { name: category, count };
+      })
+    );
+    
+    res.json({ categories: categoriesWithCounts });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch categories' });
   }

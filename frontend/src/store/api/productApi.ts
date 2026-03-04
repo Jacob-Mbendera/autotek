@@ -10,6 +10,7 @@ export interface Product {
   images: string[];
   supplier?: string;
   status: 'available' | 'out-of-stock';
+  badge?: 'new' | 'sale' | 'featured';
   createdAt: string;
   updatedAt: string;
 }
@@ -32,6 +33,7 @@ interface ProductsQueryParams {
   minPrice?: number;
   maxPrice?: number;
   status?: 'available' | 'out-of-stock';
+  stockStatus?: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
 }
 
 interface CreateProductRequest {
@@ -61,6 +63,7 @@ export const productApi = baseApi.injectEndpoints({
         if (params.minPrice) searchParams.append('minPrice', params.minPrice.toString());
         if (params.maxPrice) searchParams.append('maxPrice', params.maxPrice.toString());
         if (params.status) searchParams.append('status', params.status);
+        if (params.stockStatus) searchParams.append('stockStatus', params.stockStatus);
 
         return {
           url: `/products?${searchParams.toString()}`,
@@ -124,7 +127,7 @@ export const productApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Product'],
     }),
-    getCategories: builder.query<{ categories: string[] }, void>({
+    getCategories: builder.query<{ categories: Array<{ name: string; count: number }> }, void>({
       query: () => '/products/categories',
       providesTags: ['Product'],
     }),

@@ -17,12 +17,17 @@ export const Cart = () => {
   const dispatch = useAppDispatch();
   const cart = useAppSelector((state) => state.cart);
   const { isAuthenticated } = useAppSelector((state) => state.auth);
+  
+  // Safety check: ensure savedForLater exists (for persisted state migration)
+  const savedForLater = Array.isArray(cart.savedForLater) ? cart.savedForLater : [];
+  
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<string>('');
   const [promoCode, setPromoCode] = useState<string>('');
   const [showSavedItems, setShowSavedItems] = useState<boolean>(false);
   const [updatingQuantityId, setUpdatingQuantityId] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -97,8 +102,30 @@ export const Cart = () => {
     }
   };
 
+  // Get placeholder image based on category (if we can determine it from product name or other data)
+  const getPlaceholderImage = (productName?: string) => {
+    // Default placeholder - can be enhanced to detect category from product name
+    return 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+  };
+
+  // Handle image load error
+  const handleImageError = (productId: string) => {
+    setImageErrors((prev) => ({ ...prev, [productId]: true }));
+  };
+
+  // Get display image for a cart item
+  const getDisplayImage = (item: typeof cart.items[0]) => {
+    const hasError = imageErrors[item.productId];
+    const hasValidImage = item.image && 
+      typeof item.image === 'string' && 
+      item.image.trim() !== '' &&
+      !hasError;
+    
+    return hasValidImage ? item.image : getPlaceholderImage(item.productName);
+  };
+
   // Empty cart state
-  if (cart.items.length === 0 && cart.savedForLater.length === 0) {
+  if (cart.items.length === 0 && savedForLater.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Card variant="md" className="text-center animate-fadeIn">
@@ -145,17 +172,15 @@ export const Cart = () => {
                     to={`/products/${item.productId}`}
                     className="flex-shrink-0 w-full sm:w-32 h-32 md:h-36 bg-gray-100 rounded-lg overflow-hidden group relative"
                   >
-                    {item.image ? (
-                      <>
-                        <img
-                          src={item.image}
-                          alt={item.productName}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity" />
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
+                    <img
+                      src={getDisplayImage(item)}
+                      alt={item.productName}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={() => handleImageError(item.productId)}
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity" />
+                    {imageErrors[item.productId] && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
                         <Package className="h-12 w-12 text-gray-400" />
                       </div>
                     )}
@@ -302,7 +327,7 @@ export const Cart = () => {
           })}
 
           {/* Saved for Later Section */}
-          {cart.savedForLater.length > 0 && (
+          {savedForLater.length > 0 && (
             <div className="mt-6">
               <button
                 onClick={() => setShowSavedItems(!showSavedItems)}
@@ -311,7 +336,7 @@ export const Cart = () => {
                 <div className="flex items-center gap-2">
                   <BookmarkCheck className="h-5 w-5 text-teal-600" />
                   <Body className="font-medium text-gray-900">
-                    Saved for Later ({cart.savedForLater.length})
+                    Saved for Later ({savedForLater.length})
                   </Body>
                 </div>
                 {showSavedItems ? (
@@ -322,21 +347,21 @@ export const Cart = () => {
               </button>
               {showSavedItems && (
                 <div className="mt-3 space-y-3 animate-fadeIn">
-                  {cart.savedForLater.map((item) => (
+                  {savedForLater.map((item) => (
                     <Card key={item.productId} variant="md" className="bg-gray-50">
                       <div className="flex gap-4">
                         <Link
                           to={`/products/${item.productId}`}
-                          className="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg overflow-hidden"
+                          className="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg overflow-hidden relative"
                         >
-                          {item.image ? (
-                            <img
-                              src={item.image}
-                              alt={item.productName}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
+                          <img
+                            src={getDisplayImage(item)}
+                            alt={item.productName}
+                            className="w-full h-full object-cover"
+                            onError={() => handleImageError(item.productId)}
+                          />
+                          {imageErrors[item.productId] && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
                               <Package className="h-8 w-8 text-gray-400" />
                             </div>
                           )}

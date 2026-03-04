@@ -1,0 +1,182 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ShoppingCart, Eye, Sparkles, Package } from 'lucide-react';
+import { useAppDispatch } from '../store/types';
+import { addItem } from '../store/slices/cartSlice';
+import type { Product } from '../store/api/productApi';
+import { Button } from './ui/Button';
+
+interface ProductCardListProps {
+  product: Product;
+}
+
+export const ProductCardList = ({ product }: ProductCardListProps) => {
+  const dispatch = useAppDispatch();
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  const firstImage = product.images?.[0];
+  const hasValidImage = firstImage && 
+    typeof firstImage === 'string' && 
+    firstImage.trim() !== '' &&
+    !imageError;
+
+  useEffect(() => {
+    setImageError(false);
+    setImageLoading(true);
+  }, [product._id, firstImage]);
+
+  const getPlaceholderImage = () => {
+    const category = product.category?.toLowerCase() || '';
+    const placeholders: Record<string, string> = {
+      'engine parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'brake parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'braking system': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'filters': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'electrical': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'suspension': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+    };
+    return placeholders[category] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+  };
+
+  const displayImage = hasValidImage ? firstImage : getPlaceholderImage();
+  const isPlaceholder = !hasValidImage;
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    dispatch(
+      addItem({
+        productId: product._id,
+        price: product.price,
+        quantity: 1,
+        image: product.images?.[0],
+      })
+    );
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoading(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  const isOutOfStock = product.status === 'out-of-stock' || product.stock === 0;
+  const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
+
+  const getStatusBadge = () => {
+    if (isOutOfStock) {
+      return (
+        <span className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg border-2 border-white">
+          OUT OF STOCK
+        </span>
+      );
+    }
+    if (isLowStock) {
+      return (
+        <span className="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-full shadow-lg border-2 border-white">
+          LOW STOCK
+        </span>
+      );
+    }
+    return (
+      <span className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-full shadow-lg border-2 border-white">
+        IN STOCK
+      </span>
+    );
+  };
+
+  const brand = product.supplier || 'UNIVERSAL';
+  const categoryDisplay = product.category.toUpperCase();
+
+  return (
+    <Link
+      to={`/products/${product._id}`}
+      className="group bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-teal-300 relative flex flex-row"
+    >
+      {/* Image section */}
+      <div className="relative w-48 h-48 flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+        {imageLoading && (
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center z-0">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-200 border-t-teal-600"></div>
+          </div>
+        )}
+        <img
+          src={displayImage}
+          alt={product.name}
+          className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${
+            imageLoading ? 'opacity-0' : 'opacity-100'
+          } ${isPlaceholder ? 'opacity-80' : ''}`}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
+        
+        {isPlaceholder && (
+          <div className="absolute top-2 right-2 z-10">
+            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 text-xs font-medium text-gray-600 border border-gray-200">
+              Placeholder
+            </div>
+          </div>
+        )}
+        
+        <div className="absolute top-2 left-2 z-10">
+          {getStatusBadge()}
+        </div>
+      </div>
+      
+      {/* Content section */}
+      <div className="flex-1 p-6 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-xs font-bold text-teal-600 uppercase tracking-wide">
+              {brand}
+            </div>
+            <span className="text-gray-300">•</span>
+            <div className="text-xs font-medium text-gray-500">
+              {categoryDisplay}
+            </div>
+          </div>
+          
+          <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-teal-600 transition-colors duration-300">
+            {product.name}
+          </h3>
+          
+          {product.description && (
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed">
+              {product.description}
+            </p>
+          )}
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-teal-500 bg-clip-text text-transparent">
+              MWK {product.price.toLocaleString()}
+            </span>
+            {product.stock > 0 && (
+              <span className="text-sm text-gray-500">
+                ({product.stock} in stock)
+              </span>
+            )}
+          </div>
+          
+          <Button
+            variant="primary"
+            size="default"
+            className="shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+          </Button>
+        </div>
+      </div>
+    </Link>
+  );
+};

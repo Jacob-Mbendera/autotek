@@ -14,6 +14,7 @@ import {
   Truck,
   Menu,
   X,
+  Users,
 } from 'lucide-react';
 
 export const AdminSidebar = () => {
@@ -27,6 +28,7 @@ export const AdminSidebar = () => {
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Services', href: '/admin/services', icon: Wrench },
     { name: 'Custom Orders', href: '/admin/custom-orders', icon: FileText },
+    { name: 'Users', href: '/admin/users', icon: Users },
   ];
 
   const systemItems = [

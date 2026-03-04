@@ -28,6 +28,7 @@ export const baseApi = createApi({
     'CarService',
     'Payment',
     'Admin',
+    'Wishlist',
   ],
   endpoints: () => ({}),
 });

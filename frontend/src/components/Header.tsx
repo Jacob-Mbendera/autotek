@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings } from 'lucide-react';
+import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings, Heart } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
+import { useGetWishlistQuery } from '../store/api/wishlistApi';
 import { UserRole } from '@shared/types';
 import { Button } from './ui/Button';
 
@@ -10,8 +11,11 @@ export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const cart = useAppSelector((state) => state.cart);
+  const { data: wishlistData } = useGetWishlistQuery(undefined, { skip: !isAuthenticated });
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  
+  const wishlistCount = wishlistData?.wishlist?.products?.length || 0;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -58,6 +62,22 @@ export const Header = () => {
 
           {/* Right side - Cart and User Menu */}
           <div className="flex items-center space-x-4">
+            {/* Wishlist - Only show if authenticated */}
+            {isAuthenticated && (
+              <Link
+                to="/wishlist"
+                className="relative p-2 text-gray-700 hover:text-red-600 transition-colors"
+                aria-label="Wishlist"
+              >
+                <Heart className={`h-6 w-6 ${wishlistCount > 0 ? 'fill-red-500 text-red-500' : ''}`} />
+                {wishlistCount > 0 && (
+                  <span className="absolute top-0 right-0 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
+            )}
+            
             {/* Shopping Cart */}
             <Link
               to="/cart"

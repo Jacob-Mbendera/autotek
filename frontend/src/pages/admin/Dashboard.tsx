@@ -145,31 +145,6 @@ export const AdminDashboard = () => {
     })) || []),
   ].slice(0, 5);
 
-  // Mock pending actions data (replace with real data from API later)
-  const pendingActions = [
-    {
-      id: 'REQ-001',
-      type: 'Mobile Service',
-      customer: 'John Doe',
-      priority: 'HIGH',
-      action: 'Assign',
-    },
-    {
-      id: 'REQ-002',
-      type: 'Custom Part',
-      customer: 'Jane Smith',
-      priority: 'MEDIUM',
-      action: 'Quote',
-    },
-    {
-      id: 'REQ-003',
-      type: 'Towing',
-      customer: 'Mike Johnson',
-      priority: 'LOW',
-      action: 'Assign',
-    },
-  ];
-
   const marketInsights = [
     {
       icon: TrendingUp,

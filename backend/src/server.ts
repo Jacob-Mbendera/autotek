@@ -11,6 +11,7 @@ import towingServiceRoutes from './routes/towingServiceRoutes';
 import carServiceRoutes from './routes/carServiceRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import adminRoutes from './routes/adminRoutes';
+import wishlistRoutes from './routes/wishlistRoutes';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api/towing', towingServiceRoutes);
 app.use('/api/car-services', carServiceRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // Error handler
 app.use(errorHandler);

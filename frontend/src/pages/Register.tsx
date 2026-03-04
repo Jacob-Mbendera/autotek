@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, ArrowLeft } from 'lucide-react';
 
 export const Register = () => {
   const navigate = useNavigate();
@@ -42,10 +42,20 @@ export const Register = () => {
     }
 
     try {
+      // Format phone number: if it doesn't start with +265 or 0, prepend +265
+      let formattedPhone = formData.phone.trim();
+      if (!formattedPhone.startsWith('+265') && !formattedPhone.startsWith('0')) {
+        // Remove any spaces and prepend +265
+        formattedPhone = `+265${formattedPhone.replace(/\s+/g, '')}`;
+      } else {
+        // Remove any spaces from existing format
+        formattedPhone = formattedPhone.replace(/\s+/g, '');
+      }
+
       const result = await register({
         name: formData.name,
         email: formData.email,
-        phone: formData.phone,
+        phone: formattedPhone,
         password: formData.password,
         address: formData.address || undefined,
       }).unwrap();
@@ -55,13 +65,33 @@ export const Register = () => {
       const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
-      setError(err.data?.message || 'Registration failed. Please try again.');
+      // Handle validation errors from backend
+      if (err.data?.errors && Array.isArray(err.data.errors)) {
+        const errorMessages = err.data.errors.map((error: any) => {
+          if (typeof error === 'string') return error;
+          return error.msg || error.message || 'Validation error';
+        });
+        setError(errorMessages.join(', ') || err.data?.message || 'Validation failed');
+      } else {
+        setError(err.data?.message || 'Registration failed. Please try again.');
+      }
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
       <Card variant="md" className="w-full max-w-md">
+        {/* Back to Home Link */}
+        <div className="mb-4">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-teal-600 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Home</span>
+          </Link>
+        </div>
+
         <div className="flex items-center gap-2 mb-6">
           <UserPlus className="h-6 w-6 text-teal-600" />
           <H1 className="text-2xl">Create Account</H1>

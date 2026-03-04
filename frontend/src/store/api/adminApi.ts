@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { OrderStatus, CustomOrderStatus, ServiceStatus } from '../../../../shared/types';
+import type { OrderStatus, CustomOrderStatus, ServiceStatus, UserRole } from '../../../../shared/types';
 
 export interface AdminStats {
   orders: {
@@ -48,6 +48,24 @@ interface GetAllServicesQueryParams {
   type?: 'towing' | 'car-service';
   startDate?: string;
   endDate?: string;
+}
+
+interface GetAllUsersQueryParams {
+  page?: number;
+  limit?: number;
+  role?: UserRole;
+  search?: string;
+}
+
+export interface User {
+  _id: string;
+  email: string;
+  name: string;
+  phone: string;
+  role: UserRole;
+  address?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const adminApi = baseApi.injectEndpoints({
@@ -123,6 +141,42 @@ export const adminApi = baseApi.injectEndpoints({
       },
       providesTags: ['Admin'],
     }),
+    getAllUsers: builder.query<
+      { users: User[]; pagination: unknown },
+      GetAllUsersQueryParams | void
+    >({
+      query: (params) => {
+        if (!params) {
+          return '/admin/users';
+        }
+        const searchParams = new URLSearchParams();
+        if (params.page) searchParams.append('page', params.page.toString());
+        if (params.limit) searchParams.append('limit', params.limit.toString());
+        if (params.role) searchParams.append('role', params.role);
+        if (params.search) searchParams.append('search', params.search);
+
+        return {
+          url: `/admin/users?${searchParams.toString()}`,
+          method: 'GET',
+        };
+      },
+      providesTags: ['Admin'],
+    }),
+    getUser: builder.query<{ user: User }, string>({
+      query: (id) => `/admin/users/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Admin', id: `user-${id}` }],
+    }),
+    updateUserRole: builder.mutation<{ user: User }, { userId: string; role: UserRole }>({
+      query: ({ userId, role }) => ({
+        url: `/admin/users/${userId}/role`,
+        method: 'PATCH',
+        body: { role },
+      }),
+      invalidatesTags: (_result, _error, { userId }) => [
+        'Admin',
+        { type: 'Admin', id: `user-${userId}` },
+      ],
+    }),
   }),
 });
 
@@ -131,4 +185,7 @@ export const {
   useGetAllOrdersQuery,
   useGetAllCustomOrdersQuery,
   useGetAllServicesQuery,
+  useGetAllUsersQuery,
+  useGetUserQuery,
+  useUpdateUserRoleMutation,
 } = adminApi;

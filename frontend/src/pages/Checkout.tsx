@@ -53,7 +53,7 @@ export const Checkout = () => {
 
     try {
       const orderItems = cart.items.map((item) => ({
-        product: item.productId,
+        productId: item.productId,
         quantity: item.quantity,
         price: item.price,
       }));
