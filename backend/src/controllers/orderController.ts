@@ -2,15 +2,31 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Order from '../models/Order';
 import Product from '../models/Product';
+import Coupon from '../models/Coupon';
+import User from '../models/User';
 import { OrderStatus } from '../types/shared';
+import { emailService } from '../services/emailService';
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { items, shippingAddress, paymentMethod } = req.body;
+    const { items, shippingAddress, paymentMethod, guestInfo, couponCode } = req.body;
 
     if (!items || items.length === 0) {
       res.status(400).json({ message: 'Order items are required' });
       return;
+    }
+
+    // Validate guest info if no user
+    if (!req.user && !guestInfo) {
+      res.status(400).json({ message: 'User authentication or guest information is required' });
+      return;
+    }
+
+    if (!req.user && guestInfo) {
+      if (!guestInfo.email || !guestInfo.name || !guestInfo.phone) {
+        res.status(400).json({ message: 'Guest email, name, and phone are required' });
+        return;
+      }
     }
 
     // Validate products and calculate total
@@ -48,19 +64,90 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       await product.save();
     }
 
-    const order = new Order({
-      user: req.user!._id,
+    // Apply coupon if provided
+    let discount = 0;
+    let finalTotal = totalAmount;
+    
+    if (couponCode) {
+      const coupon = await Coupon.findOne({
+        code: couponCode.toUpperCase().trim(),
+        active: true,
+      });
+
+      if (coupon) {
+        const now = new Date();
+        // Validate coupon
+        if (now >= coupon.validFrom && now <= coupon.validTo) {
+          if (!coupon.usageLimit || coupon.usageCount < coupon.usageLimit) {
+            if (!coupon.minOrderValue || totalAmount >= coupon.minOrderValue) {
+              // Calculate discount
+              if (coupon.type === 'percentage') {
+                discount = (totalAmount * coupon.value) / 100;
+                if (coupon.maxDiscount) {
+                  discount = Math.min(discount, coupon.maxDiscount);
+                }
+              } else if (coupon.type === 'fixed') {
+                discount = Math.min(coupon.value, totalAmount);
+              } else if (coupon.type === 'free-shipping') {
+                discount = 0; // Free shipping (shipping is already 0)
+              }
+
+              finalTotal = Math.max(0, totalAmount - discount);
+
+              // Increment coupon usage count
+              coupon.usageCount += 1;
+              await coupon.save();
+            }
+          }
+        }
+      }
+    }
+
+    const orderData: any = {
       items: orderItems,
-      totalAmount,
+      totalAmount: finalTotal,
+      discount,
       shippingAddress,
       paymentMethod,
       paymentStatus: 'pending',
-    });
+    };
 
+    // Add coupon code if applied
+    if (couponCode && discount > 0) {
+      orderData.couponCode = couponCode.toUpperCase().trim();
+    }
+
+    // Add user or guest info
+    if (req.user) {
+      orderData.user = req.user._id;
+    } else if (guestInfo) {
+      orderData.guestInfo = {
+        email: guestInfo.email.trim().toLowerCase(),
+        name: guestInfo.name.trim(),
+        phone: guestInfo.phone.trim(),
+      };
+    }
+
+    const order = new Order(orderData);
     await order.save();
     await order.populate('items.product', 'name images price');
 
-    res.status(201).json(order);
+    // Send order confirmation email
+    try {
+      if (req.user) {
+        const user = await User.findById(req.user._id);
+        if (user) {
+          await emailService.sendOrderConfirmation(order, user);
+        }
+      } else if (guestInfo) {
+        await emailService.sendOrderConfirmation(order, undefined, guestInfo.email);
+      }
+    } catch (emailError) {
+      console.error('Failed to send order confirmation email:', emailError);
+      // Don't fail the order creation if email fails
+    }
+
+    res.status(201).json({ order });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to create order' });
   }
@@ -92,12 +179,29 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
 
 export const getOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    console.log('[Order Detail] Fetching order:', req.params.id, 'for user:', req.user!._id);
+    const orderId = req.params.id;
+    const { email } = req.query; // For guest order lookup
 
-    const order = await Order.findOne({
-      _id: req.params.id,
-      user: req.user!._id,
-    }).populate('items.product', 'name images price description');
+    console.log('[Order Detail] Fetching order:', orderId, 'for user:', req.user?._id || 'guest');
+
+    let order;
+
+    if (req.user) {
+      // Authenticated user - can access their own orders
+      order = await Order.findOne({
+        _id: orderId,
+        user: req.user._id,
+      }).populate('items.product', 'name images price description');
+    } else if (email) {
+      // Guest order lookup by email
+      order = await Order.findOne({
+        _id: orderId,
+        'guestInfo.email': email.toString().trim().toLowerCase(),
+      }).populate('items.product', 'name images price description');
+    } else {
+      res.status(401).json({ message: 'Authentication required or email query parameter needed' });
+      return;
+    }
 
     if (!order) {
       console.log('[Order Detail] Order not found');
@@ -110,6 +214,65 @@ export const getOrder = async (req: AuthRequest, res: Response): Promise<void> =
   } catch (error: any) {
     console.error('[Order Detail] Error:', error);
     res.status(500).json({ message: error.message || 'Failed to fetch order' });
+  }
+};
+
+export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { email } = req.query; // For guest order cancellation
+
+    let order;
+
+    if (req.user) {
+      // Authenticated user - can cancel their own orders
+      order = await Order.findOne({
+        _id: id,
+        user: req.user._id,
+      });
+    } else if (email) {
+      // Guest order cancellation by email
+      order = await Order.findOne({
+        _id: id,
+        'guestInfo.email': email.toString().trim().toLowerCase(),
+      });
+    } else {
+      res.status(401).json({ message: 'Authentication required or email query parameter needed' });
+      return;
+    }
+
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+
+    // Only allow cancellation if order is pending or processing
+    if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.CANCELLED) {
+      res.status(400).json({ message: 'Order cannot be cancelled' });
+      return;
+    }
+
+    // Check if user is admin (admins can cancel any order)
+    if (req.user && req.user.role === 'admin') {
+      order.status = OrderStatus.CANCELLED;
+      await order.save();
+      res.json({ order, message: 'Order cancelled successfully' });
+      return;
+    }
+
+    // Regular user/guest can only cancel their own orders
+    order.status = OrderStatus.CANCELLED;
+    await order.save();
+
+    // TODO: Process refund if payment was completed
+    // This would involve:
+    // 1. Check payment status
+    // 2. If paid, initiate refund through payment gateway
+    // 3. Update payment status
+
+    res.json({ order, message: 'Order cancelled successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to cancel order' });
   }
 };
 
@@ -130,6 +293,21 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
     order.status = status;
     await order.save();
+
+    // Send order status update email
+    try {
+      if (order.user) {
+        const user = await User.findById(order.user);
+        if (user) {
+          await emailService.sendOrderStatusUpdate(order, user);
+        }
+      } else if (order.guestInfo) {
+        await emailService.sendOrderStatusUpdate(order, undefined, order.guestInfo.email);
+      }
+    } catch (emailError) {
+      console.error('Failed to send order status update email:', emailError);
+      // Don't fail the status update if email fails
+    }
 
     res.json(order);
   } catch (error: any) {

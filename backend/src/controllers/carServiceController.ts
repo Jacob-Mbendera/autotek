@@ -1,7 +1,9 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import CarService from '../models/CarService';
+import User from '../models/User';
 import { ServiceStatus, ServiceType } from '../types/shared';
+import { emailService } from '../services/emailService';
 
 export const createCarService = async (
   req: AuthRequest,
@@ -72,6 +74,17 @@ export const createCarService = async (
     });
 
     await carService.save();
+    
+    // Send service confirmation email
+    try {
+      const user = await User.findById(req.user!._id);
+      if (user) {
+        await emailService.sendServiceConfirmation(carService, user);
+      }
+    } catch (emailError) {
+      console.error('Failed to send service confirmation email:', emailError);
+      // Don't fail the service creation if email fails
+    }
     
     // Transform response to match frontend interface
     const transformed = {

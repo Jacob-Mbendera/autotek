@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { UserRole } from '../types/shared';
 import { sendPasswordResetEmail } from '../utils/email';
+import { emailService } from '../services/emailService';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -45,6 +46,14 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     await user.save();
+
+    // Send welcome email
+    try {
+      await emailService.sendWelcomeEmail(user);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail registration if email fails
+    }
 
     // Generate token
     const token = generateToken({

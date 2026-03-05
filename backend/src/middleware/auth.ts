@@ -57,3 +57,29 @@ export const mechanicMiddleware = (
   }
   next();
 };
+
+// Optional auth middleware - allows both authenticated and guest requests
+export const optionalAuthMiddleware = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (token) {
+      try {
+        const decoded = verifyToken(token);
+        const user = await User.findById(decoded.userId).select('-password');
+        if (user) {
+          req.user = user;
+        }
+      } catch (error) {
+        // Token invalid, but continue as guest
+      }
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+};

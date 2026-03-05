@@ -3,15 +3,18 @@ import {
   createOrder,
   getOrders,
   getOrder,
+  cancelOrder,
   updateOrderStatus,
 } from '../controllers/orderController';
-import { authMiddleware, adminMiddleware } from '../middleware/auth';
+import { authMiddleware, adminMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/', authMiddleware, createOrder);
-router.get('/', authMiddleware, getOrders);
-router.get('/:id', authMiddleware, getOrder);
+// Allow guest checkout - optional auth
+router.post('/', optionalAuthMiddleware, createOrder);
+router.get('/', authMiddleware, getOrders); // User orders require auth
+router.get('/:id', optionalAuthMiddleware, getOrder); // Allow guest lookup with email
+router.put('/:id/cancel', optionalAuthMiddleware, cancelOrder); // Allow guest cancellation with email
 router.put('/:id/status', authMiddleware, adminMiddleware, updateOrderStatus);
 
 export default router;

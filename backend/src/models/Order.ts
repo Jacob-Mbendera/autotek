@@ -8,9 +8,16 @@ export interface IOrderItem {
 }
 
 export interface IOrder extends Document {
-  user: Types.ObjectId;
+  user?: Types.ObjectId; // Optional for guest checkout
+  guestInfo?: {
+    email: string;
+    name: string;
+    phone: string;
+  };
   items: IOrderItem[];
   totalAmount: number;
+  discount?: number;
+  couponCode?: string;
   status: OrderStatus;
   paymentMethod?: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -42,7 +49,25 @@ const OrderSchema = new Schema<IOrder>(
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // Optional for guest checkout
+    },
+    guestInfo: {
+      email: {
+        type: String,
+        required: false,
+        trim: true,
+        lowercase: true,
+      },
+      name: {
+        type: String,
+        required: false,
+        trim: true,
+      },
+      phone: {
+        type: String,
+        required: false,
+        trim: true,
+      },
     },
     items: {
       type: [OrderItemSchema],
@@ -56,6 +81,16 @@ const OrderSchema = new Schema<IOrder>(
       type: Number,
       required: true,
       min: 0,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    couponCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
     },
     status: {
       type: String,
