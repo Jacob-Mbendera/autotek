@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Eye, Sparkles, Package } from 'lucide-react';
-import { useAppDispatch } from '../store/types';
+import { ShoppingCart, Eye, Sparkles, Package, Heart } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '../store/types';
 import { addItem } from '../store/slices/cartSlice';
+import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
+import { showNotification } from '../store/slices/uiSlice';
 import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
 
@@ -14,6 +16,24 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
   const dispatch = useAppDispatch();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
+  const [optimisticWishlistState, setOptimisticWishlistState] = useState<boolean | null>(null);
+
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { data: wishlistData } = useGetWishlistQuery(undefined, { skip: !isAuthenticated });
+  const [addToWishlist] = useAddToWishlistMutation();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
+
+  const isInWishlistFromAPI = wishlistData?.wishlist?.products?.some((p) => p._id === product._id) || false;
+  // Use optimistic state if available, otherwise use API state
+  const isInWishlist = optimisticWishlistState !== null ? optimisticWishlistState : isInWishlistFromAPI;
+
+  // Reset optimistic state when API data changes
+  useEffect(() => {
+    if (optimisticWishlistState !== null && optimisticWishlistState === isInWishlistFromAPI) {
+      setOptimisticWishlistState(null);
+    }
+  }, [isInWishlistFromAPI, optimisticWishlistState]);
 
   const firstImage = product.images?.[0];
   const hasValidImage = firstImage && 
@@ -54,6 +74,53 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
         image: product.images?.[0],
       })
     );
+    dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
+  };
+
+  const handleWishlistToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isAuthenticated) {
+      dispatch(showNotification({
+        message: 'Please log in to add items to your wishlist',
+        type: 'info',
+      }));
+      return;
+    }
+
+    // Prevent multiple rapid clicks
+    if (isAddingToWishlist) return;
+
+    // Optimistically update the UI immediately
+    const newWishlistState = !isInWishlist;
+    setOptimisticWishlistState(newWishlistState);
+    setIsAddingToWishlist(true);
+
+    try {
+      if (isInWishlist) {
+        await removeFromWishlist(product._id).unwrap();
+        dispatch(showNotification({
+          message: 'Product removed from wishlist',
+          type: 'success',
+        }));
+      } else {
+        await addToWishlist({ productId: product._id }).unwrap();
+        dispatch(showNotification({
+          message: 'Product added to wishlist!',
+          type: 'success',
+        }));
+      }
+    } catch (error: any) {
+      // Revert optimistic update on error
+      setOptimisticWishlistState(!newWishlistState);
+      dispatch(showNotification({
+        message: error.data?.message || 'Failed to update wishlist',
+        type: 'error',
+      }));
+    } finally {
+      setIsAddingToWishlist(false);
+    }
   };
 
   const handleImageError = () => {
@@ -165,16 +232,33 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
             )}
           </div>
           
-          <Button
-            variant="primary"
-            size="default"
-            className="shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-            onClick={handleAddToCart}
-            disabled={isOutOfStock}
-          >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-          </Button>
+          <div className="flex items-center gap-3">
+            {isAuthenticated && (
+              <button
+                onClick={handleWishlistToggle}
+                disabled={isAddingToWishlist}
+                className={`p-2 rounded-lg transition-all ${
+                  isInWishlist
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                } ${isAddingToWishlist ? 'opacity-70 cursor-wait' : ''}`}
+                aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+              >
+                <Heart className={`h-5 w-5 ${isInWishlist ? 'fill-current' : ''} ${isAddingToWishlist ? 'animate-pulse' : ''}`} />
+              </button>
+            )}
+            <Button
+              variant="primary"
+              size="default"
+              className="shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              onClick={handleAddToCart}
+              disabled={isOutOfStock}
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            </Button>
+          </div>
         </div>
       </div>
     </Link>

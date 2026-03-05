@@ -1,21 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetProductQuery } from '../store/api/productApi';
-import { useAppDispatch } from '../store/types';
+import { useAppDispatch, useAppSelector } from '../store/types';
 import { addItem, clearCart } from '../store/slices/cartSlice';
+import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
+import { showNotification } from '../store/slices/uiSlice';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { ShoppingCart, Zap, CheckCircle, Package } from 'lucide-react';
+import { ShoppingCart, Zap, CheckCircle, Package, Heart } from 'lucide-react';
 
 export const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
 
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const { data, isLoading, error } = useGetProductQuery(id!);
+  
+  // Wishlist functionality
+  const { data: wishlistData } = useGetWishlistQuery(undefined, { skip: !isAuthenticated });
+  const [addToWishlist] = useAddToWishlistMutation();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
+  
+  const isInWishlist = wishlistData?.wishlist?.products?.some((p) => p._id === id) || false;
+
+  // Reset image error when product changes
+  useEffect(() => {
+    setImageError(false);
+    setSelectedImageIndex(0);
+  }, [id, data?.product?._id]);
+
+  // Get placeholder image based on category
+  const getPlaceholderImage = (category?: string) => {
+    const cat = category?.toLowerCase() || '';
+    const placeholders: Record<string, string> = {
+      'engine parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'brake parts': 'https://images.unsplash.com/photo-1486262715619-67b35e0b08d3?w=600&q=80',
+      'braking system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
+      'electrical': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
+      'suspension': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
+      'filters': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'transmission': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
+      'cooling system': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'exhaust system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
+      'body parts': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
+    };
+    return placeholders[cat] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+  };
 
   const handleAddToCart = () => {
     if (data?.product) {
@@ -46,6 +81,40 @@ export const ProductDetail = () => {
       );
       // Navigate to checkout
       navigate('/checkout');
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!isAuthenticated) {
+      dispatch(showNotification({
+        message: 'Please log in to add items to your wishlist',
+        type: 'info',
+      }));
+      navigate(`/login?returnUrl=/products/${id}`);
+      return;
+    }
+
+    if (!data?.product) return;
+
+    try {
+      if (isInWishlist) {
+        await removeFromWishlist(data.product._id).unwrap();
+        dispatch(showNotification({
+          message: 'Product removed from wishlist',
+          type: 'success',
+        }));
+      } else {
+        await addToWishlist({ productId: data.product._id }).unwrap();
+        dispatch(showNotification({
+          message: 'Product added to wishlist!',
+          type: 'success',
+        }));
+      }
+    } catch (error: any) {
+      dispatch(showNotification({
+        message: error.data?.message || 'Failed to update wishlist',
+        type: 'error',
+      }));
     }
   };
 
@@ -80,6 +149,28 @@ export const ProductDetail = () => {
   const isOutOfStock = product.status === 'out-of-stock' || product.stock === 0;
   const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
   const isInStock = !isOutOfStock && product.stock > 10;
+
+  // Determine display images
+  const firstImage = product.images?.[0];
+  const hasValidImage = firstImage && 
+    typeof firstImage === 'string' && 
+    firstImage.trim() !== '';
+  const placeholderImage = getPlaceholderImage(product.category);
+  
+  // Always ensure we have at least one image to display
+  // Use product images if available and not errored, otherwise use placeholder
+  let displayImages: string[];
+  if (hasValidImage && product.images && product.images.length > 0 && !imageError) {
+    displayImages = product.images;
+  } else {
+    displayImages = [placeholderImage];
+  }
+  
+  const isPlaceholder = !hasValidImage || !product.images || product.images.length === 0 || imageError;
+  
+  // Ensure selectedImageIndex is within bounds
+  const safeImageIndex = Math.min(selectedImageIndex, displayImages.length - 1);
+  const currentImageSrc = displayImages[safeImageIndex] || displayImages[0] || placeholderImage;
 
   // Generate SKU from product ID
   const generateSKU = (productId: string, category: string) => {
@@ -171,57 +262,84 @@ export const ProductDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         {/* Product Images */}
         <div className="space-y-4">
-          {product.images && product.images.length > 0 ? (
-            <>
-              <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-                <img
-                  src={product.images[selectedImageIndex] || product.images[0]}
-                  alt={product.name}
-                  className="w-full h-[500px] object-cover"
-                />
-                {/* Image carousel indicator */}
-                {product.images.length > 1 && (
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                    {product.images.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedImageIndex(index)}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          selectedImageIndex === index
-                            ? 'bg-teal-500 w-8'
-                            : 'bg-white bg-opacity-50 hover:bg-opacity-75'
-                        }`}
-                        aria-label={`View image ${index + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
+          <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ minHeight: '500px' }}>
+            {currentImageSrc ? (
+              <img
+                key={`${product._id}-${currentImageSrc}`}
+                src={currentImageSrc}
+                alt={product.name}
+                className="w-full h-[500px] object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  // If placeholder fails, use a data URL fallback
+                  if (target.src === placeholderImage || target.src.includes('unsplash.com')) {
+                    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="600" height="500"%3E%3Crect width="600" height="500" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="Arial" font-size="18" fill="%239ca3af"%3ENo Image%3C/text%3E%3C/svg%3E';
+                  } else {
+                    // Product image failed, switch to placeholder
+                    setImageError(true);
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-full h-[500px] flex items-center justify-center bg-gray-200">
+                <Package className="h-16 w-16 text-gray-400" />
               </div>
-              {product.images.length > 1 && (
-                <div className="grid grid-cols-4 gap-4">
-                  {product.images.slice(0, 4).map((image, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedImageIndex(index)}
-                      className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-75 transition-opacity border-2 ${
-                        selectedImageIndex === index
-                          ? 'border-teal-500'
-                          : 'border-transparent'
-                      }`}
-                    >
-                      <img
-                        src={image}
-                        alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
+            )}
+            {/* Placeholder indicator */}
+            {isPlaceholder && (
+              <div className="absolute top-4 right-4 z-10">
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium text-gray-600 border border-gray-200">
+                  Placeholder
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-              <span className="text-gray-400">No image available</span>
+              </div>
+            )}
+            {/* Image carousel indicator */}
+            {displayImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                {displayImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      selectedImageIndex === index
+                        ? 'bg-teal-500 w-8'
+                        : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                    }`}
+                    aria-label={`View image ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          {displayImages.length > 1 && (
+            <div className="grid grid-cols-4 gap-4">
+              {displayImages.slice(0, 4).map((image, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImageIndex(index)}
+                  className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-75 transition-opacity border-2 ${
+                    selectedImageIndex === index
+                      ? 'border-teal-500'
+                      : 'border-transparent'
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={`${product.name} ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      // If placeholder fails, use a data URL fallback
+                      if (target.src === placeholderImage || target.src.includes('unsplash.com')) {
+                        target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="150" height="150"%3E%3Crect width="150" height="150" fill="%23e5e7eb"/%3E%3C/svg%3E';
+                      } else {
+                        // Product image failed, switch to placeholder
+                        setImageError(true);
+                      }
+                    }}
+                  />
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -267,6 +385,15 @@ export const ProductDetail = () => {
             >
               <Zap className="h-5 w-5 mr-2" />
               Buy Now
+            </Button>
+            <Button
+              variant={isInWishlist ? "primary" : "secondary"}
+              size="default"
+              className="flex items-center justify-center"
+              onClick={handleWishlistToggle}
+              title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              <Heart className={`h-5 w-5 ${isInWishlist ? 'fill-current' : ''}`} />
             </Button>
           </div>
         </div>

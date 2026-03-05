@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Phone, Mail, DollarSign, Save } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Phone, Mail, DollarSign, Save, ArrowLeft, ArrowRight } from 'lucide-react';
 import { ServiceStatus } from '@shared/types';
 
 export const AdminServices = () => {
@@ -29,6 +29,7 @@ export const AdminServices = () => {
     limit,
     status: statusFilter || undefined,
     type: typeFilter || undefined,
+    search: searchTerm || undefined,
   });
 
   // Set newStatus when service is selected
@@ -84,21 +85,8 @@ export const AdminServices = () => {
     }
   };
 
-  const filteredServices = data?.services
-    ? (data.services as any[]).filter((service) => {
-        if (searchTerm) {
-          const searchLower = searchTerm.toLowerCase();
-          return (
-            service._id?.toLowerCase().includes(searchLower) ||
-            service.user?.name?.toLowerCase().includes(searchLower) ||
-            service.user?.email?.toLowerCase().includes(searchLower) ||
-            (service.serviceType && service.serviceType.toLowerCase().includes(searchLower)) ||
-            (service.location && service.location.toLowerCase().includes(searchLower))
-          );
-        }
-        return true;
-      })
-    : [];
+  // Backend handles search, so no need for client-side filtering
+  const filteredServices = data?.services || [];
 
   return (
     <div>
@@ -117,7 +105,10 @@ export const AdminServices = () => {
               <Input
                 dark
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page on search
+                }}
                 placeholder="Search services..."
                 className="pl-10"
               />
@@ -159,9 +150,9 @@ export const AdminServices = () => {
                 setStatusFilter('');
                 setTypeFilter('');
               }}
-              className="w-full"
+              className="w-full gap-2"
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-4 w-4" />
               Clear
             </Button>
           </div>
@@ -287,7 +278,9 @@ export const AdminServices = () => {
                   dark
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
+                  className="gap-1.5"
                 >
+                  <ArrowLeft className="h-4 w-4" />
                   Previous
                 </Button>
                 <Button
@@ -296,8 +289,10 @@ export const AdminServices = () => {
                   dark
                   onClick={() => setPage(page + 1)}
                   disabled={page >= (data.pagination as any).totalPages}
+                  className="gap-1.5"
                 >
                   Next
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -352,11 +347,12 @@ export const AdminServices = () => {
                     dark
                     onClick={handleStatusUpdate}
                     disabled={newStatus === selectedService.status || isUpdatingTowing || isUpdatingCar}
+                    className="gap-2"
                   >
                     {isUpdatingTowing || isUpdatingCar ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Save className="h-4 w-4 mr-2" />
+                      <Save className="h-4 w-4" />
                     )}
                     Update Status
                   </Button>

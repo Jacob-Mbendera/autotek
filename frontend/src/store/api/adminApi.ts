@@ -38,6 +38,7 @@ interface GetAllCustomOrdersQueryParams {
   page?: number;
   limit?: number;
   status?: CustomOrderStatus;
+  search?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -47,6 +48,7 @@ interface GetAllServicesQueryParams {
   limit?: number;
   status?: ServiceStatus;
   type?: 'towing' | 'car-service';
+  search?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -116,6 +118,10 @@ export const adminApi = baseApi.injectEndpoints({
         'Order',
       ],
     }),
+    getCustomOrder: builder.query<{ customOrder: unknown }, string>({
+      query: (id) => `/admin/custom-orders/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Admin', id }],
+    }),
     getAllCustomOrders: builder.query<
       { customOrders: unknown[]; pagination: unknown },
       GetAllCustomOrdersQueryParams | void
@@ -151,6 +157,7 @@ export const adminApi = baseApi.injectEndpoints({
         if (params.limit) searchParams.append('limit', params.limit.toString());
         if (params.status) searchParams.append('status', params.status);
         if (params.type) searchParams.append('type', params.type);
+        if (params.search) searchParams.append('search', params.search);
         if (params.startDate) searchParams.append('startDate', params.startDate);
         if (params.endDate) searchParams.append('endDate', params.endDate);
 
@@ -205,6 +212,7 @@ export const {
   useGetAllOrdersQuery,
   useGetAdminOrderQuery,
   useUpdateOrderStatusMutation,
+  useGetCustomOrderQuery,
   useGetAllCustomOrdersQuery,
   useGetAllServicesQuery,
   useGetAllUsersQuery,

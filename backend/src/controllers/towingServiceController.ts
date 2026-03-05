@@ -8,7 +8,34 @@ export const createTowingService = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { pickupLocation, destination, vehicleDetails, price } = req.body;
+    // Support both old format (pickupLocation, destination) and new format (location, destination objects)
+    let pickupLocation: string;
+    let destination: string;
+    let vehicleDetails: any = {};
+
+    if (req.body.location && req.body.destination) {
+      // New format from frontend: location and destination are objects with address
+      pickupLocation = req.body.location.address || req.body.location;
+      destination = req.body.destination.address || req.body.destination;
+      
+      // Build vehicleDetails from vehicleType and vehicleModel
+      if (req.body.vehicleType) {
+        vehicleDetails.make = req.body.vehicleType;
+      }
+      if (req.body.vehicleModel) {
+        vehicleDetails.model = req.body.vehicleModel;
+      }
+    } else if (req.body.pickupLocation && req.body.destination) {
+      // Old format: direct strings
+      pickupLocation = req.body.pickupLocation;
+      destination = req.body.destination;
+      vehicleDetails = req.body.vehicleDetails || {};
+    } else {
+      res.status(400).json({
+        message: 'Pickup location and destination are required',
+      });
+      return;
+    }
 
     if (!pickupLocation || !destination) {
       res.status(400).json({
@@ -21,12 +48,31 @@ export const createTowingService = async (
       user: req.user!._id,
       pickupLocation,
       destination,
-      vehicleDetails: vehicleDetails || {},
-      price,
+      vehicleDetails,
+      price: req.body.price,
     });
 
     await towingService.save();
-    res.status(201).json(towingService);
+    
+    // Transform response to match frontend interface
+    const transformed = {
+      ...towingService.toObject(),
+      location: {
+        latitude: 0,
+        longitude: 0,
+        address: towingService.pickupLocation,
+      },
+      destination: {
+        latitude: 0,
+        longitude: 0,
+        address: towingService.destination,
+      },
+      vehicleType: towingService.vehicleDetails?.make || '',
+      vehicleModel: towingService.vehicleDetails?.model,
+      estimatedCost: towingService.price,
+    };
+    
+    res.status(201).json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to create towing service' });
   }
@@ -48,7 +94,7 @@ export const getTowingServices = async (
       const userRole = user.role;
       if (userRole && userRole !== 'admin') {
         query.user = user._id;
-      }
+    }
     }
     // If no user (public access), show all services (no filter)
 
@@ -59,9 +105,28 @@ export const getTowingServices = async (
     const towingServices = await TowingService.find(query)
       .populate('user', 'name email phone')
       .populate('assignedDriver', 'name phone')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.json(towingServices);
+    // Transform to match frontend interface
+    const transformedServices = towingServices.map((service: any) => ({
+      ...service,
+      location: {
+        latitude: 0, // TODO: Get from geocoding
+        longitude: 0, // TODO: Get from geocoding
+        address: service.pickupLocation,
+      },
+      destination: service.destination ? {
+        latitude: 0, // TODO: Get from geocoding
+        longitude: 0, // TODO: Get from geocoding
+        address: service.destination,
+      } : undefined,
+      vehicleType: service.vehicleDetails?.make || '',
+      vehicleModel: service.vehicleDetails?.model,
+      estimatedCost: service.price,
+    }));
+
+    res.json({ services: transformedServices });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch towing services' });
   }
@@ -84,14 +149,33 @@ export const getTowingService = async (
 
     const towingService = await TowingService.findOne(query)
       .populate('user', 'name email phone address')
-      .populate('assignedDriver', 'name phone');
+      .populate('assignedDriver', 'name phone')
+      .lean();
 
     if (!towingService) {
       res.status(404).json({ message: 'Towing service not found' });
       return;
     }
 
-    res.json(towingService);
+    // Transform to match frontend interface
+    const transformed = {
+      ...towingService,
+      location: {
+        latitude: 0, // TODO: Get from geocoding
+        longitude: 0, // TODO: Get from geocoding
+        address: (towingService as any).pickupLocation,
+      },
+      destination: (towingService as any).destination ? {
+        latitude: 0, // TODO: Get from geocoding
+        longitude: 0, // TODO: Get from geocoding
+        address: (towingService as any).destination,
+      } : undefined,
+      vehicleType: (towingService as any).vehicleDetails?.make || '',
+      vehicleModel: (towingService as any).vehicleDetails?.model,
+      estimatedCost: (towingService as any).price,
+    };
+
+    res.json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch towing service' });
   }

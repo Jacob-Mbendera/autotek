@@ -7,20 +7,24 @@ import { Wishlist } from './pages/Wishlist';
 import { CompareProducts } from './pages/CompareProducts';
 import { ProductDetail } from './pages/ProductDetail';
 import { Services } from './pages/Services';
+import { BookService } from './pages/BookService';
 import { Cart } from './pages/Cart';
 import { Checkout } from './pages/Checkout';
 import { Orders } from './pages/Orders';
 import { OrderDetail } from './pages/OrderDetail';
+import { Profile } from './pages/Profile';
 import { PaymentSuccess } from './pages/PaymentSuccess';
 import { PaymentCancel } from './pages/PaymentCancel';
-import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers } from './pages/admin';
+import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport } from './pages/admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
+import { Toast } from './components/ui/Toast';
 
 function App() {
   return (
     <BrowserRouter>
+      <Toast />
       <Routes>
         {/* Public routes without layout */}
         <Route path="/login" element={<Login />} />
@@ -76,6 +80,26 @@ function App() {
         
         {/* Protected routes with layout */}
         <Route
+          path="/wishlist"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Wishlist />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/book-service"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <BookService />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/checkout"
           element={
             <ProtectedRoute>
@@ -101,6 +125,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <OrderDetail />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Profile />
               </Layout>
             </ProtectedRoute>
           }
@@ -163,6 +197,36 @@ function App() {
             <ProtectedRoute adminOnly>
               <AdminLayout>
                 <AdminUsers />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders/:id"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <OrderDetail isAdmin={true} />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminSettings />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/support"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminSupport />
               </AdminLayout>
             </ProtectedRoute>
           }

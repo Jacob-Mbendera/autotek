@@ -1,16 +1,25 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useGetProductsQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation, useGetCategoriesQuery } from '../../store/api/productApi';
+import { useAppDispatch } from '../../store/types';
+import { showNotification } from '../../store/slices/uiSlice';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, H2, Body } from '../../components/ui/Typography';
-import { Plus, Edit, Trash2, X, Package, Loader2, Image as ImageIcon } from 'lucide-react';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
+import { Plus, Edit, Trash2, X, Package, Loader2, Image as ImageIcon, Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
 
 export const AdminProducts = () => {
+  const dispatch = useAppDispatch();
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'available' | 'out-of-stock' | ''>('');
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -22,12 +31,44 @@ export const AdminProducts = () => {
     status: 'available' as 'available' | 'out-of-stock',
     images: [] as File[],
   });
+  
+  // Track which product images have errored to prevent flickering
+  const imageErrorsRef = useRef<Set<string>>(new Set());
 
-  const { data, isLoading } = useGetProductsQuery({ page, limit });
+  const { data, isLoading } = useGetProductsQuery({
+    page,
+    limit,
+    search: searchTerm || undefined,
+    category: categoryFilter || undefined,
+    status: statusFilter || undefined,
+  });
   const { data: categoriesData } = useGetCategoriesQuery();
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
   const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
+
+  // Clear image errors when products change (page, filters, etc.)
+  useEffect(() => {
+    imageErrorsRef.current.clear();
+  }, [data?.products, page, searchTerm, categoryFilter, statusFilter]);
+
+  // Get placeholder image based on category
+  const getPlaceholderImage = (category?: string) => {
+    const cat = category?.toLowerCase() || '';
+    const placeholders: Record<string, string> = {
+      'engine parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'brake parts': 'https://images.unsplash.com/photo-1486262715619-67b35e0b08d3?w=600&q=80',
+      'braking system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
+      'electrical': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
+      'suspension': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
+      'filters': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'transmission': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
+      'cooling system': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+      'exhaust system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
+      'body parts': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
+    };
+    return placeholders[cat] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+  };
 
   const handleOpenModal = (product?: Product) => {
     if (product) {
@@ -89,26 +130,39 @@ export const AdminProducts = () => {
 
       if (editingProduct) {
         await updateProduct({ id: editingProduct._id, data: productData }).unwrap();
+        dispatch(showNotification({ message: 'Product updated successfully', type: 'success' }));
       } else {
         await createProduct(productData).unwrap();
+        dispatch(showNotification({ message: 'Product created successfully', type: 'success' }));
       }
       handleCloseModal();
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error saving product:', error);
-      }
+    } catch (error: any) {
+      dispatch(showNotification({
+        message: error?.data?.message || 'Failed to save product. Please try again.',
+        type: 'error',
+      }));
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await deleteProduct(id).unwrap();
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Error deleting product:', error);
-        }
-      }
+  const handleDeleteClick = (id: string) => {
+    setDeletingProductId(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingProductId) return;
+    try {
+      await deleteProduct(deletingProductId).unwrap();
+      dispatch(showNotification({ message: 'Product deleted successfully', type: 'success' }));
+      setShowDeleteModal(false);
+      setDeletingProductId(null);
+    } catch (error: any) {
+      dispatch(showNotification({
+        message: error?.data?.message || 'Failed to delete product. Please try again.',
+        type: 'error',
+      }));
+      setShowDeleteModal(false);
+      setDeletingProductId(null);
     }
   };
 
@@ -117,6 +171,16 @@ export const AdminProducts = () => {
       setFormData({ ...formData, images: Array.from(e.target.files) });
     }
   };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('');
+    setStatusFilter('');
+    setPage(1);
+  };
+
+  const filteredProducts = data?.products || [];
+  const hasActiveFilters = searchTerm || categoryFilter || statusFilter;
 
   return (
     <div>
@@ -131,123 +195,251 @@ export const AdminProducts = () => {
         </Button>
       </div>
 
+      {/* Search and Filters */}
+      <AdminCard variant="default" className="mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                dark
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page on search
+                }}
+                placeholder="Search by product name or description"
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+            >
+              <option value="">All Categories</option>
+              {categoriesData?.categories.map((cat: { name: string; count: number } | string) => {
+                const categoryName = typeof cat === 'string' ? cat : cat.name;
+                return (
+                  <option key={categoryName} value={categoryName}>
+                    {categoryName}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as 'available' | 'out-of-stock' | '');
+                setPage(1);
+              }}
+              className="w-full px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+            >
+              <option value="">All Statuses</option>
+              <option value="available">Available</option>
+              <option value="out-of-stock">Out of Stock</option>
+            </select>
+          </div>
+        </div>
+        {hasActiveFilters && (
+          <div className="mt-4 flex items-center justify-end">
+            <Button
+              variant="secondary"
+              size="small"
+              dark
+              onClick={handleClearFilters}
+              className="gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Clear Filters
+            </Button>
+          </div>
+        )}
+      </AdminCard>
+
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 text-teal-500 animate-spin" />
         </div>
       ) : (
         <AdminCard variant="table">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-400">Name</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-400">Category</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-400">Price</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-400">Stock</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-400">Status</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.products.map((product) => (
-                  <tr key={product._id} className="border-b border-gray-700/50 hover:bg-slate-700/30">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        {product.images && product.images.length > 0 ? (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="w-10 h-10 object-cover rounded"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-slate-700 rounded flex items-center justify-center">
-                            <Package className="h-5 w-5 text-gray-400" />
-                          </div>
-                        )}
-                        <div>
-                          <Body className="font-medium text-gray-50">{product.name}</Body>
-                          <Body className="text-sm text-gray-400 line-clamp-1">
-                            {product.description}
-                          </Body>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Body className="text-gray-300">{product.category}</Body>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Body className="font-medium text-gray-50">
-                        MWK {product.price.toLocaleString()}
-                      </Body>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Body className="text-gray-300">{product.stock}</Body>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          product.status === 'available'
-                            ? 'bg-green-500/20 text-green-500'
-                            : 'bg-red-500/20 text-red-500'
-                        }`}
-                      >
-                        {product.status === 'available' ? 'Available' : 'Out of Stock'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="small"
-                          dark
-                          onClick={() => handleOpenModal(product)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="small"
-                          dark
-                          onClick={() => handleDelete(product._id)}
-                          disabled={isDeleting}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {data?.pagination && data.pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-700">
-              <Body className="text-gray-400">
-                Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, data.pagination.total)} of {data.pagination.total} products
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <Body className="text-gray-400 text-lg font-semibold mb-2">No products found</Body>
+              <Body className="text-gray-500 mb-4">
+                {hasActiveFilters
+                  ? 'Try adjusting your search or filters'
+                  : 'Get started by creating your first product'}
               </Body>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="small"
-                  dark
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                >
-                  Previous
+              {!hasActiveFilters && (
+                <Button onClick={() => handleOpenModal()}>
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add Product
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  dark
-                  onClick={() => setPage(page + 1)}
-                  disabled={page >= data.pagination.totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+              )}
             </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-400">Name</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-400">Category</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-400">Price</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-400">Stock</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-400">Status</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-400">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.map((product) => {
+                      const firstImage = product.images?.[0];
+                      const hasValidImage = firstImage && 
+                        typeof firstImage === 'string' && 
+                        firstImage.trim() !== '';
+                      const hasErrored = imageErrorsRef.current.has(product._id);
+                      const displayImage = (hasValidImage && !hasErrored) ? firstImage : getPlaceholderImage(product.category);
+
+                      const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+                        const target = e.target as HTMLImageElement;
+                        const placeholder = getPlaceholderImage(product.category);
+                        
+                        // If we're already showing the placeholder and it failed, use a data URL as ultimate fallback
+                        if (target.src === placeholder || target.src.includes('unsplash.com')) {
+                          // Use a simple 1x1 transparent pixel as ultimate fallback
+                          target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="40" height="40" fill="%23334155"/%3E%3C/svg%3E';
+                          imageErrorsRef.current.add(product._id);
+                          return;
+                        }
+                        
+                        // Only handle error once per product to prevent flickering
+                        if (!imageErrorsRef.current.has(product._id)) {
+                          imageErrorsRef.current.add(product._id);
+                          // Only update if current src is not already the placeholder
+                          if (target.src !== placeholder) {
+                            target.src = placeholder;
+                          }
+                        }
+                      };
+
+                      return (
+                        <tr key={product._id} className="border-b border-gray-700/50 hover:bg-slate-700/30">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative w-10 h-10 flex-shrink-0">
+                                <img
+                                  src={displayImage}
+                                  alt={product.name}
+                                  className="w-10 h-10 object-cover rounded"
+                                  onError={handleImageError}
+                                />
+                              </div>
+                              <div>
+                                <Body className="font-medium text-gray-50">{product.name}</Body>
+                                <Body className="text-sm text-gray-400 line-clamp-1">
+                                  {product.description}
+                                </Body>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Body className="text-gray-300">{product.category}</Body>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Body className="font-medium text-gray-50">
+                              MWK {product.price.toLocaleString()}
+                            </Body>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Body className="text-gray-300">{product.stock}</Body>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                product.status === 'available'
+                                  ? 'bg-green-500/20 text-green-500'
+                                  : 'bg-red-500/20 text-red-500'
+                              }`}
+                            >
+                              {product.status === 'available' ? 'Available' : 'Out of Stock'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="small"
+                                dark
+                                onClick={() => handleOpenModal(product)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="small"
+                                dark
+                                onClick={() => handleDeleteClick(product._id)}
+                                disabled={isDeleting}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {data?.pagination && (data.pagination.totalPages > 1 || (data.pagination.total && data.pagination.total > limit)) && (
+                <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-700">
+                  <Body className="text-gray-400">
+                    Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, data.pagination.total || 0)} of {data.pagination.total || 0} products
+                  </Body>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      dark
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                      className="gap-1.5"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <Body className="text-gray-400 px-3">
+                      Page {page} of {data.pagination.totalPages || Math.ceil((data.pagination.total || 0) / limit)}
+                    </Body>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      dark
+                      onClick={() => setPage(page + 1)}
+                      disabled={page >= (data.pagination.totalPages || Math.ceil((data.pagination.total || 0) / limit))}
+                      className="gap-1.5"
+                    >
+                      Next
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </AdminCard>
       )}
@@ -391,6 +583,10 @@ export const AdminProducts = () => {
                           src={img}
                           alt={`Product ${idx + 1}`}
                           className="w-20 h-20 object-cover rounded"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = getPlaceholderImage(editingProduct.category);
+                          }}
                         />
                       ))}
                     </div>
@@ -419,6 +615,23 @@ export const AdminProducts = () => {
           </AdminCard>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setDeletingProductId(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Product"
+        message="Are you sure you want to delete this product? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        dark
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

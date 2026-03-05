@@ -8,18 +8,11 @@ export const createCarService = async (
   res: Response
 ): Promise<void> => {
   try {
-    const {
-      serviceType,
-      vehicleDetails,
-      address,
-      preferredDate,
-      notes,
-      price,
-    } = req.body;
+    const { serviceType } = req.body;
 
-    if (!serviceType || !address) {
+    if (!serviceType) {
       res.status(400).json({
-        message: 'Service type and address are required',
+        message: 'Service type is required',
       });
       return;
     }
@@ -29,18 +22,72 @@ export const createCarService = async (
       return;
     }
 
+    // Support both old format (address) and new format (location object)
+    let address: string;
+    let vehicleDetails: any = {};
+
+    if (req.body.location) {
+      // New format from frontend: location is an object with address
+      address = req.body.location.address || req.body.location;
+      
+      // Build vehicleDetails from vehicleType and vehicleModel
+      if (req.body.vehicleType) {
+        vehicleDetails.make = req.body.vehicleType;
+      }
+      if (req.body.vehicleModel) {
+        vehicleDetails.model = req.body.vehicleModel;
+      }
+    } else if (req.body.address) {
+      // Old format: direct address string
+      address = req.body.address;
+      vehicleDetails = req.body.vehicleDetails || {};
+    } else {
+      res.status(400).json({
+        message: 'Address or location is required',
+      });
+      return;
+    }
+
+    if (!address) {
+      res.status(400).json({
+        message: 'Address is required',
+      });
+      return;
+    }
+
+    // Handle preferredDate - can be string or Date
+    let preferredDateValue: Date | undefined;
+    if (req.body.preferredDate) {
+      preferredDateValue = new Date(req.body.preferredDate);
+    }
+
     const carService = new CarService({
       user: req.user!._id,
       serviceType,
-      vehicleDetails: vehicleDetails || {},
+      vehicleDetails,
       address,
-      preferredDate: preferredDate ? new Date(preferredDate) : undefined,
-      notes,
-      price,
+      preferredDate: preferredDateValue,
+      notes: req.body.notes,
+      price: req.body.price,
     });
 
     await carService.save();
-    res.status(201).json(carService);
+    
+    // Transform response to match frontend interface
+    const transformed = {
+      ...carService.toObject(),
+      location: {
+        latitude: 0,
+        longitude: 0,
+        address: carService.address,
+      },
+      vehicleType: carService.vehicleDetails?.make || '',
+      vehicleModel: carService.vehicleDetails?.model,
+      estimatedCost: carService.price,
+      preferredTime: carService.preferredDate ? new Date(carService.preferredDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+    };
+    
+    res.status(201).json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to create car service' });
   }
@@ -73,9 +120,24 @@ export const getCarServices = async (
     const carServices = await CarService.find(query)
       .populate('user', 'name email phone address')
       .populate('assignedMechanic', 'name phone')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.json(carServices);
+    // Transform to match frontend interface
+    const transformedServices = carServices.map((service: any) => ({
+      ...service,
+      location: {
+        latitude: 0, // TODO: Get from geocoding
+        longitude: 0, // TODO: Get from geocoding
+        address: service.address,
+      },
+      vehicleType: service.vehicleDetails?.make || '',
+      vehicleModel: service.vehicleDetails?.model,
+      estimatedCost: service.price,
+      preferredTime: service.preferredDate ? new Date(service.preferredDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+    }));
+
+    res.json({ services: transformedServices });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch car services' });
   }
@@ -98,14 +160,29 @@ export const getCarService = async (
 
     const carService = await CarService.findOne(query)
       .populate('user', 'name email phone address')
-      .populate('assignedMechanic', 'name phone');
+      .populate('assignedMechanic', 'name phone')
+      .lean();
 
     if (!carService) {
       res.status(404).json({ message: 'Car service not found' });
       return;
     }
 
-    res.json(carService);
+    // Transform to match frontend interface
+    const transformed = {
+      ...carService,
+      location: {
+        latitude: 0, // TODO: Get from geocoding
+        longitude: 0, // TODO: Get from geocoding
+        address: (carService as any).address,
+      },
+      vehicleType: (carService as any).vehicleDetails?.make || '',
+      vehicleModel: (carService as any).vehicleDetails?.model,
+      estimatedCost: (carService as any).price,
+      preferredTime: (carService as any).preferredDate ? new Date((carService as any).preferredDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+    };
+
+    res.json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch car service' });
   }

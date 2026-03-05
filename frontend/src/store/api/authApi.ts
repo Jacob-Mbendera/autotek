@@ -24,6 +24,17 @@ interface LoginResponse {
   token: string;
 }
 
+interface UpdateProfileRequest {
+  name?: string;
+  phone?: string;
+  address?: string;
+}
+
+interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     register: builder.mutation<RegisterResponse, RegisterRequest>({
@@ -44,7 +55,22 @@ export const authApi = baseApi.injectEndpoints({
       query: () => '/auth/me',
       providesTags: ['User'],
     }),
+    updateProfile: builder.mutation<{ user: User }, UpdateProfileRequest>({
+      query: (body) => ({
+        url: '/auth/profile',
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    changePassword: builder.mutation<{ message: string }, ChangePasswordRequest>({
+      query: (body) => ({
+        url: '/auth/password',
+        method: 'PATCH',
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useRegisterMutation, useLoginMutation, useGetMeQuery } = authApi;
+export const { useRegisterMutation, useLoginMutation, useGetMeQuery, useUpdateProfileMutation, useChangePasswordMutation } = authApi;

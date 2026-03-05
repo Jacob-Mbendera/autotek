@@ -167,19 +167,29 @@ export const getAllCustomOrders = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { status } = req.query;
+    const { status, search } = req.query;
     const { page, limit, skip } = parsePagination({
       page: req.query.page as string | undefined,
       limit: req.query.limit as string | undefined,
     });
 
     // Build query with type safety
-    const query: { status?: CustomOrderStatus } = {};
+    const query: any = {};
     if (status && Object.values(CustomOrderStatus).includes(status as CustomOrderStatus)) {
       query.status = status as CustomOrderStatus;
     }
 
-    console.log(`[Admin] Fetching custom orders - page: ${page}, limit: ${limit}, status: ${status || 'all'}`);
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search as string, 'i');
+      query.$or = [
+        { productName: searchRegex },
+        { description: searchRegex },
+        { category: searchRegex },
+      ];
+    }
+
+    console.log(`[Admin] Fetching custom orders - page: ${page}, limit: ${limit}, status: ${status || 'all'}, search: ${search || 'none'}`);
 
     const [customOrders, total] = await Promise.all([
       CustomOrder.find(query)
@@ -201,6 +211,26 @@ export const getAllCustomOrders = async (
 };
 
 /**
+ * Get a single custom order by ID for admin (no user filter)
+ */
+export const getCustomOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const customOrder = await CustomOrder.findById(req.params.id)
+      .populate('user', 'name email phone address');
+
+    if (!customOrder) {
+      res.status(404).json({ message: 'Custom order not found' });
+      return;
+    }
+
+    res.json({ customOrder });
+  } catch (error: any) {
+    console.error(`[Admin] Error fetching custom order ${req.params.id}:`, error);
+    res.status(500).json({ message: error.message || 'Failed to fetch custom order' });
+  }
+};
+
+/**
  * Get all services (towing and car services) with pagination and optional filters
  * @param type - Optional service type filter ('towing' or 'car-service')
  * @param status - Optional service status filter
@@ -209,26 +239,49 @@ export const getAllCustomOrders = async (
  */
 export const getAllServices = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { type, status } = req.query;
+    const { type, status, search } = req.query;
     const { page, limit, skip } = parsePagination({
       page: req.query.page as string | undefined,
       limit: req.query.limit as string | undefined,
     });
 
     // Build queries with type safety
-    const towingQuery: { status?: ServiceStatus } = {};
-    const carServiceQuery: { status?: ServiceStatus } = {};
+    const towingQuery: any = {};
+    const carServiceQuery: any = {};
 
     if (status && Object.values(ServiceStatus).includes(status as ServiceStatus)) {
       towingQuery.status = status as ServiceStatus;
       carServiceQuery.status = status as ServiceStatus;
     }
 
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search as string, 'i');
+      const searchOr = [
+        { 'vehicleDetails.make': searchRegex },
+        { 'vehicleDetails.model': searchRegex },
+        { 'vehicleDetails.licensePlate': searchRegex },
+        { pickupLocation: searchRegex },
+        { destination: searchRegex },
+      ];
+      towingQuery.$or = searchOr;
+      
+      const carSearchOr = [
+        { serviceType: searchRegex },
+        { address: searchRegex },
+        { notes: searchRegex },
+        { 'vehicleDetails.make': searchRegex },
+        { 'vehicleDetails.model': searchRegex },
+        { 'vehicleDetails.licensePlate': searchRegex },
+      ];
+      carServiceQuery.$or = carSearchOr;
+    }
+
     const serviceType = type as string | undefined;
     const shouldFetchTowing = !serviceType || serviceType === 'towing';
     const shouldFetchCarService = !serviceType || serviceType === 'car-service';
 
-    console.log(`[Admin] Fetching services - type: ${serviceType || 'all'}, status: ${status || 'all'}, page: ${page}, limit: ${limit}`);
+    console.log(`[Admin] Fetching services - type: ${serviceType || 'all'}, status: ${status || 'all'}, search: ${search || 'none'}, page: ${page}, limit: ${limit}`);
 
     // Fetch all services (without pagination) to combine and sort, then paginate
     const [towingResult, carServiceResult] = await Promise.all([

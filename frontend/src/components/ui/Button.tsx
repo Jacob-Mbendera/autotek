@@ -39,7 +39,13 @@ export const Button = ({
 
   return (
     <button
-      className={cn(baseStyles, variants[variant], sizes[size], className)}
+      className={cn(
+        baseStyles,
+        variants[variant],
+        sizes[size],
+        'inline-flex items-center justify-center', // Ensure proper alignment for icons and text
+        className
+      )}
       {...props}
     >
       {children}

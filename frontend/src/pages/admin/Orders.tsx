@@ -5,7 +5,7 @@ import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Package, Calendar } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Package, Calendar, ArrowLeft, ArrowRight } from 'lucide-react';
 import { OrderStatus } from '@shared/types';
 
 export const AdminOrders = () => {
@@ -148,8 +148,9 @@ export const AdminOrders = () => {
               size="small"
               dark
               onClick={handleClearFilters}
+              className="gap-2"
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-4 w-4" />
               Clear Filters
             </Button>
           </div>
@@ -231,8 +232,9 @@ export const AdminOrders = () => {
                           size="small"
                           dark
                           onClick={() => navigate(`/admin/orders/${order._id}`)}
+                          className="gap-1.5"
                         >
-                          <Eye className="h-4 w-4 mr-1" />
+                          <Eye className="h-4 w-4" />
                           View
                         </Button>
                       </td>
@@ -257,7 +259,9 @@ export const AdminOrders = () => {
                   dark
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
+                  className="gap-1.5"
                 >
+                  <ArrowLeft className="h-4 w-4" />
                   Previous
                 </Button>
                 <Button
@@ -266,8 +270,10 @@ export const AdminOrders = () => {
                   dark
                   onClick={() => setPage(page + 1)}
                   disabled={page >= (data.pagination as any).totalPages}
+                  className="gap-1.5"
                 >
                   Next
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>

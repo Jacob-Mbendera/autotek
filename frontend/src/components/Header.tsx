@@ -9,13 +9,29 @@ import { Button } from './ui/Button';
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [prevWishlistCount, setPrevWishlistCount] = useState(0);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const cart = useAppSelector((state) => state.cart);
-  const { data: wishlistData } = useGetWishlistQuery(undefined, { skip: !isAuthenticated });
+  const { data: wishlistData } = useGetWishlistQuery(undefined, {
+    skip: !isAuthenticated,
+    // Optimistic updates handle freshness, so we don't need aggressive refetching
+    refetchOnMountOrArgChange: false,
+    refetchOnFocus: false,
+  });
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  
+
   const wishlistCount = wishlistData?.wishlist?.products?.length || 0;
+
+  // Track when count changes for animation
+  const [isCountAnimating, setIsCountAnimating] = useState(false);
+
+  // Trigger animation when count changes
+  if (wishlistCount !== prevWishlistCount) {
+    setPrevWishlistCount(wishlistCount);
+    setIsCountAnimating(true);
+    setTimeout(() => setIsCountAnimating(false), 300);
+  }
 
   const handleLogout = () => {
     dispatch(logout());
@@ -69,9 +85,17 @@ export const Header = () => {
                 className="relative p-2 text-gray-700 hover:text-red-600 transition-colors"
                 aria-label="Wishlist"
               >
-                <Heart className={`h-6 w-6 ${wishlistCount > 0 ? 'fill-red-500 text-red-500' : ''}`} />
+                <Heart className={`h-6 w-6 transition-all duration-200 ${wishlistCount > 0 ? 'fill-red-500 text-red-500' : ''}`} />
                 {wishlistCount > 0 && (
-                  <span className="absolute top-0 right-0 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                  <span
+                    className={`absolute top-0 right-0 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
+                      isCountAnimating ? 'scale-125 animate-pulse' : 'scale-100'
+                    }`}
+                    style={{
+                      animation: isCountAnimating ? 'bounce 0.3s ease-in-out' : 'none',
+                    }}
+                    key={wishlistCount}
+                  >
                     {wishlistCount}
                   </span>
                 )}
@@ -103,10 +127,12 @@ export const Header = () => {
                     </Button>
                   </Link>
                 )}
-                <div className="flex items-center space-x-2 text-gray-700">
-                  <User className="h-5 w-5" />
-                  <span className="font-medium">{user.name}</span>
-                </div>
+                <Link to="/profile">
+                  <div className="flex items-center space-x-2 text-gray-700 hover:text-teal-600 transition-colors cursor-pointer">
+                    <User className="h-5 w-5" />
+                    <span className="font-medium">{user.name}</span>
+                  </div>
+                </Link>
                 <Button variant="ghost" size="small" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
@@ -171,10 +197,14 @@ export const Header = () => {
                     </Link>
                   )}
                   <div className="px-4 py-2 border-t border-gray-200 mt-2">
-                    <div className="flex items-center space-x-2 text-gray-700 mb-2">
+                    <Link
+                      to="/profile"
+                      className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors mb-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
                       <User className="h-5 w-5" />
                       <span className="font-medium">{user.name}</span>
-                    </div>
+                    </Link>
                     <Button
                       variant="ghost"
                       size="small"

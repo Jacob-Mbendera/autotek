@@ -12,3 +12,5 @@ export type { AdminCardProps } from './AdminCard';
 
 export { H1, H2, H3, H4, Body, BodySmall, Caption } from './Typography';
 export type { TypographyProps } from './Typography';
+export { Toast } from './Toast';
+export { ConfirmationModal } from './ConfirmationModal';

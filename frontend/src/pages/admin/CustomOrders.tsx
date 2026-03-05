@@ -1,22 +1,32 @@
-import { useState } from 'react';
-import { useGetAllCustomOrdersQuery } from '../../store/api/adminApi';
+import { useState, useEffect } from 'react';
+import { useGetAllCustomOrdersQuery, useGetCustomOrderQuery } from '../../store/api/adminApi';
+import { useUpdateCustomOrderMutation } from '../../store/api/customOrderApi';
+import { useAppDispatch } from '../../store/types';
+import { showNotification } from '../../store/slices/uiSlice';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, FileText, Package } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, FileText, Package, X, User, Phone, Mail, Calendar, DollarSign, Tag, Save, ArrowLeft, ArrowRight } from 'lucide-react';
 import { CustomOrderStatus } from '@shared/types';
 
 export const AdminCustomOrders = () => {
+  const dispatch = useAppDispatch();
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<CustomOrderStatus | ''>('');
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [newStatus, setNewStatus] = useState<CustomOrderStatus | ''>('');
 
-  const { data, isLoading } = useGetAllCustomOrdersQuery({
+  const [updateCustomOrder, { isLoading: isUpdating }] = useUpdateCustomOrderMutation();
+
+  const { data, isLoading, refetch } = useGetAllCustomOrdersQuery({
     page,
     limit,
     status: statusFilter || undefined,
+    search: searchTerm || undefined,
   });
 
   const getStatusColor = (status: CustomOrderStatus) => {
@@ -36,21 +46,57 @@ export const AdminCustomOrders = () => {
     }
   };
 
-  const filteredCustomOrders = data?.customOrders
-    ? (data.customOrders as any[]).filter((order) => {
-        if (searchTerm) {
-          const searchLower = searchTerm.toLowerCase();
-          return (
-            order._id?.toLowerCase().includes(searchLower) ||
-            order.user?.name?.toLowerCase().includes(searchLower) ||
-            order.user?.email?.toLowerCase().includes(searchLower) ||
-            (order.productName && order.productName.toLowerCase().includes(searchLower)) ||
-            (order.description && order.description.toLowerCase().includes(searchLower))
-          );
-        }
-        return true;
-      })
-    : [];
+  // Backend handles search, so no need for client-side filtering
+  const filteredCustomOrders = data?.customOrders || [];
+
+  const { data: orderDetailData, isLoading: isLoadingDetail } = useGetCustomOrderQuery(
+    selectedOrder?._id || '',
+    { skip: !selectedOrder }
+  );
+
+  // Set newStatus when order is selected
+  const handleOrderSelect = (order: any) => {
+    setSelectedOrder(order);
+    setNewStatus(order.status);
+  };
+
+  // Update newStatus when orderDetailData loads
+  useEffect(() => {
+    if (orderDetailData?.customOrder?.status) {
+      setNewStatus(orderDetailData.customOrder.status);
+    } else if (selectedOrder?.status && !newStatus) {
+      setNewStatus(selectedOrder.status);
+    }
+  }, [orderDetailData, selectedOrder]);
+
+  // Get current status for display
+  const currentStatus = orderDetailData?.customOrder?.status || selectedOrder?.status || '';
+
+  const handleStatusUpdate = async () => {
+    if (!selectedOrder || !newStatus || newStatus === (orderDetailData?.customOrder?.status || selectedOrder.status)) {
+      return;
+    }
+
+    try {
+      await updateCustomOrder({
+        id: selectedOrder._id,
+        status: newStatus as CustomOrderStatus,
+      }).unwrap();
+
+      dispatch(showNotification({ message: 'Custom order status updated successfully!', type: 'success' }));
+      await refetch();
+      // Update the selected order with new status
+      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    } catch (error: any) {
+      dispatch(showNotification({ 
+        message: error.data?.message || 'Failed to update custom order status', 
+        type: 'error' 
+      }));
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error updating custom order status:', error);
+      }
+    }
+  };
 
   return (
     <div>
@@ -69,7 +115,10 @@ export const AdminCustomOrders = () => {
               <Input
                 dark
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page on search
+                }}
                 placeholder="Search custom orders..."
                 className="pl-10"
               />
@@ -175,8 +224,14 @@ export const AdminCustomOrders = () => {
                         </Body>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="small" dark>
-                          <Eye className="h-4 w-4 mr-1" />
+                        <Button 
+                          variant="ghost" 
+                          size="small" 
+                          dark
+                          onClick={() => handleOrderSelect(order)}
+                          className="gap-1.5"
+                        >
+                          <Eye className="h-4 w-4" />
                           View
                         </Button>
                       </td>
@@ -201,7 +256,9 @@ export const AdminCustomOrders = () => {
                   dark
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
+                  className="gap-1.5"
                 >
+                  <ArrowLeft className="h-4 w-4" />
                   Previous
                 </Button>
                 <Button
@@ -210,13 +267,203 @@ export const AdminCustomOrders = () => {
                   dark
                   onClick={() => setPage(page + 1)}
                   disabled={page >= (data.pagination as any).totalPages}
+                  className="gap-1.5"
                 >
                   Next
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           )}
         </AdminCard>
+      )}
+
+      {/* Custom Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <Card variant="lg" className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-800">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <FileText className="h-6 w-6 text-teal-500" />
+                <H1 className="text-2xl font-bold text-gray-50">Custom Order Details</H1>
+              </div>
+              <Button
+                variant="ghost"
+                size="small"
+                dark
+                onClick={() => setSelectedOrder(null)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {isLoadingDetail ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 text-teal-500 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Status Update */}
+                <div>
+                  <Body className="text-sm text-gray-400 mb-2">Status</Body>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value as CustomOrderStatus)}
+                      className="flex-1 px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                    >
+                      <option value={CustomOrderStatus.PENDING}>Pending</option>
+                      <option value={CustomOrderStatus.ORDERED}>Ordered</option>
+                      <option value={CustomOrderStatus.RECEIVED}>Received</option>
+                      <option value={CustomOrderStatus.COMPLETED}>Completed</option>
+                      <option value={CustomOrderStatus.CANCELLED}>Cancelled</option>
+                    </select>
+                    <Button
+                      variant="primary"
+                      size="small"
+                      dark
+                      onClick={handleStatusUpdate}
+                      disabled={newStatus === (orderDetailData?.customOrder?.status || selectedOrder.status) || isUpdating}
+                    >
+                      {isUpdating ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Update Status
+                    </Button>
+                  </div>
+                  {newStatus !== (orderDetailData?.customOrder?.status || selectedOrder.status) && (
+                    <Body className="text-xs text-amber-400 mt-2">
+                      Status will change from {orderDetailData?.customOrder?.status || selectedOrder.status} to {newStatus}
+                    </Body>
+                  )}
+                </div>
+
+                {/* Customer Information */}
+                <div>
+                  <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Customer Information
+                  </Body>
+                  <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Body className="text-gray-50 font-medium">
+                        {(orderDetailData?.customOrder?.user || selectedOrder.user)?.name || 'N/A'}
+                      </Body>
+                    </div>
+                    {(orderDetailData?.customOrder?.user || selectedOrder.user)?.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-400" />
+                        <Body className="text-gray-300 text-sm">
+                          {(orderDetailData?.customOrder?.user || selectedOrder.user)?.email}
+                        </Body>
+                      </div>
+                    )}
+                    {(orderDetailData?.customOrder?.user || selectedOrder.user)?.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-400" />
+                        <Body className="text-gray-300 text-sm">
+                          {(orderDetailData?.customOrder?.user || selectedOrder.user)?.phone}
+                        </Body>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Order Details */}
+                <div>
+                  <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Order Details
+                  </Body>
+                  <div className="bg-slate-700/50 rounded-lg p-4 space-y-3">
+                    <div>
+                      <Body className="text-xs text-gray-400 mb-1">Product Name</Body>
+                      <Body className="text-gray-50 font-medium">
+                        {(orderDetailData?.customOrder || selectedOrder)?.productName || 'N/A'}
+                      </Body>
+                    </div>
+                    <div>
+                      <Body className="text-xs text-gray-400 mb-1">Description</Body>
+                      <Body className="text-gray-50">
+                        {(orderDetailData?.customOrder || selectedOrder)?.description || 'N/A'}
+                      </Body>
+                    </div>
+                    {(orderDetailData?.customOrder || selectedOrder)?.category && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Category</Body>
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-gray-400" />
+                          <Body className="text-gray-50">
+                            {(orderDetailData?.customOrder || selectedOrder)?.category}
+                          </Body>
+                        </div>
+                      </div>
+                    )}
+                    {(orderDetailData?.customOrder || selectedOrder)?.estimatedPrice && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Estimated Price</Body>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-gray-400" />
+                          <Body className="text-gray-50 font-medium">
+                            MWK {((orderDetailData?.customOrder || selectedOrder)?.estimatedPrice || 0).toLocaleString()}
+                          </Body>
+                        </div>
+                      </div>
+                    )}
+                    {(orderDetailData?.customOrder || selectedOrder)?.supplier && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Supplier</Body>
+                        <Body className="text-gray-50">
+                          {(orderDetailData?.customOrder || selectedOrder)?.supplier}
+                        </Body>
+                      </div>
+                    )}
+                    {(orderDetailData?.customOrder || selectedOrder)?.notes && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Notes</Body>
+                        <Body className="text-gray-50">
+                          {(orderDetailData?.customOrder || selectedOrder)?.notes}
+                        </Body>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dates */}
+                <div>
+                  <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Dates
+                  </Body>
+                  <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
+                    <div>
+                      <Body className="text-xs text-gray-400 mb-1">Created</Body>
+                      <Body className="text-gray-50">
+                        {new Date((orderDetailData?.customOrder || selectedOrder)?.createdAt).toLocaleString()}
+                      </Body>
+                    </div>
+                    {(orderDetailData?.customOrder || selectedOrder)?.updatedAt && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Last Updated</Body>
+                        <Body className="text-gray-50">
+                          {new Date((orderDetailData?.customOrder || selectedOrder)?.updatedAt).toLocaleString()}
+                        </Body>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <Button variant="secondary" dark onClick={() => setSelectedOrder(null)}>
+                Close
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

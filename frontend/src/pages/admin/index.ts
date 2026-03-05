@@ -4,3 +4,5 @@ export { AdminOrders } from './Orders';
 export { AdminServices } from './Services';
 export { AdminCustomOrders } from './CustomOrders';
 export { AdminUsers } from './Users';
+export { AdminSettings } from './Settings';
+export { AdminSupport } from './Support';

@@ -78,7 +78,8 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
         page: pageNum,
         limit: limitNum,
         total,
-        pages: Math.ceil(total / limitNum),
+        totalPages: Math.ceil(total / limitNum),
+        pages: Math.ceil(total / limitNum), // Keep for backward compatibility
       },
     });
   } catch (error: any) {

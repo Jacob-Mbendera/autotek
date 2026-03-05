@@ -68,6 +68,17 @@ export const customOrderApi = baseApi.injectEndpoints({
       query: (id) => `/custom-orders/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'CustomOrder', id }],
     }),
+    updateCustomOrder: builder.mutation<
+      CustomOrder,
+      { id: string; status?: CustomOrderStatus; estimatedPrice?: number; supplier?: string; notes?: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/custom-orders/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['CustomOrder', 'Admin'],
+    }),
   }),
 });
 
@@ -75,4 +86,5 @@ export const {
   useCreateCustomOrderMutation,
   useGetCustomOrdersQuery,
   useGetCustomOrderQuery,
+  useUpdateCustomOrderMutation,
 } = customOrderApi;

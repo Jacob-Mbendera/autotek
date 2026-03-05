@@ -4,6 +4,7 @@ import { ShoppingCart, Eye, Star, Sparkles, Package, Heart, GitCompare, Tag, Awa
 import { useAppDispatch, useAppSelector } from '../store/types';
 import { addItem } from '../store/slices/cartSlice';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
+import { showNotification } from '../store/slices/uiSlice';
 import { addToComparison } from '../store/slices/comparisonSlice';
 import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
@@ -17,18 +18,28 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const dispatch = useAppDispatch();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  
-  const { data: authData } = useAppSelector((state) => state.auth);
-  const isAuthenticated = !!authData?.user;
-  
+  const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
+  const [optimisticWishlistState, setOptimisticWishlistState] = useState<boolean | null>(null);
+
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+
   const { data: wishlistData } = useGetWishlistQuery(undefined, { skip: !isAuthenticated });
   const [addToWishlist] = useAddToWishlistMutation();
   const [removeFromWishlist] = useRemoveFromWishlistMutation();
   const { products: comparisonProducts, maxProducts } = useAppSelector((state) => state.comparison);
-  
-  const isInWishlist = wishlistData?.wishlist?.products?.some((p) => p._id === product._id) || false;
+
+  const isInWishlistFromAPI = wishlistData?.wishlist?.products?.some((p) => p._id === product._id) || false;
+  // Use optimistic state if available, otherwise use API state
+  const isInWishlist = optimisticWishlistState !== null ? optimisticWishlistState : isInWishlistFromAPI;
   const isInComparison = comparisonProducts.some((p) => p._id === product._id);
   const canAddToComparison = !isInComparison && comparisonProducts.length < maxProducts;
+
+  // Reset optimistic state when API data changes
+  useEffect(() => {
+    if (optimisticWishlistState !== null && optimisticWishlistState === isInWishlistFromAPI) {
+      setOptimisticWishlistState(null);
+    }
+  }, [isInWishlistFromAPI, optimisticWishlistState]);
 
   // Check if product has valid images - more lenient check
   const firstImage = product.images?.[0];
@@ -77,20 +88,46 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const handleWishlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!isAuthenticated) {
-      // Could redirect to login or show a toast
+      dispatch(showNotification({
+        message: 'Please log in to add items to your wishlist',
+        type: 'info',
+      }));
       return;
     }
-    
+
+    // Prevent multiple rapid clicks
+    if (isAddingToWishlist) return;
+
+    // Optimistically update the UI immediately
+    const newWishlistState = !isInWishlist;
+    setOptimisticWishlistState(newWishlistState);
+    setIsAddingToWishlist(true);
+
     try {
       if (isInWishlist) {
         await removeFromWishlist(product._id).unwrap();
+        dispatch(showNotification({
+          message: 'Product removed from wishlist',
+          type: 'success',
+        }));
       } else {
         await addToWishlist({ productId: product._id }).unwrap();
+        dispatch(showNotification({
+          message: 'Product added to wishlist!',
+          type: 'success',
+        }));
       }
-    } catch (error) {
-      console.error('Wishlist toggle error:', error);
+    } catch (error: any) {
+      // Revert optimistic update on error
+      setOptimisticWishlistState(!newWishlistState);
+      dispatch(showNotification({
+        message: error.data?.message || 'Failed to update wishlist',
+        type: 'error',
+      }));
+    } finally {
+      setIsAddingToWishlist(false);
     }
   };
 
@@ -144,12 +181,14 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const categoryDisplay = product.category.toUpperCase();
 
   return (
-    <Link
-      to={`/products/${product._id}`}
-      className="group bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 relative"
-    >
+    <div className="group bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 relative">
       {/* Hover glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-teal-50/0 to-teal-50/0 group-hover:from-teal-50/30 group-hover:to-transparent transition-all duration-500 pointer-events-none rounded-xl"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-teal-50/0 to-teal-50/0 group-hover:from-teal-50/30 group-hover:to-transparent transition-all duration-500 pointer-events-none rounded-xl z-0"></div>
+      
+      <Link
+        to={`/products/${product._id}`}
+        className="block relative z-0"
+      >
       
       {/* Image container with enhanced effects */}
       <div className="relative aspect-w-1 aspect-h-1 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
@@ -182,31 +221,22 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
         <div className="absolute top-3 left-3 z-10">
           {getStatusBadge()}
         </div>
-        
+
         {/* Quick actions on hover */}
-        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 flex flex-col gap-2">
+        <div className="absolute top-14 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30 flex flex-col gap-2">
           {/* Compare button */}
           {canAddToComparison && (
             <button
-              onClick={handleAddToComparison}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAddToComparison(e);
+              }}
               className="bg-white/95 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-colors text-gray-600 hover:text-teal-600"
               aria-label="Add to comparison"
               title="Add to comparison"
             >
               <GitCompare className="h-4 w-4" />
-            </button>
-          )}
-          
-          {/* Wishlist button */}
-          {isAuthenticated && (
-            <button
-              onClick={handleWishlistToggle}
-              className={`bg-white/95 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-colors ${
-                isInWishlist ? 'text-red-500' : 'text-gray-600 hover:text-red-500'
-              }`}
-              aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-            >
-              <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-current' : ''}`} />
             </button>
           )}
           
@@ -220,6 +250,7 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
               }}
               className="bg-white/95 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-colors"
               aria-label="Quick view"
+              title="Quick view"
             >
               <Eye className="h-4 w-4 text-teal-600" />
             </button>
@@ -300,8 +331,27 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
         </Button>
       </div>
       
+      </Link>
+      
+      {/* Wishlist button - Always visible and clickable */}
+      {isAuthenticated && (
+        <button
+          onClick={handleWishlistToggle}
+          disabled={isAddingToWishlist}
+          className={`absolute top-3 right-3 z-50 bg-white rounded-full p-2.5 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 border-2 ${
+            isInWishlist
+              ? 'border-red-300 bg-red-50 text-red-600'
+              : 'border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600'
+          } ${isAddingToWishlist ? 'opacity-70 cursor-wait' : ''}`}
+          aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+        >
+          <Heart className={`h-5 w-5 ${isInWishlist ? 'fill-current' : ''} ${isAddingToWishlist ? 'animate-pulse' : ''}`} />
+        </button>
+      )}
+      
       {/* Decorative corner accent */}
-      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-teal-100/50 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-    </Link>
+      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-teal-100/50 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0"></div>
+    </div>
   );
 };

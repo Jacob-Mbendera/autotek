@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useGetAllUsersQuery, useGetUserQuery, useUpdateUserRoleMutation, type User } from '../../store/api/adminApi';
+import { useAppDispatch } from '../../store/types';
+import { showNotification } from '../../store/slices/uiSlice';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -8,6 +10,7 @@ import { Search, Filter, Eye, Loader2, Users, Mail, Phone, MapPin, Calendar, Shi
 import { UserRole } from '@shared/types';
 
 export const AdminUsers = () => {
+  const dispatch = useAppDispatch();
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,7 +26,7 @@ export const AdminUsers = () => {
     search: searchTerm || undefined,
   });
 
-  const { data: userData, isLoading: isLoadingUser } = useGetUserQuery(
+  const { data: userData, isLoading: isLoadingUser, refetch: refetchUser } = useGetUserQuery(
     selectedUserId || '',
     { skip: !selectedUserId }
   );
@@ -69,14 +72,20 @@ export const AdminUsers = () => {
     if (!selectedUserId) return;
     try {
       await updateUserRole({ userId: selectedUserId, role: newRole }).unwrap();
+      dispatch(showNotification({ message: 'User role updated successfully!', type: 'success' }));
       setShowRoleModal(false);
-      refetch();
-      if (userData) {
-        // Refetch user details
-        setSelectedUserId(selectedUserId);
+      await refetch(); // Refetch users list
+      if (selectedUserId) {
+        await refetchUser(); // Refetch user details if viewing user details
       }
-    } catch (error) {
-      console.error('Failed to update user role:', error);
+    } catch (error: any) {
+      dispatch(showNotification({ 
+        message: error.data?.message || 'Failed to update user role', 
+        type: 'error' 
+      }));
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to update user role:', error);
+      }
     }
   };
 
@@ -91,9 +100,9 @@ export const AdminUsers = () => {
           <Button
             variant="ghost"
             onClick={handleCloseUserDetails}
-            className="text-gray-400 hover:text-gray-50"
+            className="text-gray-400 hover:text-gray-50 gap-2"
           >
-            <ChevronLeft className="h-5 w-5 mr-2" />
+            <ChevronLeft className="h-5 w-5" />
             Back to Users
           </Button>
         </div>
@@ -157,6 +166,59 @@ export const AdminUsers = () => {
             </Button>
           </div>
         </AdminCard>
+
+        {/* Role Update Modal - Render even when viewing user details */}
+        {showRoleModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <AdminCard variant="default" className="max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <H2 className="text-xl font-semibold text-gray-50">Change User Role</H2>
+                <button
+                  onClick={() => setShowRoleModal(false)}
+                  className="text-gray-400 hover:text-gray-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Select Role</label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as UserRole)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-gray-700 rounded-lg text-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value={UserRole.CUSTOMER}>Customer</option>
+                  <option value={UserRole.MECHANIC}>Mechanic</option>
+                  <option value={UserRole.ADMIN}>Admin</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  onClick={handleUpdateRole}
+                  disabled={isUpdatingRole}
+                  className="flex-1 gap-2"
+                >
+                  {isUpdatingRole ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Role'
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowRoleModal(false)}
+                  disabled={isUpdatingRole}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </AdminCard>
+          </div>
+        )}
       </div>
     );
   }
@@ -211,9 +273,9 @@ export const AdminUsers = () => {
                 setRoleFilter('');
                 setPage(1);
               }}
-              className="w-full"
+              className="w-full gap-2"
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-4 w-4" />
               Clear Filters
             </Button>
           </div>
@@ -276,8 +338,19 @@ export const AdminUsers = () => {
                           <Button
                             variant="ghost"
                             size="small"
+                            onClick={() => handleOpenRoleModal(user)}
+                            className="text-blue-400 hover:text-blue-300 gap-1.5"
+                            title="Change Role"
+                          >
+                            <Shield className="h-4 w-4" />
+                            Role
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="small"
                             onClick={() => handleViewUser(user._id)}
                             className="text-teal-400 hover:text-teal-300"
+                            title="View Details"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -353,11 +426,11 @@ export const AdminUsers = () => {
                 variant="primary"
                 onClick={handleUpdateRole}
                 disabled={isUpdatingRole}
-                className="flex-1"
+                className="flex-1 gap-2"
               >
                 {isUpdatingRole ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Updating...
                   </>
                 ) : (

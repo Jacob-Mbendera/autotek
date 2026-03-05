@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { useGetStatsQuery, useGetAllOrdersQuery, useGetAllCustomOrdersQuery, useGetAllServicesQuery } from '../../store/api/adminApi';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { H1, H2, Body } from '../../components/ui/Typography';
@@ -44,6 +45,34 @@ export const AdminDashboard = () => {
   const { data: ordersData } = useGetAllOrdersQuery({ limit: 5, status: 'pending' });
   const { data: customOrdersData } = useGetAllCustomOrdersQuery({ limit: 5, status: 'pending' });
   const { data: servicesData } = useGetAllServicesQuery({ limit: 5, status: 'pending' });
+  
+  // State to track if containers are ready for charts
+  const [chartsReady, setChartsReady] = useState(false);
+  const barChartRef = useRef<HTMLDivElement>(null);
+  const pieChartRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Wait for containers to be mounted and have dimensions
+    const checkContainers = () => {
+      if (barChartRef.current && pieChartRef.current) {
+        const barRect = barChartRef.current.getBoundingClientRect();
+        const pieRect = pieChartRef.current.getBoundingClientRect();
+        if (barRect.width > 0 && barRect.height > 0 && pieRect.width > 0 && pieRect.height > 0) {
+          setChartsReady(true);
+          return;
+        }
+      }
+      // Retry if not ready
+      requestAnimationFrame(checkContainers);
+    };
+
+    // Start checking after a short delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      checkContainers();
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [statsData]);
 
   if (statsLoading) {
     return (
@@ -251,9 +280,10 @@ export const AdminDashboard = () => {
               </H2>
             </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueData}>
+          <div ref={barChartRef} className="h-64 min-h-[256px] w-full" style={{ minWidth: 0, position: 'relative' }}>
+            {chartsReady ? (
+              <ResponsiveContainer width="100%" height={256} minHeight={256}>
+                <BarChart data={revenueData} width={undefined} height={undefined}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis 
                   dataKey="month" 
@@ -273,7 +303,12 @@ export const AdminDashboard = () => {
                   animationDuration={800}
                 />
               </BarChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-6 w-6 text-teal-500 animate-spin" />
+              </div>
+            )}
           </div>
         </AdminCard>
 
@@ -291,9 +326,10 @@ export const AdminDashboard = () => {
               </H2>
             </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <div ref={pieChartRef} className="h-64 min-h-[256px] w-full" style={{ minWidth: 0, position: 'relative' }}>
+            {chartsReady ? (
+              <ResponsiveContainer width="100%" height={256} minHeight={256}>
+                <PieChart width={undefined} height={undefined}>
                 <Pie
                   data={orderStatusData}
                   cx="50%"
@@ -316,7 +352,12 @@ export const AdminDashboard = () => {
                   formatter={(value) => <span style={{ color: '#9CA3AF', fontSize: '12px' }}>{value}</span>}
                 />
               </PieChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-6 w-6 text-teal-500 animate-spin" />
+              </div>
+            )}
           </div>
         </AdminCard>
       </div>

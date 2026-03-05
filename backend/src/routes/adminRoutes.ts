@@ -4,6 +4,7 @@ import {
   getAllOrders,
   getOrder,
   getAllCustomOrders,
+  getCustomOrder,
   getAllServices,
   getAllUsers,
   getUser,
@@ -27,6 +28,7 @@ router.get('/stats', getStats);
 router.get('/orders', validate(validateGetAllOrders), getAllOrders);
 router.get('/orders/:id', getOrder);
 router.get('/custom-orders', validate(validateGetAllCustomOrders), getAllCustomOrders);
+router.get('/custom-orders/:id', getCustomOrder);
 router.get('/services', validate(validateGetAllServices), getAllServices);
 router.get('/users', getAllUsers);
 router.get('/users/:id', getUser);
