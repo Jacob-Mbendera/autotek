@@ -8,6 +8,8 @@ export interface IUser extends Document {
   phone: string;
   role: UserRole;
   address?: string;
+  resetToken?: string;
+  resetTokenExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +44,12 @@ const UserSchema = new Schema<IUser>(
     },
     address: {
       type: String,
+    },
+    resetToken: {
+      type: String,
+    },
+    resetTokenExpiry: {
+      type: Date,
     },
   },
   {

@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import User from '../models/User';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { UserRole } from '../types/shared';
+import { sendPasswordResetEmail } from '../utils/email';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -225,5 +227,122 @@ export const changePassword = async (req: any, res: Response): Promise<void> => 
     res.json({ message: 'Password updated successfully' });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to change password' });
+  }
+};
+
+/**
+ * Request password reset - sends reset token to user's email
+ */
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ message: 'Email is required' });
+      return;
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    
+    // Always return success message to prevent email enumeration
+    // But only send email if user exists
+    if (user) {
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+
+      // Save reset token to user
+      user.resetToken = resetToken;
+      user.resetTokenExpiry = resetTokenExpiry;
+      await user.save();
+
+      // Send password reset email
+      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+      await sendPasswordResetEmail(user.email, user.name, resetUrl);
+    }
+
+    // Always return success to prevent email enumeration
+    res.json({
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    });
+  } catch (error: any) {
+    console.error('Error in forgotPassword:', error);
+    // Still return success to prevent information leakage
+    res.json({
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    });
+  }
+};
+
+/**
+ * Verify reset token
+ */
+export const verifyResetToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      res.status(400).json({ message: 'Reset token is required' });
+      return;
+    }
+
+    // Find user with matching token and valid expiry
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpiry: { $gt: new Date() }, // Token not expired
+    });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired reset token' });
+      return;
+    }
+
+    res.json({ message: 'Reset token is valid' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to verify reset token' });
+  }
+};
+
+/**
+ * Reset password using reset token
+ */
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      res.status(400).json({ message: 'Reset token and new password are required' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({ message: 'New password must be at least 6 characters long' });
+      return;
+    }
+
+    // Find user with matching token and valid expiry
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpiry: { $gt: new Date() }, // Token not expired
+    });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired reset token' });
+      return;
+    }
+
+    // Hash and update password
+    user.password = await hashPassword(newPassword);
+    
+    // Clear reset token
+    user.resetToken = undefined;
+    user.resetTokenExpiry = undefined;
+    
+    await user.save();
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to reset password' });
   }
 };
