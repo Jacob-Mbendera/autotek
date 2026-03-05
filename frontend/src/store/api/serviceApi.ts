@@ -159,6 +159,28 @@ export const serviceApi = baseApi.injectEndpoints({
       query: (id) => `/car-services/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'CarService', id }],
     }),
+    updateTowingService: builder.mutation<
+      TowingService,
+      { id: string; status?: ServiceStatus; assignedDriver?: string; price?: number }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/towing/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['TowingService', 'Admin'],
+    }),
+    updateCarService: builder.mutation<
+      CarService,
+      { id: string; status?: ServiceStatus; assignedMechanic?: string; price?: number; notes?: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/car-services/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['CarService', 'Admin'],
+    }),
   }),
 });
 
@@ -169,4 +191,6 @@ export const {
   useCreateCarServiceMutation,
   useGetCarServicesQuery,
   useGetCarServiceQuery,
+  useUpdateTowingServiceMutation,
+  useUpdateCarServiceMutation,
 } = serviceApi;

@@ -1,25 +1,71 @@
 import { useState } from 'react';
 import { useGetAllServicesQuery } from '../../store/api/adminApi';
+import { useUpdateTowingServiceMutation, useUpdateCarServiceMutation } from '../../store/api/serviceApi';
+import { useAppDispatch } from '../../store/types';
+import { showNotification } from '../../store/slices/uiSlice';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Wrench, Truck, Package } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Phone, Mail, DollarSign, Save } from 'lucide-react';
 import { ServiceStatus } from '@shared/types';
 
 export const AdminServices = () => {
+  const dispatch = useAppDispatch();
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState<'towing' | 'car-service' | ''>('');
+  const [selectedService, setSelectedService] = useState<any | null>(null);
+  const [newStatus, setNewStatus] = useState<ServiceStatus | ''>('');
 
-  const { data, isLoading } = useGetAllServicesQuery({
+  const [updateTowingService, { isLoading: isUpdatingTowing }] = useUpdateTowingServiceMutation();
+  const [updateCarService, { isLoading: isUpdatingCar }] = useUpdateCarServiceMutation();
+
+  const { data, isLoading, refetch } = useGetAllServicesQuery({
     page,
     limit,
     status: statusFilter || undefined,
     type: typeFilter || undefined,
   });
+
+  // Set newStatus when service is selected
+  const handleServiceSelect = (service: any) => {
+    setSelectedService(service);
+    setNewStatus(service.status);
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!selectedService || !newStatus || newStatus === selectedService.status) {
+      return;
+    }
+
+    try {
+      if (selectedService.type === 'towing') {
+        await updateTowingService({
+          id: selectedService._id,
+          status: newStatus as ServiceStatus,
+        }).unwrap();
+      } else {
+        await updateCarService({
+          id: selectedService._id,
+          status: newStatus as ServiceStatus,
+        }).unwrap();
+      }
+
+      dispatch(showNotification({ message: 'Service status updated successfully!', type: 'success' }));
+      await refetch();
+      // Update the selected service with new status
+      setSelectedService({ ...selectedService, status: newStatus });
+    } catch (error: any) {
+      dispatch(showNotification({ 
+        message: error.data?.message || 'Failed to update service status', 
+        type: 'error' 
+      }));
+    }
+  };
 
   const getStatusColor = (status: ServiceStatus) => {
     switch (status) {
@@ -210,7 +256,12 @@ export const AdminServices = () => {
                         </Body>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="small" dark>
+                        <Button 
+                          variant="ghost" 
+                          size="small" 
+                          dark
+                          onClick={() => handleServiceSelect(service)}
+                        >
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
@@ -252,6 +303,258 @@ export const AdminServices = () => {
             </div>
           )}
         </AdminCard>
+      )}
+
+      {/* Service Detail Modal */}
+      {selectedService && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <Card variant="lg" className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-800">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                {selectedService.type === 'towing' ? (
+                  <Truck className="h-6 w-6 text-teal-500" />
+                ) : (
+                  <Wrench className="h-6 w-6 text-teal-500" />
+                )}
+                <H1 className="text-2xl font-bold text-gray-50">
+                  {selectedService.type === 'towing' ? 'Towing Service' : 'Car Service'} Details
+                </H1>
+              </div>
+              <Button
+                variant="ghost"
+                size="small"
+                dark
+                onClick={() => setSelectedService(null)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Status Update */}
+              <div>
+                <Body className="text-sm text-gray-400 mb-2">Status</Body>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as ServiceStatus)}
+                    className="flex-1 px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                  >
+                    <option value={ServiceStatus.PENDING}>Pending</option>
+                    <option value={ServiceStatus.ASSIGNED}>Assigned</option>
+                    <option value={ServiceStatus.IN_PROGRESS}>In Progress</option>
+                    <option value={ServiceStatus.COMPLETED}>Completed</option>
+                    <option value={ServiceStatus.CANCELLED}>Cancelled</option>
+                  </select>
+                  <Button
+                    variant="primary"
+                    size="small"
+                    dark
+                    onClick={handleStatusUpdate}
+                    disabled={newStatus === selectedService.status || isUpdatingTowing || isUpdatingCar}
+                  >
+                    {isUpdatingTowing || isUpdatingCar ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Update Status
+                  </Button>
+                </div>
+                {newStatus !== selectedService.status && (
+                  <Body className="text-xs text-amber-400 mt-2">
+                    Status will change from {selectedService.status} to {newStatus}
+                  </Body>
+                )}
+              </div>
+
+              {/* Customer Information */}
+              <div>
+                <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Customer Information
+                </Body>
+                <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Body className="text-gray-50 font-medium">
+                      {selectedService.user?.name || 'N/A'}
+                    </Body>
+                  </div>
+                  {selectedService.user?.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <Body className="text-gray-300 text-sm">{selectedService.user.email}</Body>
+                    </div>
+                  )}
+                  {selectedService.user?.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <Body className="text-gray-300 text-sm">{selectedService.user.phone}</Body>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Service Details */}
+              <div>
+                <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Service Details
+                </Body>
+                <div className="bg-slate-700/50 rounded-lg p-4 space-y-3">
+                  {selectedService.type === 'towing' ? (
+                    <>
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Pickup Location</Body>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <Body className="text-gray-50">{selectedService.pickupLocation || 'N/A'}</Body>
+                        </div>
+                      </div>
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Destination</Body>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <Body className="text-gray-50">{selectedService.destination || 'N/A'}</Body>
+                        </div>
+                      </div>
+                      {selectedService.vehicleDetails && (
+                        <div>
+                          <Body className="text-xs text-gray-400 mb-1">Vehicle Details</Body>
+                          <Body className="text-gray-50">
+                            {selectedService.vehicleDetails.make || 'N/A'} {selectedService.vehicleDetails.model || ''} 
+                            {selectedService.vehicleDetails.year && ` (${selectedService.vehicleDetails.year})`}
+                          </Body>
+                          {selectedService.vehicleDetails.licensePlate && (
+                            <Body className="text-gray-300 text-sm mt-1">
+                              License: {selectedService.vehicleDetails.licensePlate}
+                            </Body>
+                          )}
+                          {selectedService.vehicleDetails.color && (
+                            <Body className="text-gray-300 text-sm">
+                              Color: {selectedService.vehicleDetails.color}
+                            </Body>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Service Type</Body>
+                        <Body className="text-gray-50 capitalize">{selectedService.serviceType || 'N/A'}</Body>
+                      </div>
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Address</Body>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <Body className="text-gray-50">{selectedService.address || 'N/A'}</Body>
+                        </div>
+                      </div>
+                      {selectedService.preferredDate && (
+                        <div>
+                          <Body className="text-xs text-gray-400 mb-1">Preferred Date</Body>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            <Body className="text-gray-50">
+                              {new Date(selectedService.preferredDate).toLocaleDateString()}
+                            </Body>
+                          </div>
+                        </div>
+                      )}
+                      {selectedService.vehicleDetails && (
+                        <div>
+                          <Body className="text-xs text-gray-400 mb-1">Vehicle Details</Body>
+                          <Body className="text-gray-50">
+                            {selectedService.vehicleDetails.make || 'N/A'} {selectedService.vehicleDetails.model || ''}
+                            {selectedService.vehicleDetails.year && ` (${selectedService.vehicleDetails.year})`}
+                          </Body>
+                          {selectedService.vehicleDetails.licensePlate && (
+                            <Body className="text-gray-300 text-sm mt-1">
+                              License: {selectedService.vehicleDetails.licensePlate}
+                            </Body>
+                          )}
+                        </div>
+                      )}
+                      {selectedService.notes && (
+                        <div>
+                          <Body className="text-xs text-gray-400 mb-1">Notes</Body>
+                          <Body className="text-gray-50">{selectedService.notes}</Body>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              {(selectedService.price || selectedService.paymentStatus) && (
+                <div>
+                  <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Payment Information
+                  </Body>
+                  <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
+                    {selectedService.price && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Price</Body>
+                        <Body className="text-gray-50 font-medium">
+                          MWK {selectedService.price.toLocaleString()}
+                        </Body>
+                      </div>
+                    )}
+                    {selectedService.paymentStatus && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Payment Status</Body>
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            selectedService.paymentStatus === 'completed'
+                              ? 'bg-green-500/20 text-green-500'
+                              : selectedService.paymentStatus === 'failed'
+                              ? 'bg-red-500/20 text-red-500'
+                              : 'bg-amber-500/20 text-amber-500'
+                          }`}
+                        >
+                          {selectedService.paymentStatus}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Dates */}
+              <div>
+                <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Dates
+                </Body>
+                <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
+                  <div>
+                    <Body className="text-xs text-gray-400 mb-1">Created</Body>
+                    <Body className="text-gray-50">
+                      {new Date(selectedService.createdAt).toLocaleString()}
+                    </Body>
+                  </div>
+                  {selectedService.updatedAt && (
+                    <div>
+                      <Body className="text-xs text-gray-400 mb-1">Last Updated</Body>
+                      <Body className="text-gray-50">
+                        {new Date(selectedService.updatedAt).toLocaleString()}
+                      </Body>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <Button variant="secondary" dark onClick={() => setSelectedService(null)}>
+                Close
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

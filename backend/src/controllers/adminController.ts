@@ -230,16 +230,15 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
 
     console.log(`[Admin] Fetching services - type: ${serviceType || 'all'}, status: ${status || 'all'}, page: ${page}, limit: ${limit}`);
 
-    // Fetch services in parallel based on type filter
+    // Fetch all services (without pagination) to combine and sort, then paginate
     const [towingResult, carServiceResult] = await Promise.all([
       shouldFetchTowing
         ? Promise.all([
             TowingService.find(towingQuery)
               .populate('user', 'name email phone')
               .populate('assignedDriver', 'name phone')
-              .skip(skip)
-              .limit(limit)
-              .sort({ createdAt: -1 }),
+              .sort({ createdAt: -1 })
+              .lean(),
             TowingService.countDocuments(towingQuery),
           ])
         : Promise.resolve([[], 0]),
@@ -248,9 +247,8 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
             CarService.find(carServiceQuery)
               .populate('user', 'name email phone')
               .populate('assignedMechanic', 'name phone')
-              .skip(skip)
-              .limit(limit)
-              .sort({ createdAt: -1 }),
+              .sort({ createdAt: -1 })
+              .lean(),
             CarService.countDocuments(carServiceQuery),
           ])
         : Promise.resolve([[], 0]),
@@ -259,16 +257,33 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
     const [towingServices, towingTotal] = towingResult as [any[], number];
     const [carServices, carServiceTotal] = carServiceResult as [any[], number];
 
+    // Combine services into a single array with type field
+    const allServices = [
+      ...towingServices.map((service) => ({
+        ...service,
+        type: 'towing',
+        location: service.pickupLocation,
+        vehicleMake: service.vehicleDetails?.make,
+        vehicleModel: service.vehicleDetails?.model,
+      })),
+      ...carServices.map((service) => ({
+        ...service,
+        type: 'car-service',
+        location: service.address,
+      })),
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Apply pagination to combined results
+    const total = towingTotal + carServiceTotal;
+    const paginatedServices = allServices.slice(skip, skip + limit);
+
     res.json({
-      towingServices,
-      carServices,
+      services: paginatedServices,
       pagination: {
         page,
         limit,
-        towingTotal,
-        carServiceTotal,
-        total: towingTotal + carServiceTotal,
-        pages: Math.ceil((towingTotal + carServiceTotal) / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error: any) {
