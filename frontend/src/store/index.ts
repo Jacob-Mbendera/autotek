@@ -1,4 +1,5 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import type { Middleware } from '@reduxjs/toolkit';
 import {
   persistStore,
   persistReducer,
@@ -11,7 +12,7 @@ import {
 } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 
-import authReducer from './slices/authSlice';
+import authReducer, { logout } from './slices/authSlice';
 import cartReducer from './slices/cartSlice';
 import productReducer from './slices/productSlice';
 import wishlistReducer from './slices/wishlistSlice';
@@ -43,6 +44,15 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
+// Middleware to reset RTK Query cache on logout
+const rtkQueryCacheResetMiddleware: Middleware = (store) => (next) => (action) => {
+  const result = next(action);
+  if (logout.match(action)) {
+    store.dispatch(baseApi.util.resetApiState());
+  }
+  return result;
+};
+
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
@@ -50,7 +60,9 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat(baseApi.middleware),
+    })
+      .concat(baseApi.middleware)
+      .concat(rtkQueryCacheResetMiddleware),
   devTools: import.meta.env.DEV,
 });
 

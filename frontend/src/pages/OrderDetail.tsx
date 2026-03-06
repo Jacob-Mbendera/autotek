@@ -130,10 +130,12 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   // CRITICAL: This query should NEVER run when isAdmin is true
   // Using strict skip condition - if isAdmin is true, skip MUST be true
   // For guest orders, pass email in the query
-  const orderQueryArg = id && guestEmail && !isAuthenticated 
-    ? { id: id, email: guestEmail }
-    : id || '';
-  const userQueryResult = useGetOrderQuery(orderQueryArg, { 
+  // Always pass an object with id and optional email
+  const orderQueryArg = {
+    id: id || '',
+    email: guestEmail && !isAuthenticated ? guestEmail : undefined
+  };
+  const userQueryResult = useGetOrderQuery(orderQueryArg, {
     skip: shouldSkipUser, // Must be true when isAdmin is true
   });
 
@@ -346,6 +348,30 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         type: 'error',
       }));
     }
+  };
+
+  // Check if order is eligible for return (within 30 days of completion)
+  const isEligibleForReturn = () => {
+    if (!order || order.status !== OrderStatus.COMPLETED) return false;
+    const completedDate = new Date(order.updatedAt);
+    const daysSinceCompletion = Math.floor((Date.now() - completedDate.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceCompletion <= 30;
+  };
+
+  // Check if there's already a return request for this order
+  const hasExistingReturn = () => {
+    if (!returnsData?.returns || !id) return false;
+    return returnsData.returns.some((ret) => {
+      const returnOrderId = typeof ret.order === 'object' ? ret.order._id : ret.order;
+      return returnOrderId === id;
+    });
+  };
+
+  // Navigate to return request page
+  const handleRequestReturn = () => {
+    if (!id) return;
+    const params = guestEmail ? `?orderId=${id}&email=${encodeURIComponent(guestEmail)}` : `?orderId=${id}`;
+    navigate(`/returns/new${params}`);
   };
 
   return (
@@ -723,7 +749,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   className="block"
                 >
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     className="w-full flex items-center justify-center"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />

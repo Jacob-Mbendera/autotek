@@ -66,11 +66,22 @@ export const reviewApi = baseApi.injectEndpoints({
         const queryString = queryParams.toString();
         return `/reviews/product/${productId}${queryString ? `?${queryString}` : ''}`;
       },
-      providesTags: (result, error, { productId }) => [{ type: 'Review', id: `product-${productId}` }],
+      providesTags: (result, _error, { productId }) => {
+        // Provide tags for each individual review as well as the product reviews list
+        const tags: Array<{ type: 'Review'; id: string }> = [{ type: 'Review', id: `product-${productId}` }];
+        if (result?.reviews) {
+          result.reviews.forEach(review => {
+            tags.push({ type: 'Review', id: review._id });
+          });
+        }
+        return tags;
+      },
     }),
-    getUserReview: builder.query<{ review: Review }, string>({
+    getUserReview: builder.query<{ review: Review | null }, string>({
       query: (productId) => `/reviews/product/${productId}/user`,
       providesTags: (result, error, productId) => [{ type: 'Review', id: `user-${productId}` }],
+      // Force refetch when user changes by not keeping unused data
+      keepUnusedDataFor: 0,
     }),
     createReview: builder.mutation<{ review: Review; message: string }, { productId: string; data: CreateReviewRequest }>({
       query: ({ productId, data }) => ({
@@ -83,27 +94,38 @@ export const reviewApi = baseApi.injectEndpoints({
         { type: 'Review', id: `user-${productId}` },
       ],
     }),
-    updateReview: builder.mutation<{ review: Review; message: string }, { reviewId: string; data: UpdateReviewRequest }>({
+    updateReview: builder.mutation<{ review: Review; message: string }, { reviewId: string; productId: string; data: UpdateReviewRequest }>({
       query: ({ reviewId, data }) => ({
         url: `/reviews/${reviewId}`,
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (result, error, { reviewId }) => [{ type: 'Review', id: reviewId }],
+      invalidatesTags: (_result, _error, { reviewId, productId }) => [
+        { type: 'Review', id: reviewId },
+        { type: 'Review', id: `user-${productId}` },
+        { type: 'Review', id: `product-${productId}` },
+      ],
     }),
-    deleteReview: builder.mutation<{ message: string }, string>({
-      query: (reviewId) => ({
+    deleteReview: builder.mutation<{ message: string }, { reviewId: string; productId: string }>({
+      query: ({ reviewId }) => ({
         url: `/reviews/${reviewId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: (result, error, reviewId) => [{ type: 'Review', id: reviewId }],
+      invalidatesTags: (_result, _error, { reviewId, productId }) => [
+        { type: 'Review', id: reviewId },
+        { type: 'Review', id: `user-${productId}` },
+        { type: 'Review', id: `product-${productId}` },
+      ],
     }),
-    markHelpful: builder.mutation<{ review: Review; message: string }, string>({
-      query: (reviewId) => ({
+    markHelpful: builder.mutation<{ review: Review; message: string }, { reviewId: string; productId: string }>({
+      query: ({ reviewId }) => ({
         url: `/reviews/${reviewId}/helpful`,
         method: 'POST',
       }),
-      invalidatesTags: (result, error, reviewId) => [{ type: 'Review', id: reviewId }],
+      invalidatesTags: (_result, _error, { reviewId, productId }) => [
+        { type: 'Review', id: reviewId },
+        { type: 'Review', id: `product-${productId}` },
+      ],
     }),
   }),
 });

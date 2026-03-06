@@ -28,7 +28,7 @@ export const ReviewList = ({ productId }: ReviewListProps) => {
   const handleMarkHelpful = async (reviewId: string) => {
     if (!isAuthenticated) return;
     try {
-      await markHelpful(reviewId).unwrap();
+      await markHelpful({ reviewId, productId }).unwrap();
     } catch (error) {
       console.error('Failed to mark review as helpful:', error);
     }
@@ -138,7 +138,7 @@ export const ReviewList = ({ productId }: ReviewListProps) => {
       <div className="space-y-4">
         {reviews.map((review) => (
           <ReviewCard
-            key={review._id}
+            key={`${review._id}-${review.rating}-${review.updatedAt}`}
             review={review}
             onMarkHelpful={handleMarkHelpful}
             isMarkingHelpful={isMarkingHelpful}

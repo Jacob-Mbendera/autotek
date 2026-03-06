@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/types';
-import { useCreateReviewMutation, useUpdateReviewMutation, useGetUserReviewQuery } from '../store/api/reviewApi';
+import { useCreateReviewMutation, useUpdateReviewMutation, useDeleteReviewMutation, useGetUserReviewQuery } from '../store/api/reviewApi';
 import { showNotification } from '../store/slices/uiSlice';
 import { useAppDispatch } from '../store/types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { H2, Body } from './ui/Typography';
-import { Star, Loader2, Edit2, X } from 'lucide-react';
+import { ConfirmationModal } from './ui/ConfirmationModal';
+import { Star, Loader2, Edit2, X, Trash2 } from 'lucide-react';
 
 interface ReviewFormProps {
   productId: string;
@@ -20,6 +21,7 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Check if user has already reviewed
   const { data: existingReview, isLoading: isLoadingReview } = useGetUserReviewQuery(productId, {
@@ -28,14 +30,29 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
 
   const [createReview, { isLoading: isCreating }] = useCreateReviewMutation();
   const [updateReview, { isLoading: isUpdating }] = useUpdateReviewMutation();
+  const [deleteReview, { isLoading: isDeleting }] = useDeleteReviewMutation();
 
+  // Reset form when user changes
   useEffect(() => {
-    if (existingReview?.review) {
+    setRating(0);
+    setComment('');
+    setIsEditing(false);
+  }, [user?._id]);
+
+  // Update form when existingReview data changes
+  useEffect(() => {
+    // Only set editing mode if review exists and is not null
+    if (existingReview?.review && existingReview.review !== null) {
       setRating(existingReview.review.rating);
       setComment(existingReview.review.comment);
       setIsEditing(true);
+    } else {
+      // Reset form if no review exists
+      setRating(0);
+      setComment('');
+      setIsEditing(false);
     }
-  }, [existingReview]);
+  }, [existingReview?.review?.rating, existingReview?.review?.comment, existingReview?.review?._id]);
 
   if (!isAuthenticated) {
     return (
@@ -72,24 +89,25 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
     }
 
     try {
-      if (isEditing && existingReview?.review) {
+      // Check if updating existing review (review exists and is not null)
+      if (isEditing && existingReview?.review && existingReview.review !== null) {
         await updateReview({
           reviewId: existingReview.review._id,
+          productId, // Pass productId for cache invalidation
           data: { rating, comment: comment.trim() },
         }).unwrap();
         dispatch(showNotification({ message: 'Review updated successfully!', type: 'success' }));
+        // Cache invalidation will trigger refetch of user review and product reviews
       } else {
+        // Create new review
         await createReview({
           productId,
           data: { rating, comment: comment.trim() },
         }).unwrap();
         dispatch(showNotification({ message: 'Review submitted successfully!', type: 'success' }));
+        // Cache invalidation will trigger refetch and update the form to edit mode
       }
       if (onSuccess) onSuccess();
-      if (!isEditing) {
-        setRating(0);
-        setComment('');
-      }
     } catch (error: any) {
       dispatch(showNotification({
         message: error.data?.message || 'Failed to submit review',
@@ -99,7 +117,7 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
   };
 
   const handleCancel = () => {
-    if (existingReview?.review) {
+    if (existingReview?.review && existingReview.review !== null) {
       setRating(existingReview.review.rating);
       setComment(existingReview.review.comment);
     } else {
@@ -109,7 +127,42 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
     setIsEditing(false);
   };
 
-  const isLoading = isCreating || isUpdating;
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!existingReview?.review) return;
+
+    try {
+      await deleteReview({
+        reviewId: existingReview.review._id,
+        productId,
+      }).unwrap();
+
+      dispatch(showNotification({
+        message: 'Review deleted successfully!',
+        type: 'success',
+      }));
+
+      setShowDeleteModal(false);
+
+      // Reset form to create mode
+      setRating(0);
+      setComment('');
+      setIsEditing(false);
+
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      dispatch(showNotification({
+        message: error.data?.message || 'Failed to delete review',
+        type: 'error',
+      }));
+      setShowDeleteModal(false);
+    }
+  };
+
+  const isLoading = isCreating || isUpdating || isDeleting;
   const characterCount = comment.length;
   const maxCharacters = 1000;
 
@@ -120,10 +173,16 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
           {isEditing ? 'Edit Your Review' : 'Write a Review'}
         </H2>
         {isEditing && (
-          <Button variant="ghost" size="small" onClick={handleCancel} disabled={isLoading}>
-            <X className="h-4 w-4 mr-1" />
-            Cancel
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="small" onClick={handleDeleteClick} disabled={isLoading} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+            <Button variant="ghost" size="small" onClick={handleCancel} disabled={isLoading}>
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+          </div>
         )}
       </div>
 
@@ -202,7 +261,7 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
           className="w-full"
           disabled={isLoading || rating === 0 || comment.trim().length < 10}
         >
-          {isLoading ? (
+          {isCreating || isUpdating ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               {isEditing ? 'Updating...' : 'Submitting...'}
@@ -221,6 +280,18 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
           )}
         </Button>
       </form>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Review"
+        message="Are you sure you want to delete your review? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </Card>
   );
 };

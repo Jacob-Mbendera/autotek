@@ -303,12 +303,8 @@ export const getUserReview = async (req: AuthRequest, res: Response): Promise<vo
     const review = await Review.findOne({ product: productId, user: userId })
       .populate('user', 'name email');
 
-    if (!review) {
-      res.status(404).json({ message: 'Review not found' });
-      return;
-    }
-
-    res.json({ review });
+    // Return null if no review exists (not an error - user just hasn't reviewed yet)
+    res.json({ review: review || null });
   } catch (error: any) {
     console.error('Error fetching user review:', error);
     res.status(500).json({ message: error.message || 'Failed to fetch review' });
