@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
-import { useGetOrderQuery } from '../store/api/orderApi';
+import { useGetOrderQuery, useCancelOrderMutation } from '../store/api/orderApi';
+import { useGetReturnsQuery } from '../store/api/returnApi';
+import { useAppSelector } from '../store/types';
 import { useGetAdminOrderQuery, useUpdateOrderStatusMutation } from '../store/api/adminApi';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -28,6 +30,7 @@ import {
   History,
   Copy,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { OrderStatus, PaymentStatus } from '@shared/types';
 
@@ -99,6 +102,17 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   // This must be calculated before hooks to ensure correct query selection
   const isAdminRoute = location.pathname.startsWith('/admin/orders/');
   const isAdmin = Boolean(isAdminProp || isAdminRoute);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  
+  // Get email from URL params or sessionStorage for guest orders
+  const searchParams = new URLSearchParams(location.search);
+  const guestEmail = searchParams.get('email') || sessionStorage.getItem('guestOrderEmail') || undefined;
+  
+  // Check for existing returns for this order (skip if admin)
+  const { data: returnsData } = useGetReturnsQuery(
+    guestEmail ? { email: guestEmail } : undefined,
+    { skip: isAdmin || !id }
+  );
 
   // Use admin API if admin, otherwise use regular order API
   // CRITICAL: Use very strict skip conditions to prevent both queries from running
@@ -115,7 +129,11 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   
   // CRITICAL: This query should NEVER run when isAdmin is true
   // Using strict skip condition - if isAdmin is true, skip MUST be true
-  const userQueryResult = useGetOrderQuery(id || '', { 
+  // For guest orders, pass email in the query
+  const orderQueryArg = id && guestEmail && !isAuthenticated 
+    ? { id: id, email: guestEmail }
+    : id || '';
+  const userQueryResult = useGetOrderQuery(orderQueryArg, { 
     skip: shouldSkipUser, // Must be true when isAdmin is true
   });
 
@@ -128,6 +146,9 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
 
   // Admin-only: Order status update mutation
   const [updateOrderStatus, { isLoading: isUpdatingStatus }] = useUpdateOrderStatusMutation();
+  
+  // Order cancellation mutation
+  const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
 
   if (isLoading) {
     return (
@@ -257,10 +278,34 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     setShowCancelModal(true);
   };
 
-  const handleCancelConfirm = () => {
-    // Cancel order API call would go here
-    setShowCancelModal(false);
-    // TODO: Implement cancel order API call
+  const handleCancelConfirm = async () => {
+    if (!id) return;
+    
+    try {
+      await cancelOrder({
+        id,
+        email: guestEmail,
+      }).unwrap();
+      
+      dispatch(showNotification({
+        message: 'Order cancelled successfully',
+        type: 'success',
+      }));
+      
+      setShowCancelModal(false);
+      
+      // Refetch order to get updated status
+      if (isAdmin) {
+        adminQueryResult.refetch();
+      } else {
+        userQueryResult.refetch();
+      }
+    } catch (error: any) {
+      dispatch(showNotification({
+        message: error.data?.message || 'Failed to cancel order',
+        type: 'error',
+      }));
+    }
   };
 
   const handleCopyOrderId = () => {
@@ -662,6 +707,30 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   Cancel Order
                 </Button>
               )}
+              {order.status === OrderStatus.COMPLETED && isEligibleForReturn() && !hasExistingReturn() && (
+                <Button
+                  variant="primary"
+                  className="w-full flex items-center justify-center"
+                  onClick={handleRequestReturn}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Request Return
+                </Button>
+              )}
+              {hasExistingReturn() && !isAdmin && (
+                <Link
+                  to={`/returns/${returnsData?.returns.find((r) => (typeof r.order === 'object' ? r.order._id : r.order) === id)?._id}${guestEmail ? `?email=${encodeURIComponent(guestEmail)}` : ''}`}
+                  className="block"
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    View Return Request
+                  </Button>
+                </Link>
+              )}
               <Button
                 variant="primary"
                 className="w-full flex items-center justify-center"
@@ -707,6 +776,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         confirmText="Cancel Order"
         cancelText="Keep Order"
         variant="warning"
+        isLoading={isCancelling}
       />
 
       {/* Update Status Confirmation Modal */}

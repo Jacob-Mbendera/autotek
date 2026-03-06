@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { Home } from './pages/Home';
 import { Products } from './pages/Products';
 import { Wishlist } from './pages/Wishlist';
@@ -13,9 +15,12 @@ import { Checkout } from './pages/Checkout';
 import { Orders } from './pages/Orders';
 import { OrderDetail } from './pages/OrderDetail';
 import { Profile } from './pages/Profile';
+import { Returns } from './pages/Returns';
+import { ReturnDetail } from './pages/ReturnDetail';
+import { RequestReturn } from './pages/RequestReturn';
 import { PaymentSuccess } from './pages/PaymentSuccess';
 import { PaymentCancel } from './pages/PaymentCancel';
-import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport } from './pages/admin';
+import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport, AdminReturns } from './pages/admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
@@ -29,6 +34,8 @@ function App() {
         {/* Public routes without layout */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/cancel" element={<PaymentCancel />} />
         
@@ -102,11 +109,9 @@ function App() {
         <Route
           path="/checkout"
           element={
-            <ProtectedRoute>
-              <Layout>
-                <Checkout />
-              </Layout>
-            </ProtectedRoute>
+            <Layout>
+              <Checkout />
+            </Layout>
           }
         />
         <Route
@@ -135,6 +140,36 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Profile />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/returns"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Returns />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/returns/new"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RequestReturn />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/returns/:id"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ReturnDetail />
               </Layout>
             </ProtectedRoute>
           }
@@ -227,6 +262,16 @@ function App() {
             <ProtectedRoute adminOnly>
               <AdminLayout>
                 <AdminSupport />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/returns"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminReturns />
               </AdminLayout>
             </ProtectedRoute>
           }

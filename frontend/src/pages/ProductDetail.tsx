@@ -10,6 +10,8 @@ import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { ShoppingCart, Zap, CheckCircle, Package, Heart } from 'lucide-react';
+import { ReviewList } from '../components/ReviewList';
+import { ReviewForm } from '../components/ReviewForm';
 
 export const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -431,7 +433,7 @@ export const ProductDetail = () => {
       </Card>
 
       {/* Why Choose This Part? */}
-      <Card variant="md">
+      <Card variant="md" className="mb-8">
         <H1 className="text-2xl font-bold text-gray-900 mb-6">Why Choose This Part?</H1>
         <div className="space-y-4">
           {getBenefits().map((benefit, index) => (
@@ -442,6 +444,15 @@ export const ProductDetail = () => {
           ))}
         </div>
       </Card>
+
+      {/* Reviews Section */}
+      <div className="mb-8">
+        <H1 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</H1>
+        <div className="space-y-8">
+          <ReviewForm productId={id!} />
+          <ReviewList productId={id!} />
+        </div>
+      </div>
     </div>
   );
 };

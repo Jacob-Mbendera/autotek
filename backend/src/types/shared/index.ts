@@ -50,3 +50,31 @@ export enum ServiceType {
   TIRE_ROTATION = 'tire-rotation',
   OTHER = 'other',
 }
+
+export enum ReturnStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+export enum ReturnReason {
+  DEFECTIVE = 'defective',
+  WRONG_ITEM = 'wrong-item',
+  NOT_AS_DESCRIBED = 'not-as-described',
+  CHANGED_MIND = 'changed-mind',
+  OTHER = 'other',
+}
+
+export enum RefundMethod {
+  ORIGINAL_PAYMENT = 'original-payment',
+  STORE_CREDIT = 'store-credit',
+}
+
+export enum RefundStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}

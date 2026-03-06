@@ -12,11 +12,19 @@ export interface CartItem {
   stockStatus?: 'in-stock' | 'low-stock' | 'out-of-stock';
 }
 
+interface AppliedCoupon {
+  code: string;
+  discount: number;
+  type: string;
+}
+
 interface CartState {
   items: CartItem[];
   savedForLater: CartItem[];
   totalAmount: number;
   totalItems: number;
+  appliedCoupon?: AppliedCoupon;
+  discount: number;
 }
 
 const initialState: CartState = {
@@ -24,6 +32,7 @@ const initialState: CartState = {
   savedForLater: [],
   totalAmount: 0,
   totalItems: 0,
+  discount: 0,
 };
 
 const calculateTotals = (items: CartItem[]) => {
@@ -76,11 +85,6 @@ const cartSlice = createSlice({
         state.totalItems = totalItems;
       }
     },
-    clearCart: (state) => {
-      state.items = [];
-      state.totalAmount = 0;
-      state.totalItems = 0;
-    },
     saveForLater: (state, action: PayloadAction<string>) => {
       const item = state.items.find((item) => item.productId === action.payload);
       if (item) {
@@ -110,8 +114,23 @@ const cartSlice = createSlice({
     removeFromSaved: (state, action: PayloadAction<string>) => {
       state.savedForLater = state.savedForLater.filter((item) => item.productId !== action.payload);
     },
+    applyCoupon: (state, action: PayloadAction<AppliedCoupon>) => {
+      state.appliedCoupon = action.payload;
+      state.discount = action.payload.discount;
+    },
+    removeCoupon: (state) => {
+      state.appliedCoupon = undefined;
+      state.discount = 0;
+    },
+    clearCart: (state) => {
+      state.items = [];
+      state.totalAmount = 0;
+      state.totalItems = 0;
+      state.appliedCoupon = undefined;
+      state.discount = 0;
+    },
   },
 });
 
-export const { addItem, removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved } = cartSlice.actions;
+export const { addItem, removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved, applyCoupon, removeCoupon } = cartSlice.actions;
 export default cartSlice.reducer;

@@ -14,6 +14,7 @@ import adminRoutes from './routes/adminRoutes';
 import wishlistRoutes from './routes/wishlistRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import couponRoutes from './routes/couponRoutes';
+import returnRoutes, { adminReturnRouter } from './routes/returnRoutes';
 
 dotenv.config();
 
@@ -44,6 +45,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/returns', returnRoutes);
+app.use('/api/admin/returns', adminReturnRouter);
 
 // Error handler
 app.use(errorHandler);

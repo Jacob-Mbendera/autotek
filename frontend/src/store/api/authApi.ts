@@ -35,6 +35,19 @@ interface ChangePasswordRequest {
   newPassword: string;
 }
 
+interface ForgotPasswordRequest {
+  email: string;
+}
+
+interface VerifyResetTokenRequest {
+  token: string;
+}
+
+interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     register: builder.mutation<RegisterResponse, RegisterRequest>({
@@ -70,7 +83,37 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    forgotPassword: builder.mutation<{ message: string }, ForgotPasswordRequest>({
+      query: (body) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body,
+      }),
+    }),
+    verifyResetToken: builder.mutation<{ message: string }, VerifyResetTokenRequest>({
+      query: (body) => ({
+        url: '/auth/verify-reset-token',
+        method: 'POST',
+        body,
+      }),
+    }),
+    resetPassword: builder.mutation<{ message: string }, ResetPasswordRequest>({
+      query: (body) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useRegisterMutation, useLoginMutation, useGetMeQuery, useUpdateProfileMutation, useChangePasswordMutation } = authApi;
+export const { 
+  useRegisterMutation, 
+  useLoginMutation, 
+  useGetMeQuery, 
+  useUpdateProfileMutation, 
+  useChangePasswordMutation,
+  useForgotPasswordMutation,
+  useVerifyResetTokenMutation,
+  useResetPasswordMutation
+} = authApi;

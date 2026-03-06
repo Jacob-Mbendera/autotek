@@ -15,7 +15,10 @@ export const baseApi = createApi({
         headers.set('authorization', `Bearer ${token}`);
       }
 
-      headers.set('Content-Type', 'application/json');
+      // Only set Content-Type if not already set (FormData will set it automatically)
+      if (!headers.get('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
       return headers;
     },
   }),
@@ -29,6 +32,8 @@ export const baseApi = createApi({
     'Payment',
     'Admin',
     'Wishlist',
+    'Review',
+    'Return',
   ],
   endpoints: () => ({}),
 });

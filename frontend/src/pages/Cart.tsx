@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
-import { removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved } from '../store/slices/cartSlice';
+import { removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved, applyCoupon, removeCoupon } from '../store/slices/cartSlice';
+import { useValidateCouponMutation } from '../store/api/couponApi';
+import { showNotification } from '../store/slices/uiSlice';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -30,6 +32,9 @@ export const Cart = () => {
   const [showSavedItems, setShowSavedItems] = useState<boolean>(false);
   const [updatingQuantityId, setUpdatingQuantityId] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+  
+  const [validateCoupon] = useValidateCouponMutation();
 
   const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -96,13 +101,54 @@ export const Cart = () => {
     setRemovingItemId(null);
   };
 
-  const handleProceedToCheckout = () => {
-    if (isAuthenticated) {
-      navigate('/checkout');
-    } else {
-      navigate('/login?returnUrl=/checkout');
+  const handleApplyCoupon = async () => {
+    if (!promoCode.trim()) return;
+
+    setValidatingCoupon(true);
+    try {
+      const productIds = cart.items.map(item => item.productId);
+      const result = await validateCoupon({
+        code: promoCode.trim(),
+        orderTotal: cart.totalAmount,
+        productIds,
+      }).unwrap();
+
+      if (result.valid) {
+        dispatch(applyCoupon({
+          code: result.coupon.code,
+          discount: result.discount,
+          type: result.coupon.type,
+        }));
+        dispatch(showNotification({
+          message: result.message || 'Coupon applied successfully!',
+          type: 'success',
+        }));
+        setPromoCode('');
+      }
+    } catch (error: any) {
+      dispatch(showNotification({
+        message: error.data?.message || 'Invalid coupon code',
+        type: 'error',
+      }));
+    } finally {
+      setValidatingCoupon(false);
     }
   };
+
+  const handleRemoveCoupon = () => {
+    dispatch(removeCoupon());
+    dispatch(showNotification({
+      message: 'Coupon removed',
+      type: 'info',
+    }));
+  };
+
+  const handleProceedToCheckout = () => {
+    navigate('/checkout');
+  };
+
+  // Calculate final total with discount
+  const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
 
   // Get placeholder image based on category (if we can determine it from product name or other data)
   const getPlaceholderImage = (productName?: string) => {
@@ -507,29 +553,60 @@ export const Cart = () => {
 
               {/* Promo Code Section */}
               <div className="mb-6">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                      type="text"
-                      placeholder="Promo code"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                      className="text-sm"
-                    />
+                {cart.appliedCoupon ? (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <Body className="text-sm font-medium text-green-800">
+                          {cart.appliedCoupon.code}
+                        </Body>
+                      </div>
+                      <button
+                        onClick={handleRemoveCoupon}
+                        className="text-green-600 hover:text-green-800"
+                        aria-label="Remove coupon"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <Body className="text-xs text-green-700">
+                      Discount: MWK {cart.discount.toLocaleString()}
+                    </Body>
                   </div>
-                  <Button
-                    variant="secondary"
-                    size="default"
-                    onClick={() => {
-                      // Promo code logic would go here
-                      setPromoCode('');
-                    }}
-                    disabled={!promoCode.trim()}
-                    className="px-4"
-                  >
-                    <Tag className="h-4 w-4" />
-                  </Button>
-                </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        placeholder="Promo code"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyCoupon();
+                          }
+                        }}
+                        className="text-sm"
+                        disabled={validatingCoupon}
+                      />
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="default"
+                      onClick={handleApplyCoupon}
+                      disabled={!promoCode.trim() || validatingCoupon}
+                      className="px-4"
+                    >
+                      {validatingCoupon ? (
+                        <div className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Tag className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Estimated Delivery */}
@@ -550,6 +627,15 @@ export const Cart = () => {
                   </Body>
                   <Body className="font-semibold text-sm sm:text-base">MWK {cart.totalAmount.toLocaleString()}</Body>
                 </div>
+                {cart.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <Body className="text-sm sm:text-base flex items-center gap-1">
+                      <Percent className="h-3 w-3" />
+                      Discount {cart.appliedCoupon?.code && `(${cart.appliedCoupon.code})`}
+                    </Body>
+                    <Body className="font-semibold text-sm sm:text-base">-MWK {cart.discount.toLocaleString()}</Body>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-600">
                   <Body className="text-sm sm:text-base">Shipping</Body>
                   <Body className="font-semibold text-sm sm:text-base text-green-600">Free</Body>
@@ -558,7 +644,7 @@ export const Cart = () => {
                   <div className="flex justify-between">
                     <Body className="text-lg font-bold text-gray-900">Total</Body>
                     <Body className="text-xl font-bold text-teal-600">
-                      MWK {cart.totalAmount.toLocaleString()}
+                      MWK {finalTotal.toLocaleString()}
                     </Body>
                   </div>
                 </div>

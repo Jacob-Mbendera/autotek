@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
-import { Order } from '../models/Order';
-import { User } from '../models/User';
+import Order, { IOrder } from '../models/Order';
+import User, { IUser } from '../models/User';
 import { sendPasswordResetEmail } from '../utils/email';
 
 interface EmailOptions {
@@ -59,7 +59,7 @@ class EmailService {
     }
   }
 
-  async sendOrderConfirmation(order: Order, user?: User, guestEmail?: string): Promise<void> {
+  async sendOrderConfirmation(order: IOrder, user?: IUser, guestEmail?: string): Promise<void> {
     const email = user?.email || guestEmail || '';
     if (!email) return;
 
@@ -117,7 +117,7 @@ class EmailService {
     await this.sendEmail({ to: email, subject, html });
   }
 
-  async sendOrderStatusUpdate(order: Order, user?: User, guestEmail?: string): Promise<void> {
+  async sendOrderStatusUpdate(order: IOrder, user?: IUser, guestEmail?: string): Promise<void> {
     const email = user?.email || guestEmail || '';
     if (!email) return;
 
@@ -187,7 +187,7 @@ class EmailService {
     await this.sendEmail({ to: email, subject: statusInfo.subject, html });
   }
 
-  async sendServiceConfirmation(service: any, user: User): Promise<void> {
+  async sendServiceConfirmation(service: any, user: IUser): Promise<void> {
     const subject = 'Service Booking Confirmation - AutoTek';
     const html = `
       <!DOCTYPE html>
@@ -225,7 +225,7 @@ class EmailService {
     await this.sendEmail({ to: user.email, subject, html });
   }
 
-  async sendWelcomeEmail(user: User): Promise<void> {
+  async sendWelcomeEmail(user: IUser): Promise<void> {
     const subject = 'Welcome to AutoTek!';
     const html = `
       <!DOCTYPE html>
@@ -264,8 +264,241 @@ class EmailService {
     await this.sendEmail({ to: user.email, subject, html });
   }
 
-  async sendPasswordReset(user: User, resetToken: string): Promise<void> {
+  async sendPasswordReset(user: IUser, resetToken: string): Promise<void> {
     await sendPasswordResetEmail(user.email, user.name, resetToken);
+  }
+
+  async sendReturnRequestConfirmation(returnDoc: any, user?: IUser, guestEmail?: string): Promise<void> {
+    const email = user?.email || guestEmail || '';
+    if (!email) return;
+
+    const userName = user?.name || returnDoc.guestInfo?.name || 'Customer';
+    const returnId = returnDoc._id.toString().slice(-8).toUpperCase();
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const returnUrl = user
+      ? `${frontendUrl}/returns/${returnDoc._id}`
+      : `${frontendUrl}/returns/${returnDoc._id}?email=${encodeURIComponent(email)}`;
+
+    const subject = `Return Request Confirmation #${returnId} - AutoTek`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Return Request Confirmation</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Return Request Received</h2>
+          <p>Hello ${userName},</p>
+          <p>We've received your return request and will review it shortly. Here are the details:</p>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: #14b8a6; margin-top: 0;">Return #${returnId}</h3>
+            <p style="margin: 5px 0;"><strong>Status:</strong> ${returnDoc.status.charAt(0).toUpperCase() + returnDoc.status.slice(1)}</p>
+            <p style="margin: 5px 0;"><strong>Refund Amount:</strong> MWK ${returnDoc.refundAmount.toLocaleString()}</p>
+            <p style="margin: 5px 0;"><strong>Refund Method:</strong> ${returnDoc.refundMethod === 'original-payment' ? 'Original Payment Method' : 'Store Credit'}</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${returnUrl}" style="background: #14b8a6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Track Your Return</a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px;">
+            Our team will review your return request and get back to you within 2-3 business days.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+            © ${new Date().getFullYear()} AutoTek. All rights reserved.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: email, subject, html });
+  }
+
+  async sendReturnApprovalEmail(returnDoc: any, user?: IUser, guestEmail?: string): Promise<void> {
+    const email = user?.email || guestEmail || '';
+    if (!email) return;
+
+    const userName = user?.name || returnDoc.guestInfo?.name || 'Customer';
+    const returnId = returnDoc._id.toString().slice(-8).toUpperCase();
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const returnUrl = user
+      ? `${frontendUrl}/returns/${returnDoc._id}`
+      : `${frontendUrl}/returns/${returnDoc._id}?email=${encodeURIComponent(email)}`;
+
+    const subject = `Return Request Approved #${returnId} - AutoTek`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Return Approved</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Return Request Approved</h2>
+          <p>Hello ${userName},</p>
+          <p>Great news! Your return request has been approved. Please follow the instructions below to complete your return.</p>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: #14b8a6; margin-top: 0;">Return #${returnId}</h3>
+            <p style="margin: 5px 0;"><strong>Shipping Label:</strong> ${returnDoc.shippingLabel || 'Will be provided'}</p>
+            <p style="margin: 5px 0;"><strong>Refund Amount:</strong> MWK ${returnDoc.refundAmount.toLocaleString()}</p>
+            <p style="margin: 5px 0;"><strong>Refund Method:</strong> ${returnDoc.refundMethod === 'original-payment' ? 'Original Payment Method' : 'Store Credit'}</p>
+          </div>
+
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e;"><strong>Next Steps:</strong></p>
+            <ol style="margin: 10px 0 0 20px; color: #92400e;">
+              <li>Package the items securely</li>
+              <li>Attach the shipping label to your package</li>
+              <li>Drop off at the nearest shipping location</li>
+              <li>Once we receive your return, we'll process your refund</li>
+            </ol>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${returnUrl}" style="background: #14b8a6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">View Return Details</a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+            © ${new Date().getFullYear()} AutoTek. All rights reserved.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: email, subject, html });
+  }
+
+  async sendReturnRejectionEmail(returnDoc: any, user?: IUser, guestEmail?: string): Promise<void> {
+    const email = user?.email || guestEmail || '';
+    if (!email) return;
+
+    const userName = user?.name || returnDoc.guestInfo?.name || 'Customer';
+    const returnId = returnDoc._id.toString().slice(-8).toUpperCase();
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const returnUrl = user
+      ? `${frontendUrl}/returns/${returnDoc._id}`
+      : `${frontendUrl}/returns/${returnDoc._id}?email=${encodeURIComponent(email)}`;
+
+    const subject = `Return Request Update #${returnId} - AutoTek`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Return Request Update</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Return Request Update</h2>
+          <p>Hello ${userName},</p>
+          <p>We've reviewed your return request, and unfortunately, we're unable to approve it at this time.</p>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: #14b8a6; margin-top: 0;">Return #${returnId}</h3>
+            <p style="margin: 5px 0;"><strong>Status:</strong> Rejected</p>
+            ${returnDoc.adminNotes ? `<p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${returnDoc.adminNotes}</p>` : ''}
+          </div>
+
+          <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444;">
+            <p style="margin: 0; color: #991b1b;">If you have any questions or concerns about this decision, please contact our support team. We're here to help!</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${returnUrl}" style="background: #14b8a6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">View Return Details</a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+            © ${new Date().getFullYear()} AutoTek. All rights reserved.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: email, subject, html });
+  }
+
+  async sendRefundProcessedEmail(returnDoc: any, user?: IUser, guestEmail?: string): Promise<void> {
+    const email = user?.email || guestEmail || '';
+    if (!email) return;
+
+    const userName = user?.name || returnDoc.guestInfo?.name || 'Customer';
+    const returnId = returnDoc._id.toString().slice(-8).toUpperCase();
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const returnUrl = user
+      ? `${frontendUrl}/returns/${returnDoc._id}`
+      : `${frontendUrl}/returns/${returnDoc._id}?email=${encodeURIComponent(email)}`;
+
+    const subject = `Refund Processed #${returnId} - AutoTek`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Refund Processed</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Refund Processed</h2>
+          <p>Hello ${userName},</p>
+          <p>Great news! We've processed your refund and it should appear in your account within 5-10 business days.</p>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: #14b8a6; margin-top: 0;">Return #${returnId}</h3>
+            <p style="margin: 5px 0;"><strong>Refund Amount:</strong> MWK ${returnDoc.refundAmount.toLocaleString()}</p>
+            <p style="margin: 5px 0;"><strong>Refund Method:</strong> ${returnDoc.refundMethod === 'original-payment' ? 'Original Payment Method' : 'Store Credit'}</p>
+            <p style="margin: 5px 0;"><strong>Status:</strong> Completed</p>
+          </div>
+
+          <div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <p style="margin: 0; color: #065f46;">
+              ${returnDoc.refundMethod === 'original-payment'
+                ? 'The refund has been processed to your original payment method. Please allow 5-10 business days for the funds to appear in your account.'
+                : 'Store credit has been added to your account and is available for immediate use.'}
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${returnUrl}" style="background: #14b8a6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">View Return Details</a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+            © ${new Date().getFullYear()} AutoTek. All rights reserved.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: email, subject, html });
   }
 }
 

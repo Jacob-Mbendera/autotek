@@ -99,7 +99,15 @@ export const Login = () => {
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-2">
+          <div>
+            <Link
+              to="/forgot-password"
+              className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+            >
+              Forgot your password?
+            </Link>
+          </div>
           <Body className="text-gray-600">
             Don't have an account?{' '}
             <Link 

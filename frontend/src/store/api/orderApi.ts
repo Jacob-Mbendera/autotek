@@ -13,7 +13,12 @@ export interface OrderItem {
 
 export interface Order {
   _id: string;
-  user: string;
+  user?: string;
+  guestInfo?: {
+    email: string;
+    name: string;
+    phone: string;
+  };
   items: OrderItem[];
   totalAmount: number;
   status: OrderStatus;
@@ -26,12 +31,17 @@ export interface Order {
 
 interface CreateOrderRequest {
   items: Array<{
-    product: string;
+    productId: string;
     quantity: number;
     price: number;
   }>;
   shippingAddress: string;
   paymentMethod?: PaymentMethod;
+  guestInfo?: {
+    email: string;
+    name: string;
+    phone: string;
+  };
 }
 
 interface OrdersResponse {
@@ -77,11 +87,24 @@ export const orderApi = baseApi.injectEndpoints({
       },
       providesTags: ['Order'],
     }),
-    getOrder: builder.query<{ order: Order }, string>({
-      query: (id) => `/orders/${id}`,
-      providesTags: (_result, _error, id) => [{ type: 'Order', id }],
+    getOrder: builder.query<{ order: Order }, { id: string; email?: string }>({
+      query: ({ id, email }) => {
+        const params = email ? `?email=${encodeURIComponent(email)}` : '';
+        return `/orders/${id}${params}`;
+      },
+      providesTags: (_result, _error, { id }) => [{ type: 'Order', id }],
+    }),
+    cancelOrder: builder.mutation<{ order: Order; message: string }, { id: string; email?: string }>({
+      query: ({ id, email }) => {
+        const params = email ? `?email=${encodeURIComponent(email)}` : '';
+        return {
+          url: `/orders/${id}/cancel${params}`,
+          method: 'PUT',
+        };
+      },
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Order', id }, 'Order'],
     }),
   }),
 });
 
-export const { useCreateOrderMutation, useGetOrdersQuery, useGetOrderQuery } = orderApi;
+export const { useCreateOrderMutation, useGetOrdersQuery, useGetOrderQuery, useCancelOrderMutation } = orderApi;
