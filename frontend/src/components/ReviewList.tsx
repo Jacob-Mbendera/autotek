@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppSelector } from '../store/types';
-import { useGetProductReviewsQuery, useMarkHelpfulMutation, Review } from '../store/api/reviewApi';
+import { useGetProductReviewsQuery, useMarkHelpfulMutation } from '../store/api/reviewApi';
+import type { Review } from '../store/api/reviewApi';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { H2, Body } from './ui/Typography';
