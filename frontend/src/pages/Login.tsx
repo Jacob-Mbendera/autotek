@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLoginMutation } from '../store/api/authApi';
 import { useAppDispatch } from '../store/types';
 import { setUser } from '../store/slices/authSlice';
+import { showNotification } from '../store/slices/uiSlice';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -30,6 +31,7 @@ export const Login = () => {
     try {
       const result = await login(formData).unwrap();
       dispatch(setUser({ user: result.user, token: result.token }));
+      dispatch(showNotification({ message: 'Login successful', type: 'success' }));
       // Redirect to returnUrl if provided, otherwise to home
       const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
       navigate(redirectTo, { replace: true });
