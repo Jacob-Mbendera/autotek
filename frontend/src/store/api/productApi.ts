@@ -34,6 +34,8 @@ interface ProductsQueryParams {
   maxPrice?: number;
   status?: 'available' | 'out-of-stock';
   stockStatus?: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
+  sortBy?: 'price' | 'name' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
 }
 
 interface CreateProductRequest {
@@ -64,6 +66,8 @@ export const productApi = baseApi.injectEndpoints({
         if (params.maxPrice) searchParams.append('maxPrice', params.maxPrice.toString());
         if (params.status) searchParams.append('status', params.status);
         if (params.stockStatus) searchParams.append('stockStatus', params.stockStatus);
+        if (params.sortBy) searchParams.append('sortBy', params.sortBy);
+        if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
 
         return {
           url: `/products?${searchParams.toString()}`,

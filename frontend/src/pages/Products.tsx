@@ -601,6 +601,17 @@ export const Products = () => {
                 <span className="text-sm font-medium text-gray-700">Sort by:</span>
                 <select
                   className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:border-teal-500 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all cursor-pointer"
+                  value={
+                    filters.sortBy === 'price' && filters.sortOrder === 'asc'
+                      ? 'price-asc'
+                      : filters.sortBy === 'price' && filters.sortOrder === 'desc'
+                      ? 'price-desc'
+                      : filters.sortBy === 'name' && filters.sortOrder === 'asc'
+                      ? 'name-asc'
+                      : filters.sortBy === 'name' && filters.sortOrder === 'desc'
+                      ? 'name-desc'
+                      : ''
+                  }
                   onChange={(e) => {
                     const sortValue = e.target.value;
                     if (sortValue === 'price-asc') {
@@ -609,6 +620,8 @@ export const Products = () => {
                       dispatch(setFilters({ sortBy: 'price', sortOrder: 'desc' }));
                     } else if (sortValue === 'name-asc') {
                       dispatch(setFilters({ sortBy: 'name', sortOrder: 'asc' }));
+                    } else if (sortValue === 'name-desc') {
+                      dispatch(setFilters({ sortBy: 'name', sortOrder: 'desc' }));
                     } else {
                       dispatch(setFilters({ sortBy: undefined, sortOrder: undefined }));
                     }
@@ -618,6 +631,7 @@ export const Products = () => {
                   <option value="price-asc">Price: Low to High</option>
                   <option value="price-desc">Price: High to Low</option>
                   <option value="name-asc">Name: A to Z</option>
+                  <option value="name-desc">Name: Z to A</option>
                 </select>
               </div>
               

@@ -20,6 +20,8 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
       stockStatus,
       page = '1',
       limit = '20',
+      sortBy,
+      sortOrder,
     } = req.query;
 
     const query: any = {};
@@ -65,10 +67,20 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
+    // Build sort object
+    let sortObject: any = { createdAt: -1 }; // Default sort
+    if (sortBy) {
+      const validSortFields = ['price', 'name', 'createdAt'];
+      if (validSortFields.includes(sortBy as string)) {
+        const order = sortOrder === 'asc' ? 1 : sortOrder === 'desc' ? -1 : -1;
+        sortObject = { [sortBy as string]: order };
+      }
+    }
+
     const products = await Product.find(query)
       .skip(skip)
       .limit(limitNum)
-      .sort({ createdAt: -1 });
+      .sort(sortObject);
 
     const total = await Product.countDocuments(query);
 
