@@ -86,6 +86,10 @@ const cartSlice = createSlice({
       }
     },
     saveForLater: (state, action: PayloadAction<string>) => {
+      // Ensure savedForLater exists (for migration from old cart state)
+      if (!state.savedForLater) {
+        state.savedForLater = [];
+      }
       const item = state.items.find((item) => item.productId === action.payload);
       if (item) {
         state.savedForLater.push(item);
@@ -96,6 +100,10 @@ const cartSlice = createSlice({
       }
     },
     moveToCart: (state, action: PayloadAction<string>) => {
+      // Ensure savedForLater exists (for migration from old cart state)
+      if (!state.savedForLater) {
+        state.savedForLater = [];
+      }
       const item = state.savedForLater.find((item) => item.productId === action.payload);
       if (item) {
         state.items.push(item);
@@ -112,6 +120,10 @@ const cartSlice = createSlice({
       }
     },
     removeFromSaved: (state, action: PayloadAction<string>) => {
+      // Ensure savedForLater exists (for migration from old cart state)
+      if (!state.savedForLater) {
+        state.savedForLater = [];
+      }
       state.savedForLater = state.savedForLater.filter((item) => item.productId !== action.payload);
     },
     applyCoupon: (state, action: PayloadAction<AppliedCoupon>) => {
@@ -124,6 +136,7 @@ const cartSlice = createSlice({
     },
     clearCart: (state) => {
       state.items = [];
+      state.savedForLater = state.savedForLater || [];
       state.totalAmount = 0;
       state.totalItems = 0;
       state.appliedCoupon = undefined;

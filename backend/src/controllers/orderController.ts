@@ -4,12 +4,14 @@ import Order from '../models/Order';
 import Product from '../models/Product';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
-import { OrderStatus } from '../types/shared';
+import { OrderStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
+import { hashPassword } from '../utils/password';
+import { generateToken } from '../utils/jwt';
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { items, shippingAddress, paymentMethod, guestInfo, couponCode } = req.body;
+    const { items, shippingAddress, paymentMethod, guestInfo, couponCode, password } = req.body;
 
     if (!items || items.length === 0) {
       res.status(400).json({ message: 'Order items are required' });
@@ -117,10 +119,55 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       orderData.couponCode = couponCode.toUpperCase().trim();
     }
 
+    // Handle account creation for guests with password
+    let createdUser: any = null;
+    let authToken: string | undefined = undefined;
+
+    if (!req.user && guestInfo && password) {
+      // Check if user already exists
+      const existingUser = await User.findOne({ 
+        email: guestInfo.email.trim().toLowerCase() 
+      });
+
+      if (existingUser) {
+        // User already exists, link order to existing user
+        orderData.user = existingUser._id;
+        createdUser = existingUser;
+      } else {
+        // Create new user account
+        try {
+          const hashedPassword = await hashPassword(password);
+          const newUser = new User({
+            email: guestInfo.email.trim().toLowerCase(),
+            password: hashedPassword,
+            name: guestInfo.name.trim(),
+            phone: guestInfo.phone.trim(),
+            address: shippingAddress.trim() || undefined,
+            role: UserRole.CUSTOMER,
+          });
+          await newUser.save();
+          createdUser = newUser;
+          orderData.user = newUser._id;
+          
+          // Generate authentication token
+          authToken = generateToken({
+            userId: newUser._id.toString(),
+            email: newUser.email,
+            role: newUser.role,
+          });
+        } catch (userError: any) {
+          console.error('Failed to create user account:', userError);
+          // If user creation fails, continue with guest order
+          // Don't fail the entire order creation
+        }
+      }
+    }
+
     // Add user or guest info
     if (req.user) {
       orderData.user = req.user._id;
-    } else if (guestInfo) {
+    } else if (guestInfo && !createdUser) {
+      // Only use guestInfo if we didn't create a user account
       orderData.guestInfo = {
         email: guestInfo.email.trim().toLowerCase(),
         name: guestInfo.name.trim(),
@@ -139,15 +186,33 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         if (user) {
           await emailService.sendOrderConfirmation(order, user);
         }
+      } else if (createdUser) {
+        // Send welcome email for newly created account
+        await emailService.sendWelcomeEmail(createdUser);
+        await emailService.sendOrderConfirmation(order, createdUser);
       } else if (guestInfo) {
         await emailService.sendOrderConfirmation(order, undefined, guestInfo.email);
       }
     } catch (emailError) {
-      console.error('Failed to send order confirmation email:', emailError);
+      console.error('Failed to send email:', emailError);
       // Don't fail the order creation if email fails
     }
 
-    res.status(201).json({ order });
+    // Prepare response
+    const response: any = { order };
+    if (authToken) {
+      response.token = authToken;
+      response.user = {
+        id: createdUser._id,
+        email: createdUser.email,
+        name: createdUser.name,
+        phone: createdUser.phone,
+        role: createdUser.role,
+        address: createdUser.address,
+      };
+    }
+
+    res.status(201).json(response);
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to create order' });
   }

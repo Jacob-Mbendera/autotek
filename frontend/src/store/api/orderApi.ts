@@ -62,7 +62,7 @@ interface OrdersQueryParams {
 
 export const orderApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createOrder: builder.mutation<{ order: Order }, CreateOrderRequest>({
+    createOrder: builder.mutation<{ order: Order; token?: string; user?: any }, CreateOrderRequest>({
       query: (body) => ({
         url: '/orders',
         method: 'POST',

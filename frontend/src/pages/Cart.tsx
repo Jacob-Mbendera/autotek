@@ -50,11 +50,23 @@ export const Cart = () => {
   };
 
   const handleSaveForLater = (productId: string) => {
+    const item = cart.items.find((item) => item.productId === productId);
     dispatch(saveForLater(productId));
+    dispatch(showNotification({ 
+      message: item ? `${item.productName || 'Item'} saved for later` : 'Item saved for later', 
+      type: 'success' 
+    }));
+    // Auto-expand saved items section so user can see the item moved
+    setShowSavedItems(true);
   };
 
   const handleMoveToCart = (productId: string) => {
+    const item = savedForLater.find((item) => item.productId === productId);
     dispatch(moveToCart(productId));
+    dispatch(showNotification({ 
+      message: item ? `${item.productName || 'Item'} moved to cart` : 'Item moved to cart', 
+      type: 'success' 
+    }));
   };
 
   const handleEditNote = (productId: string, currentNote?: string) => {
@@ -71,6 +83,15 @@ export const Cart = () => {
   const handleCancelNote = () => {
     setEditingNoteId(null);
     setNoteText('');
+  };
+
+  const handleRemoveFromSaved = (productId: string) => {
+    const item = savedForLater.find((item) => item.productId === productId);
+    dispatch(removeFromSaved(productId));
+    dispatch(showNotification({ 
+      message: item ? `${item.productName || 'Item'} removed from saved` : 'Item removed from saved', 
+      type: 'success' 
+    }));
   };
 
   const getStockStatus = (item: typeof cart.items[0]) => {
@@ -93,8 +114,13 @@ export const Cart = () => {
   };
 
   const confirmRemoveItem = (productId: string) => {
+    const item = cart.items.find((item) => item.productId === productId);
     dispatch(removeItem(productId));
     setRemovingItemId(null);
+    dispatch(showNotification({ 
+      message: item ? `${item.productName || 'Item'} removed from cart` : 'Item removed from cart', 
+      type: 'success' 
+    }));
   };
 
   const cancelRemoveItem = () => {
@@ -529,7 +555,7 @@ export const Cart = () => {
                                 Move to Cart
                               </Button>
                               <button
-                                onClick={() => dispatch(removeFromSaved(item.productId))}
+                                onClick={() => handleRemoveFromSaved(item.productId)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
                                 aria-label="Remove from saved"
                               >

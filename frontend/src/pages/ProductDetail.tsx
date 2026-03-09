@@ -65,6 +65,7 @@ export const ProductDetail = () => {
           image: data.product.images?.[0],
         })
       );
+      dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
     }
   };
 

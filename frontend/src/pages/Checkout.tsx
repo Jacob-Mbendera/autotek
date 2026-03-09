@@ -1,9 +1,11 @@
-import { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation } from '../store/api/orderApi';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
 import { clearCart } from '../store/slices/cartSlice';
+import { setUser } from '../store/slices/authSlice';
+import { showNotification } from '../store/slices/uiSlice';
 import type { PaymentMethod } from '../../../shared/types';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -25,6 +27,8 @@ export const Checkout = () => {
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [createAccount, setCreateAccount] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const [shippingAddress, setShippingAddress] = useState(user?.address || '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
@@ -55,7 +59,7 @@ export const Checkout = () => {
   };
 
   // Update step when form changes
-  React.useEffect(() => {
+  useEffect(() => {
     updateStep();
   }, [shippingAddress, paymentMethod]);
 
@@ -89,6 +93,21 @@ export const Checkout = () => {
       if (!emailRegex.test(guestEmail.trim())) {
         setError('Please enter a valid email address');
         return;
+      }
+      // Validate password if creating account
+      if (createAccount) {
+        if (!password.trim()) {
+          setError('Please enter a password');
+          return;
+        }
+        if (password.length < 6) {
+          setError('Password must be at least 6 characters long');
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
       }
     }
 
@@ -133,20 +152,35 @@ export const Checkout = () => {
           email: guestEmail.trim().toLowerCase(),
           phone: guestPhone.trim(),
         };
+        // Add password if creating account
+        if (createAccount && password) {
+          orderData.password = password;
+        }
       }
 
       // Create order first
       const orderResult = await createOrder(orderData).unwrap();
 
+      // If account was created, log the user in automatically
+      if (orderResult.token && orderResult.user) {
+        dispatch(setUser({ user: orderResult.user, token: orderResult.token }));
+        dispatch(showNotification({ 
+          message: 'Account created successfully! You are now logged in.', 
+          type: 'success' 
+        }));
+      }
+
       // If PayChangu, initiate payment and redirect to PayChangu checkout
       if (paymentMethod === PAYMENT_METHODS.PAYCHANGU) {
-        const returnUrl = `${window.location.origin}/payment/success?orderId=${orderResult.order._id}${!isAuthenticated ? `&email=${encodeURIComponent(guestEmail.trim())}` : ''}`;
-        const cancelUrl = `${window.location.origin}/payment/cancel?orderId=${orderResult.order._id}${!isAuthenticated ? `&email=${encodeURIComponent(guestEmail.trim())}` : ''}`;
+        // Use authenticated user email if account was created, otherwise use guest email
+        const emailForUrl = orderResult.user?.email || guestEmail.trim();
+        const returnUrl = `${window.location.origin}/payment/success?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
+        const cancelUrl = `${window.location.origin}/payment/cancel?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
         
         const paymentResult = await initiatePayment({
           orderId: orderResult.order._id,
           paymentMethod: paymentMethod as PaymentMethod,
-          phoneNumber: isAuthenticated ? user?.phone : guestPhone.trim(),
+          phoneNumber: orderResult.user?.phone || user?.phone || guestPhone.trim(),
           returnUrl,
           cancelUrl,
         }).unwrap();
@@ -161,12 +195,13 @@ export const Checkout = () => {
       // For other payment methods, clear cart and redirect to order confirmation
       dispatch(clearCart());
       
-      // Store guest email in sessionStorage for order lookup if guest
-      if (!isAuthenticated) {
+      // Store guest email in sessionStorage for order lookup if guest (and account wasn't created)
+      if (!orderResult.user && !isAuthenticated) {
         sessionStorage.setItem('guestOrderEmail', guestEmail.trim());
       }
       
-      navigate(`/orders/${orderResult.order._id}${!isAuthenticated ? `?email=${encodeURIComponent(guestEmail.trim())}` : ''}`);
+      // Navigate to order detail - no email param needed if account was created
+      navigate(`/orders/${orderResult.order._id}${!orderResult.user && !isAuthenticated ? `?email=${encodeURIComponent(guestEmail.trim())}` : ''}`);
     } catch (err: any) {
       setError(err.data?.message || 'Failed to place order. Please try again.');
     }
@@ -351,7 +386,14 @@ export const Checkout = () => {
                 <input
                   type="checkbox"
                   checked={createAccount}
-                  onChange={(e) => setCreateAccount(e.target.checked)}
+                  onChange={(e) => {
+                    setCreateAccount(e.target.checked);
+                    if (!e.target.checked) {
+                      // Clear password fields when unchecking
+                      setPassword('');
+                      setConfirmPassword('');
+                    }
+                  }}
                   className="mt-1 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
                 />
                 <div className="flex-1">
@@ -359,10 +401,47 @@ export const Checkout = () => {
                     Create an account for faster checkout next time
                   </Body>
                   <Body className="text-xs text-gray-600">
-                    We'll send you a password setup link to {guestEmail || 'your email'} after your order is placed.
+                    {createAccount 
+                      ? 'Enter a password to create your account'
+                      : `We'll send you a password setup link to ${guestEmail || 'your email'} after your order is placed.`
+                    }
                   </Body>
                 </div>
               </label>
+              
+              {/* Password fields - shown when checkbox is checked */}
+              {createAccount && (
+                <div className="mt-4 space-y-4 pt-4 border-t border-gray-200">
+                  <Input
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required={createAccount}
+                    placeholder="Enter your password"
+                    className="text-sm"
+                  />
+                  <Input
+                    label="Confirm Password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required={createAccount}
+                    placeholder="Confirm your password"
+                    className="text-sm"
+                  />
+                  {password && confirmPassword && password !== confirmPassword && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <Body className="text-sm text-red-600">Passwords do not match</Body>
+                    </div>
+                  )}
+                  {password && password.length < 6 && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <Body className="text-sm text-amber-600">Password must be at least 6 characters long</Body>
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           )}
 

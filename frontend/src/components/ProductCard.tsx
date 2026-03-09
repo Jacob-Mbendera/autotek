@@ -83,6 +83,7 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
         image: product.images?.[0],
       })
     );
+    dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
   };
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
