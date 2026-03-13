@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation } from '../store/api/orderApi';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
-import { clearCart } from '../store/slices/cartSlice';
+import { clearCart, removeCoupon } from '../store/slices/cartSlice';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import type { PaymentMethod } from '../../../shared/types';
@@ -11,7 +11,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { H1, Body } from '../components/ui/Typography';
-import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight } from 'lucide-react';
+import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil } from 'lucide-react';
 
 export const Checkout = () => {
   const navigate = useNavigate();
@@ -49,13 +49,52 @@ export const Checkout = () => {
 
   // Update step based on form completion
   const updateStep = () => {
-    if (shippingAddress.trim() && !paymentMethod) {
+    if (!shippingAddress.trim()) {
       setCurrentStep(1);
-    } else if (shippingAddress.trim() && paymentMethod) {
+    } else if (shippingAddress.trim() && !paymentMethod) {
       setCurrentStep(2);
-    } else {
-      setCurrentStep(1);
+    } else if (shippingAddress.trim() && paymentMethod) {
+      setCurrentStep(3); // Advance to Review step
     }
+  };
+
+  // Step navigation functions
+  const handleContinue = () => {
+    if (currentStep === 1) {
+      if (!shippingAddress.trim()) {
+        setError('Please enter a shipping address');
+        return;
+      }
+      setCurrentStep(2);
+      setError('');
+    } else if (currentStep === 2) {
+      if (!paymentMethod) {
+        setError('Please select a payment method');
+        return;
+      }
+      setCurrentStep(3);
+      setError('');
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === 2) {
+      setCurrentStep(1);
+      setError('');
+    } else if (currentStep === 3) {
+      setCurrentStep(2);
+      setError('');
+    }
+  };
+
+  const handleEditShipping = () => {
+    setCurrentStep(1);
+    setError('');
+  };
+
+  const handleEditPayment = () => {
+    setCurrentStep(2);
+    setError('');
   };
 
   // Update step when form changes
@@ -304,83 +343,264 @@ export const Checkout = () => {
       <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column - Order Details */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Shipping Address */}
-          <Card variant="md">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-5 w-5 text-teal-600" />
-              <H1 className="text-xl">Shipping Address</H1>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={shippingAddress}
-                onChange={(e) => setShippingAddress(e.target.value)}
-                required
-                placeholder="Enter your full shipping address"
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
-              />
-            </div>
-          </Card>
-
-          {/* Payment Method */}
-          <Card variant="md">
-            <div className="flex items-center gap-2 mb-4">
-              <CreditCard className="h-5 w-5 text-teal-600" />
-              <H1 className="text-xl">Payment Method</H1>
-            </div>
-            <div className="space-y-3">
-              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={PAYMENT_METHODS.AIRTEL_MONEY}
-                  checked={paymentMethod === PAYMENT_METHODS.AIRTEL_MONEY}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="mr-3"
+          {/* Step 1: Shipping Address */}
+          {currentStep === 1 && (
+            <Card variant="md">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="h-5 w-5 text-teal-600" />
+                <H1 className="text-xl">Shipping Address</H1>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  required
+                  placeholder="Enter your full shipping address"
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
                 />
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900">Airtel Money</div>
-                  <div className="text-sm text-gray-600">Pay with Airtel Money</div>
-                </div>
-              </label>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleContinue}
+                >
+                  Continue
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </Card>
+          )}
 
-              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={PAYMENT_METHODS.BANK_TRANSFER}
-                  checked={paymentMethod === PAYMENT_METHODS.BANK_TRANSFER}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="mr-3"
-                />
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900">Bank Transfer</div>
-                  <div className="text-sm text-gray-600">Bank Transfer (Manual verification)</div>
-                </div>
-              </label>
+          {/* Step 2: Payment Method */}
+          {currentStep === 2 && (
+            <Card variant="md">
+              <div className="flex items-center gap-2 mb-4">
+                <CreditCard className="h-5 w-5 text-teal-600" />
+                <H1 className="text-xl">Payment Method</H1>
+              </div>
+              <div className="space-y-3">
+                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={PAYMENT_METHODS.AIRTEL_MONEY}
+                    checked={paymentMethod === PAYMENT_METHODS.AIRTEL_MONEY}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    className="mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">Airtel Money</div>
+                    <div className="text-sm text-gray-600">Pay with Airtel Money</div>
+                  </div>
+                </label>
 
-              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={PAYMENT_METHODS.PAYCHANGU}
-                  checked={paymentMethod === PAYMENT_METHODS.PAYCHANGU}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="mr-3"
-                />
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900">PayChangu</div>
-                  <div className="text-sm text-gray-600">Pay with card, mobile money, or bank transfer</div>
+                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={PAYMENT_METHODS.BANK_TRANSFER}
+                    checked={paymentMethod === PAYMENT_METHODS.BANK_TRANSFER}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    className="mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">Bank Transfer</div>
+                    <div className="text-sm text-gray-600">Bank Transfer (Manual verification)</div>
+                  </div>
+                </label>
+
+                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={PAYMENT_METHODS.PAYCHANGU}
+                    checked={paymentMethod === PAYMENT_METHODS.PAYCHANGU}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    className="mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">PayChangu</div>
+                    <div className="text-sm text-gray-600">Pay with card, mobile money, or bank transfer</div>
+                  </div>
+                </label>
+              </div>
+              <div className="mt-6 flex justify-between">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleBack}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleContinue}
+                >
+                  Continue
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Step 3: Review */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <Card variant="md">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-teal-600" />
+                    <H1 className="text-xl">Review Your Order</H1>
+                  </div>
                 </div>
-              </label>
+
+                {/* Order Items Summary */}
+                <div className="mb-6">
+                  <H1 className="text-lg font-semibold mb-3">Order Items</H1>
+                  <div className="space-y-3">
+                    {cart.items.map((item) => (
+                      <div key={item.productId} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        {item.image && (
+                          <img
+                            src={item.image}
+                            alt="Product"
+                            className="w-16 h-16 object-cover rounded"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-900">
+                            Product ID: {item.productId.slice(0, 8)}...
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Qty: {item.quantity} × MWK {item.price.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-900">
+                          MWK {(item.quantity * item.price).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Shipping Address Review */}
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-gray-600" />
+                      <H1 className="text-lg font-semibold">Shipping Address</H1>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleEditShipping}
+                      className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200 hover:border-teal-300 px-3 py-1.5"
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+                  </div>
+                  <Body className="text-sm text-gray-600 whitespace-pre-line">
+                    {shippingAddress}
+                  </Body>
+                </div>
+
+                {/* Payment Method Review */}
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-gray-600" />
+                      <H1 className="text-lg font-semibold">Payment Method</H1>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleEditPayment}
+                      className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200 hover:border-teal-300 px-3 py-1.5"
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Edit
+                    </Button>
+                  </div>
+                  <Body className="text-sm text-gray-600">
+                    {paymentMethod === PAYMENT_METHODS.AIRTEL_MONEY && 'Airtel Money'}
+                    {paymentMethod === PAYMENT_METHODS.BANK_TRANSFER && 'Bank Transfer'}
+                    {paymentMethod === PAYMENT_METHODS.PAYCHANGU && 'PayChangu'}
+                  </Body>
+                </div>
+
+                {/* Applied Coupon */}
+                {cart.appliedCoupon && (
+                  <div className="mb-6 pb-6 border-b border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Percent className="h-4 w-4 text-green-600" />
+                        <H1 className="text-lg font-semibold">Applied Coupon</H1>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          dispatch(removeCoupon());
+                          dispatch(showNotification({ 
+                            message: 'Coupon removed', 
+                            type: 'success' 
+                          }));
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Body className="text-sm font-medium text-green-900">
+                            {cart.appliedCoupon.code}
+                          </Body>
+                          <Body className="text-xs text-green-700">
+                            {cart.appliedCoupon.discountType === 'percentage' 
+                              ? `${cart.appliedCoupon.discountValue}% off`
+                              : `MWK ${cart.appliedCoupon.discountValue.toLocaleString()} off`
+                            }
+                          </Body>
+                        </div>
+                        <Body className="text-sm font-semibold text-green-700">
+                          -MWK {cart.discount.toLocaleString()}
+                        </Body>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex justify-between">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleBack}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                </div>
+              </Card>
             </div>
-          </Card>
+          )}
 
-          {/* Optional Account Creation (for guests) */}
-          {!isAuthenticated && (
+          {/* Optional Account Creation (for guests) - Show on Step 1 and Step 2 */}
+          {!isAuthenticated && (currentStep === 1 || currentStep === 2) && (
             <Card variant="md" className="bg-gray-50 border-gray-200">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
@@ -445,8 +665,8 @@ export const Checkout = () => {
             </Card>
           )}
 
-          {/* Login Prompt for Guests */}
-          {!isAuthenticated && (
+          {/* Login Prompt for Guests - Show on Step 1 and Step 2 */}
+          {!isAuthenticated && (currentStep === 1 || currentStep === 2) && (
             <Card variant="md" className="bg-teal-50 border-teal-200">
               <Body className="text-sm text-gray-700">
                 Already have an account?{' '}
@@ -518,22 +738,25 @@ export const Checkout = () => {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="default"
-              className="w-full mt-6"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                'Placing Order...'
-              ) : (
-                <>
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  Place Order
-                </>
-              )}
-            </Button>
+            {/* Place Order Button - Only show on Review step (Step 3) */}
+            {currentStep === 3 && (
+              <Button
+                type="submit"
+                variant="primary"
+                size="default"
+                className="w-full mt-6"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  'Placing Order...'
+                ) : (
+                  <>
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    Place Order
+                  </>
+                )}
+              </Button>
+            )}
           </Card>
         </div>
       </form>

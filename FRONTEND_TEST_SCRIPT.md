@@ -38,6 +38,14 @@
 - [ ] Verify success message
 - [ ] Check if redirected to home or login
 
+**Expected Results:**
+- ✅ Registration form displays correctly
+- ✅ Form validation works (required fields, email format, phone format)
+- ✅ Success toast notification appears: "Account created successfully"
+- ✅ User is redirected to home page or login page
+- ✅ User account is created in database
+- ✅ No console errors
+
 #### Test 2: User Login
 - [ ] Navigate to `/login`
 - [ ] Enter credentials:
@@ -47,6 +55,16 @@
 - [ ] Verify successful login
 - [ ] Check if redirected to home
 - [ ] Verify user menu shows in header
+
+**Expected Results:**
+- ✅ Login form displays correctly
+- ✅ Form validation works (required fields, email format)
+- ✅ Success toast notification appears: "Login successful"
+- ✅ User is redirected to home page
+- ✅ User menu appears in header with user name/email
+- ✅ Authentication token is stored in localStorage
+- ✅ User state is updated in Redux store
+- ✅ No console errors
 
 #### Test 3: Password Reset Flow
 - [ ] Navigate to `/login`
@@ -64,6 +82,19 @@
 - [ ] Verify success message
 - [ ] Try logging in with new password
 
+**Expected Results:**
+- ✅ "Forgot password?" link is visible on login page
+- ✅ Redirects to `/forgot-password` page
+- ✅ Email input form displays correctly
+- ✅ Success message appears: "Password reset email sent"
+- ✅ Reset token is generated and logged in backend (dev mode)
+- ✅ Reset password page loads with token from URL
+- ✅ Password form validation works (matching passwords, minimum length)
+- ✅ Success message appears: "Password reset successfully"
+- ✅ User can login with new password
+- ✅ Old password no longer works
+- ✅ No console errors
+
 ---
 
 ### 🛍️ Product Browsing & Wishlist
@@ -80,6 +111,20 @@
   - [ ] When NOT logged in: Button should not appear
   - [ ] When logged in: Heart icon appears on hover (grid view)
   - [ ] When logged in: Heart icon visible in list view
+
+**Expected Results:**
+- ✅ Products page loads with product grid/list
+- ✅ Products display with images, names, prices
+- ✅ View toggle switches between Grid/List/Table views
+- ✅ Search filters products in real-time
+- ✅ Category filter updates product list
+- ✅ Price range filter works correctly
+- ✅ Sorting options work (price, name, newest, etc.)
+- ✅ Wishlist button hidden when not logged in
+- ✅ Wishlist button visible on hover when logged in (grid view)
+- ✅ Wishlist button always visible in list view when logged in
+- ✅ Loading state shows while fetching products
+- ✅ No console errors
 
 #### Test 5: Product Detail Page
 - [ ] Click on any product
@@ -104,6 +149,22 @@
   - [ ] Verify review appears in list
   - [ ] Test "Helpful" button on reviews
 
+**Expected Results:**
+- ✅ Product detail page loads with all product information
+- ✅ Product images display correctly (main image + thumbnails if available)
+- ✅ Price, description, and specifications display
+- ✅ "Add to Cart" button is visible and functional
+- ✅ Wishlist heart icon toggles correctly
+- ✅ Toast notification: "Added to wishlist" / "Removed from wishlist"
+- ✅ Review statistics show: average rating, total reviews, rating distribution
+- ✅ Review list displays with user names, ratings, comments, dates
+- ✅ "Write a Review" form appears when logged in
+- ✅ Review submission shows success message
+- ✅ New review appears in list immediately
+- ✅ "Helpful" button increments count and updates UI
+- ✅ Verified purchase badge shows for verified purchases
+- ✅ No console errors
+
 #### Test 6: Wishlist Page
 - [ ] Navigate to `/wishlist` (must be logged in)
 - [ ] Verify wishlist page loads
@@ -112,6 +173,19 @@
 - [ ] Test removing item from wishlist
 - [ ] Test "Add to Cart" from wishlist
 - [ ] Verify empty state when wishlist is empty
+
+**Expected Results:**
+- ✅ Wishlist page loads with hero section
+- ✅ Statistics cards display: Total Value, Saved Items, In Stock, Average Price
+- ✅ Wishlist items display in grid/list format
+- ✅ Each item shows: image, name, price, stock status
+- ✅ "Remove" button removes item from wishlist
+- ✅ Toast notification: "Removed from wishlist"
+- ✅ "Add to Cart" button adds item to cart
+- ✅ Toast notification: "Added to cart"
+- ✅ Empty state displays when wishlist is empty: "Your wishlist is empty"
+- ✅ Redirects to login if not authenticated
+- ✅ No console errors
 
 ---
 
@@ -125,6 +199,16 @@
 - [ ] Check cart icon in header shows item count
 - [ ] Navigate to `/cart`
 - [ ] Verify item appears in cart
+
+**Expected Results:**
+- ✅ "Add to Cart" button is clickable
+- ✅ Success toast notification appears: "Added to cart"
+- ✅ Cart icon in header updates with item count badge
+- ✅ Item count is accurate
+- ✅ Cart page shows the added item
+- ✅ Item details are correct (name, price, quantity)
+- ✅ Cart total updates correctly
+- ✅ No console errors
 
 #### Test 8: Cart Page
 - [ ] Navigate to `/cart`
@@ -149,6 +233,24 @@
   - [ ] Verify discount applied
   - [ ] Check total updates with discount
   - [ ] Test "Remove" coupon button
+
+**Expected Results:**
+- ✅ Cart page loads with hero section and breadcrumbs
+- ✅ Statistics cards display correct values
+- ✅ All cart items display with images, names, prices
+- ✅ Quantity controls (+/-) work correctly
+- ✅ Cart total updates in real-time when quantity changes
+- ✅ "Remove" button removes item and updates total
+- ✅ "Save for Later" moves item to saved items (if implemented)
+- ✅ Item notes can be added and saved
+- ✅ Invalid promo code shows error: "Invalid or expired coupon code"
+- ✅ Valid promo code shows success: "Coupon applied successfully"
+- ✅ Discount amount displays clearly
+- ✅ Final total shows: Subtotal - Discount = Total
+- ✅ "Remove" coupon button removes discount and restores original total
+- ✅ "Proceed to Checkout" button is visible and functional
+- ✅ Empty cart shows empty state message
+- ✅ No console errors
 
 #### Test 9: Guest Checkout Flow
 - [ ] **Logout first** (if logged in)
@@ -179,6 +281,24 @@
 - [ ] Verify order created successfully
 - [ ] **Note the order ID** (for guest order lookup test)
 
+**Expected Results:**
+- ✅ Checkout page loads without requiring authentication
+- ✅ Checkout progress indicator shows 3 steps (Shipping, Payment, Review)
+- ✅ Step 1 (Shipping) is highlighted as active
+- ✅ Guest information form displays: Name, Email, Phone
+- ✅ Form validation works (required fields, email format, phone format)
+- ✅ Shipping address form displays correctly
+- ✅ Payment method options display: Airtel Money, Bank Transfer, PayChangu
+- ✅ "Create Account" checkbox toggles password fields
+- ✅ Coupon code input and apply button work
+- ✅ Order summary shows: Items, Subtotal, Discount, Shipping, Total
+- ✅ "Place Order" button is enabled when form is valid
+- ✅ Success message appears: "Order placed successfully"
+- ✅ Order confirmation page shows order ID
+- ✅ Order is created in database with guest info
+- ✅ Redirects to order detail page or confirmation page
+- ✅ No console errors
+
 #### Test 10: Authenticated Checkout Flow
 - [ ] **Login first**
 - [ ] Add items to cart
@@ -188,6 +308,19 @@
 - [ ] Apply coupon code
 - [ ] Complete checkout
 - [ ] Verify order created
+
+**Expected Results:**
+- ✅ User information is pre-filled from profile
+- ✅ Checkout progress indicator shows all steps
+- ✅ Can edit pre-filled information if needed
+- ✅ Coupon code can be applied
+- ✅ Order summary displays correctly
+- ✅ "Place Order" button works
+- ✅ Success message appears
+- ✅ Order is created and associated with user account
+- ✅ Redirects to order detail page
+- ✅ Order appears in user's orders list
+- ✅ No console errors
 
 ---
 
@@ -211,6 +344,23 @@
 - [ ] Test export to CSV (if implemented)
 - [ ] Click on an order to view details
 
+**Expected Results:**
+- ✅ Orders page loads with hero section
+- ✅ Statistics cards display correct values
+- ✅ All user orders are displayed
+- ✅ Each order shows: Order ID, Date, Status, Total Amount
+- ✅ Status filter updates order list correctly
+- ✅ Date range filter works
+- ✅ Search finds orders by ID or product name
+- ✅ Sorting works: Date (newest/oldest), Amount (high/low), Status
+- ✅ View toggle switches between Grid and Table views
+- ✅ Pagination works if more than one page
+- ✅ Export to CSV downloads file (if implemented)
+- ✅ Clicking order navigates to order detail page
+- ✅ Empty state shows if no orders: "No orders found"
+- ✅ Loading state shows while fetching
+- ✅ No console errors
+
 #### Test 12: Order Detail Page
 - [ ] Navigate to `/orders/:id` (use an order ID)
 - [ ] Verify order details load
@@ -230,6 +380,22 @@
   - [ ] Verify order status changes to "cancelled"
   - [ ] Verify success message
 
+**Expected Results:**
+- ✅ Order detail page loads with all order information
+- ✅ Order ID, status, and date are displayed
+- ✅ All order items show: Product image, name, quantity, price
+- ✅ Order totals display: Subtotal, Discount, Shipping, Total
+- ✅ Shipping address displays correctly
+- ✅ Payment method and status display
+- ✅ "Cancel Order" button visible for pending/processing orders
+- ✅ Confirmation modal appears with warning message
+- ✅ Cancellation updates order status to "cancelled"
+- ✅ Success toast: "Order cancelled successfully"
+- ✅ "Cancel Order" button disappears after cancellation
+- ✅ "Request Return" button visible for completed orders
+- ✅ Loading state shows while fetching
+- ✅ No console errors
+
 #### Test 13: Guest Order Lookup
 - [ ] **Logout first**
 - [ ] Navigate to `/orders/:id?email=guest@test.com`
@@ -237,6 +403,16 @@
 - [ ] Verify order details load
 - [ ] Verify guest information displays
 - [ ] Test cancellation from guest order view
+
+**Expected Results:**
+- ✅ Order detail page loads with email parameter
+- ✅ Guest information displays: Name, Email, Phone
+- ✅ All order details are visible (same as authenticated view)
+- ✅ "Cancel Order" button works for guest orders
+- ✅ Cancellation requires email confirmation
+- ✅ Success message appears after cancellation
+- ✅ Error message if email doesn't match order
+- ✅ No console errors
 
 ---
 
@@ -269,6 +445,21 @@
   - [ ] Verify success message
 - [ ] Check activity timeline section
 
+**Expected Results:**
+- ✅ Profile page loads with hero section
+- ✅ User avatar, name, and email display
+- ✅ Statistics cards show correct values
+- ✅ "Edit" button toggles edit mode
+- ✅ Form fields become editable
+- ✅ Form validation works
+- ✅ Success toast: "Profile updated successfully"
+- ✅ Changes are reflected immediately
+- ✅ Password change form validates matching passwords
+- ✅ Success toast: "Password changed successfully"
+- ✅ Activity timeline shows recent orders and services
+- ✅ Member duration calculates correctly
+- ✅ No console errors
+
 ---
 
 ### 🎫 Coupon System
@@ -290,6 +481,18 @@
 - [ ] Click "Remove" coupon
 - [ ] Verify coupon removed and total restored
 
+**Expected Results:**
+- ✅ Promo code input field is visible
+- ✅ Invalid coupon shows error: "Invalid or expired coupon code"
+- ✅ Valid coupon shows success: "Coupon applied successfully"
+- ✅ Discount amount displays clearly
+- ✅ Cart total updates: Subtotal - Discount = Total
+- ✅ Applied coupon code is displayed
+- ✅ "Remove" button removes coupon
+- ✅ Total restores to original amount
+- ✅ Coupon persists in cart state
+- ✅ No console errors
+
 #### Test 16: Coupon in Checkout
 - [ ] Proceed to checkout with items
 - [ ] Scroll to order summary
@@ -298,6 +501,15 @@
 - [ ] Verify discount applied in order summary
 - [ ] Complete checkout
 - [ ] Verify order includes coupon code and discount
+
+**Expected Results:**
+- ✅ Coupon code input available in checkout
+- ✅ Coupon validation works
+- ✅ Discount appears in order summary
+- ✅ Final total includes discount
+- ✅ Order is created with coupon code
+- ✅ Order detail shows applied coupon and discount amount
+- ✅ No console errors
 
 ---
 
@@ -314,16 +526,48 @@
   - Text is readable
   - Images scale properly
 
+**Expected Results:**
+- ✅ Desktop: Full layout with sidebar/navigation visible
+- ✅ Tablet: Layout adapts, navigation may collapse to menu
+- ✅ Mobile: Single column layout, hamburger menu
+- ✅ All navigation links work on all screen sizes
+- ✅ Forms are fully usable (no cut-off fields)
+- ✅ Buttons are appropriately sized and clickable
+- ✅ Text is readable without zooming
+- ✅ Images scale proportionally
+- ✅ No horizontal scrolling
+- ✅ Touch targets are at least 44x44px on mobile
+- ✅ No console errors
+
 #### Test 18: Loading States
 - [ ] Check loading spinners appear during API calls
 - [ ] Verify skeleton loaders on product lists
 - [ ] Check button loading states during form submission
+
+**Expected Results:**
+- ✅ Loading spinners appear during API calls
+- ✅ Skeleton loaders show on product lists while loading
+- ✅ Buttons show loading state (spinner + disabled) during submission
+- ✅ Loading states prevent duplicate submissions
+- ✅ Loading indicators are clearly visible
+- ✅ No console errors
 
 #### Test 19: Error Handling
 - [ ] Test with network disconnected
 - [ ] Verify error messages display
 - [ ] Test invalid form inputs
 - [ ] Verify validation messages
+
+**Expected Results:**
+- ✅ Network errors show user-friendly message: "Network error. Please check your connection."
+- ✅ API errors display appropriate messages
+- ✅ Form validation shows inline error messages
+- ✅ Required fields show error when empty
+- ✅ Email format validation works
+- ✅ Phone format validation works
+- ✅ Password strength validation works (if implemented)
+- ✅ Error messages are clear and actionable
+- ✅ No console errors (handled gracefully)
 
 #### Test 20: Toast Notifications
 - [ ] Perform various actions:
@@ -335,6 +579,17 @@
 - [ ] Verify toast notifications appear
 - [ ] Check notifications auto-dismiss
 - [ ] Verify success/error styling
+
+**Expected Results:**
+- ✅ Toast notifications appear for all actions
+- ✅ Success toasts: Green background, checkmark icon
+- ✅ Error toasts: Red background, X icon
+- ✅ Info toasts: Blue background (if applicable)
+- ✅ Toasts auto-dismiss after 3-5 seconds
+- ✅ Toasts can be manually dismissed (X button)
+- ✅ Multiple toasts stack correctly
+- ✅ Toast messages are clear and concise
+- ✅ No console errors
 
 ---
 
