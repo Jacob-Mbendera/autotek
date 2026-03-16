@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useGetProductsQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation, useGetCategoriesQuery } from '../../store/api/productApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
+import { getErrorInfo } from '../../utils/errorHandler';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -137,8 +138,9 @@ export const AdminProducts = () => {
       }
       handleCloseModal();
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to save product. Please try again.');
       dispatch(showNotification({
-        message: error?.data?.message || 'Failed to save product. Please try again.',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
@@ -157,8 +159,9 @@ export const AdminProducts = () => {
       setShowDeleteModal(false);
       setDeletingProductId(null);
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to delete product. Please try again.');
       dispatch(showNotification({
-        message: error?.data?.message || 'Failed to delete product. Please try again.',
+        message: errorInfo.message,
         type: 'error',
       }));
       setShowDeleteModal(false);

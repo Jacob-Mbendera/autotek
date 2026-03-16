@@ -11,9 +11,10 @@ export const PaymentCancel = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
+  const email = searchParams.get('email');
 
   const { data: orderData, isLoading: isLoadingOrder } = useGetOrderQuery(
-    orderId || '',
+    { id: orderId || '', email: email || undefined },
     { skip: !orderId }
   );
 

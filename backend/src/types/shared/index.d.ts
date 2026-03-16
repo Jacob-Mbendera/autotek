@@ -25,7 +25,8 @@ export declare enum ServiceStatus {
 }
 export declare enum PaymentMethod {
     AIRTEL_MONEY = "airtel-money",
-    BANK_TRANSFER = "bank-transfer"
+    BANK_TRANSFER = "bank-transfer",
+    PAYCHANGU = "paychangu"
 }
 export declare enum PaymentStatus {
     PENDING = "pending",

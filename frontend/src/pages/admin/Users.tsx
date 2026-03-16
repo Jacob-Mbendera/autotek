@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGetAllUsersQuery, useGetUserQuery, useUpdateUserRoleMutation, type User } from '../../store/api/adminApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
+import { getErrorInfo } from '../../utils/errorHandler';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -79,13 +80,11 @@ export const AdminUsers = () => {
         await refetchUser(); // Refetch user details if viewing user details
       }
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to update user role');
       dispatch(showNotification({ 
-        message: error.data?.message || 'Failed to update user role', 
+        message: errorInfo.message, 
         type: 'error' 
       }));
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to update user role:', error);
-      }
     }
   };
 

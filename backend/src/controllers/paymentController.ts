@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Payment from '../models/Payment';
 import Order from '../models/Order';
@@ -12,9 +12,9 @@ export const initiatePaymentRequest = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { orderId, towingServiceId, carServiceId, method, phoneNumber, returnUrl, cancelUrl } = req.body;
+    const { orderId, towingServiceId, carServiceId, paymentMethod, phoneNumber, returnUrl, cancelUrl } = req.body;
 
-    if (!method || !Object.values(PaymentMethod).includes(method)) {
+    if (!paymentMethod || !Object.values(PaymentMethod).includes(paymentMethod)) {
       res.status(400).json({ message: 'Valid payment method is required' });
       return;
     }
@@ -84,22 +84,30 @@ export const initiatePaymentRequest = async (
 
     // Initiate payment with gateway
     const reference = `${type.toUpperCase()}_${entityId}_${Date.now()}`;
-    
+
     // For PayChangu, construct return and cancel URLs if not provided
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const finalReturnUrl = returnUrl || `${baseUrl}/payment/success?paymentId={PAYMENT_ID}`;
     const finalCancelUrl = cancelUrl || `${baseUrl}/payment/cancel?paymentId={PAYMENT_ID}`;
-    
+
+    // Prepare customer information for PayChangu
+    const customerInfo = paymentMethod === PaymentMethod.PAYCHANGU ? {
+      email: req.user?.email || entity.user?.email || entity.email,
+      firstName: req.user?.name?.split(' ')[0] || entity.user?.name?.split(' ')[0] || entity.name?.split(' ')[0] || 'Customer',
+      lastName: req.user?.name?.split(' ').slice(1).join(' ') || entity.user?.name?.split(' ').slice(1).join(' ') || entity.name?.split(' ').slice(1).join(' ') || '',
+    } : undefined;
+
     const paymentResponse = await initiatePayment(
-      method,
+      paymentMethod,
       {
         amount,
         phoneNumber: phoneNumber || req.user!.phone,
         reference,
         description: `Payment for ${type}`,
       },
-      method === PaymentMethod.PAYCHANGU ? finalReturnUrl : undefined,
-      method === PaymentMethod.PAYCHANGU ? finalCancelUrl : undefined
+      paymentMethod === PaymentMethod.PAYCHANGU ? finalReturnUrl : undefined,
+      paymentMethod === PaymentMethod.PAYCHANGU ? finalCancelUrl : undefined,
+      customerInfo
     );
 
     if (!paymentResponse.success) {
@@ -111,7 +119,7 @@ export const initiatePaymentRequest = async (
     const paymentData: any = {
       type,
       amount,
-      method,
+      method: paymentMethod,
       transactionId: paymentResponse.transactionId,
       status: PaymentStatus.PENDING,
     };
@@ -320,9 +328,71 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
   }
 };
 
+export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Verify payment using transaction reference (for PayChangu callback)
+    const { tx_ref, orderId } = req.query as { tx_ref?: string; orderId?: string };
+
+    if (!tx_ref && !orderId) {
+      res.status(400).json({ message: 'Transaction reference or order ID is required' });
+      return;
+    }
+
+    // Find payment by transaction reference or order ID
+    let payment;
+    if (orderId) {
+      const order = await Order.findById(orderId);
+      if (order) {
+        payment = await Payment.findOne({ order: order._id });
+      }
+    } else if (tx_ref) {
+      payment = await Payment.findOne({
+        $or: [
+          { transactionId: tx_ref },
+          { transactionId: { $regex: String(tx_ref).split('_')[0] } }
+        ]
+      });
+    }
+
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    // Update payment status to completed (user reached success page from PayChangu)
+    payment.status = PaymentStatus.COMPLETED;
+
+    // Update related entity
+    if (payment.type === 'order' && payment.order) {
+      const order = await Order.findById(payment.order);
+      if (order) {
+        order.paymentStatus = PaymentStatus.COMPLETED;
+        await order.save();
+      }
+    } else if (payment.type === 'towing' && payment.towingService) {
+      const towingService = await TowingService.findById(payment.towingService);
+      if (towingService) {
+        towingService.paymentStatus = 'completed';
+        await towingService.save();
+      }
+    } else if (payment.type === 'car-service' && payment.carService) {
+      const carService = await CarService.findById(payment.carService);
+      if (carService) {
+        carService.paymentStatus = 'completed';
+        await carService.save();
+      }
+    }
+
+    await payment.save();
+    res.json({ verified: true, payment });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to verify payment' });
+  }
+};
+
 export const verifyPayment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Manual verification for bank transfers
+    // Manual verification for bank transfers (admin only)
     const { paymentId, verified } = req.body;
 
     if (req.user!.role !== 'admin') {

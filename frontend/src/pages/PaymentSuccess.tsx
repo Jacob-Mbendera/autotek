@@ -15,12 +15,13 @@ export const PaymentSuccess = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
+  const email = searchParams.get('email');
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const maxVerificationAttempts = 5;
 
   const { data: orderData, isLoading: isLoadingOrder, error: orderError } = useGetOrderQuery(
-    orderId || '',
+    { id: orderId || '', email: email || undefined },
     { skip: !orderId }
   );
 
@@ -36,6 +37,23 @@ export const PaymentSuccess = () => {
     if (!orderId) {
       navigate('/');
       return;
+    }
+
+    // For PayChangu payments, automatically verify when user lands on success page
+    const txRef = searchParams.get('tx_ref');
+    if (txRef || orderId) {
+      // Call verify endpoint to mark payment as complete
+      fetch(`${import.meta.env.VITE_API_URL}/payments/verify-txref?orderId=${orderId}${txRef ? `&tx_ref=${txRef}` : ''}`)
+        .then(res => res.json())
+        .then(() => {
+          // Refetch payment after verification
+          setTimeout(() => refetchPayment(), 1000);
+        })
+        .catch(err => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Auto-verification error:', err);
+          }
+        });
     }
 
     // Verify payment status
@@ -157,7 +175,7 @@ export const PaymentSuccess = () => {
                   MWK {order.totalAmount.toLocaleString()}
                 </span>
               </div>
-              {payment && (
+              {payment && payment.paymentMethod && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Payment Method:</span>
                   <span className="font-medium text-gray-900 capitalize">

@@ -12,7 +12,7 @@ A full-stack MERN (MongoDB, Express, React, Node.js) application with TypeScript
 - 🔧 Request custom orders for unavailable items
 - 🚗 Request towing services
 - 🔩 Request home car services (oil change, brake pads, spark plugs, etc.)
-- 💳 Payment integration (Airtel Money & Bank Transfer)
+- 💳 Payment integration (Airtel Money, Bank Transfer & PayChangu)
 - 📱 Progressive Web App (PWA) support
 
 ### Admin Features
@@ -32,7 +32,7 @@ A full-stack MERN (MongoDB, Express, React, Node.js) application with TypeScript
 - **Database**: MongoDB with Mongoose
 - **Authentication**: JWT (JSON Web Tokens)
 - **Validation**: express-validator
-- **Payment**: Airtel Money API integration
+- **Payment**: Airtel Money, Bank Transfer, PayChangu API integration
 
 ### Frontend
 - **Framework**: React with TypeScript
@@ -107,13 +107,26 @@ autotek/
    AIRTEL_API_URL=https://openapiuat.airtel.africa
    AIRTEL_CLIENT_ID=your_client_id
    AIRTEL_CLIENT_SECRET=your_client_secret
-   
+
+   # PayChangu Payment Gateway (Malawi)
+   PAYCHANGU_API_KEY=your_api_key
+   PAYCHANGU_API_SECRET=your_api_secret
+   PAYCHANGU_BASE_URL=https://api-sandbox.paychangu.com
+   PAYCHANGU_WEBHOOK_SECRET=your_webhook_secret
+   FRONTEND_URL=http://localhost:5173
+
+   # Cloudinary Configuration
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
+
    NODE_ENV=development
    ```
 
    **Frontend** (`frontend/.env`):
    ```env
    VITE_API_URL=http://localhost:5000/api
+   VITE_BASE_URL=http://localhost:5173
    ```
 
 5. **Start the development servers**
@@ -162,6 +175,8 @@ autotek/
 ### Payments
 - `POST /api/payments/initiate` - Initiate payment
 - `GET /api/payments/:id` - Get payment status
+- `GET /api/payments/order/:orderId` - Get payment by order
+- `POST /api/payments/webhook/paychangu` - PayChangu webhook endpoint
 
 ### Admin
 - `GET /api/admin/stats` - Dashboard statistics
@@ -174,7 +189,10 @@ autotek/
 - **Country**: Malawi
 - **Currency**: MWK (Malawi Kwacha)
 - **Phone Format**: +265XXXXXXXXX or 0XXXXXXXXX
-- **Payment Methods**: Airtel Money, Bank Transfer
+- **Payment Methods**:
+  - **Airtel Money**: Mobile money integration
+  - **Bank Transfer**: Manual verification
+  - **PayChangu**: Cards, mobile money, bank transfers (multi-payment gateway)
 
 ## Development
 
@@ -203,6 +221,48 @@ This project follows industry best practices:
 - ✅ Code organization and separation of concerns
 - ✅ Logging for debugging
 - ✅ API documentation considerations
+
+## PayChangu Payment Integration
+
+PayChangu is a payment gateway that supports multiple payment methods for Malawi, including cards, mobile money, and bank transfers.
+
+### Quick Start
+
+See [`PAYCHANGU_QUICK_START.md`](PAYCHANGU_QUICK_START.md) for a 5-minute setup guide.
+
+### Documentation
+
+- **Setup Guide**: [`PAYCHANGU_SETUP.md`](PAYCHANGU_SETUP.md) - Complete configuration and deployment guide
+- **Testing Guide**: [`PAYCHANGU_TESTING.md`](PAYCHANGU_TESTING.md) - Comprehensive testing instructions
+- **Quick Start**: [`PAYCHANGU_QUICK_START.md`](PAYCHANGU_QUICK_START.md) - Get started in 5 minutes
+
+### Features
+
+- ✅ **Standard Checkout**: Hosted payment page (easiest integration)
+- ✅ **Multiple Payment Methods**: Cards, mobile money, bank transfers
+- ✅ **Webhook Support**: Real-time payment status updates
+- ✅ **MWK Currency**: Native support for Malawi Kwacha
+- ✅ **Secure**: PCI-DSS compliant
+- ✅ **Test Mode**: Sandbox environment for development
+
+### Payment Flow
+
+1. User selects PayChangu at checkout
+2. Backend creates checkout session
+3. User redirected to PayChangu hosted page
+4. User completes payment
+5. PayChangu sends webhook notification
+6. User redirected back to success page
+
+### Test Cards (Sandbox)
+
+| Card Number | Result |
+|-------------|--------|
+| 4242 4242 4242 4242 | ✅ Success |
+| 4000 0000 0000 0002 | ❌ Declined |
+
+**Expiry**: Any future date (e.g., 12/25)
+**CVV**: Any 3 digits (e.g., 123)
 
 ## Contributing
 

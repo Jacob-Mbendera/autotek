@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAppSelector } from '../store/types';
 import { useCreateReviewMutation, useUpdateReviewMutation, useDeleteReviewMutation, useGetUserReviewQuery } from '../store/api/reviewApi';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { useAppDispatch } from '../store/types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -109,8 +110,9 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
       }
       if (onSuccess) onSuccess();
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to submit review');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to submit review',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
@@ -154,8 +156,9 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
 
       if (onSuccess) onSuccess();
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to delete review');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to delete review',
+        message: errorInfo.message,
         type: 'error',
       }));
       setShowDeleteModal(false);

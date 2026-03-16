@@ -4,6 +4,7 @@ import { useRegisterMutation } from '../store/api/authApi';
 import { useAppDispatch } from '../store/types';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -27,10 +28,12 @@ export const Register = () => {
     address: '',
   });
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -67,15 +70,19 @@ export const Register = () => {
       const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
-      // Handle validation errors from backend
-      if (err.data?.errors && Array.isArray(err.data.errors)) {
-        const errorMessages = err.data.errors.map((error: any) => {
-          if (typeof error === 'string') return error;
-          return error.msg || error.message || 'Validation error';
-        });
-        setError(errorMessages.join(', ') || err.data?.message || 'Validation failed');
+      const errorInfo = getErrorInfo(err);
+      setError(errorInfo.message);
+      
+      // Set field-specific errors if available
+      if (errorInfo.fieldErrors) {
+        setFieldErrors(errorInfo.fieldErrors);
       } else {
-        setError(err.data?.message || 'Registration failed. Please try again.');
+        setFieldErrors({});
+      }
+      
+      // Also show notification for network/server errors
+      if (errorInfo.type === 'network' || errorInfo.type === 'server') {
+        dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
       }
     }
   };
@@ -116,7 +123,11 @@ export const Register = () => {
             label="Full Name"
             type="text"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: '' });
+            }}
+            error={fieldErrors.name}
             required
             placeholder="Enter your full name"
           />
@@ -125,7 +136,11 @@ export const Register = () => {
             label="Email"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' });
+            }}
+            error={fieldErrors.email}
             required
             placeholder="Enter your email"
           />
@@ -134,7 +149,11 @@ export const Register = () => {
             label="Phone Number"
             phoneNumber
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, phone: e.target.value });
+              if (fieldErrors.phone) setFieldErrors({ ...fieldErrors, phone: '' });
+            }}
+            error={fieldErrors.phone}
             required
             placeholder="XXXXXXXXX"
           />
@@ -143,7 +162,11 @@ export const Register = () => {
             label="Password"
             type="password"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, password: e.target.value });
+              if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' });
+            }}
+            error={fieldErrors.password}
             required
             placeholder="Enter your password"
           />
@@ -152,7 +175,11 @@ export const Register = () => {
             label="Confirm Password"
             type="password"
             value={formData.confirmPassword}
-            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, confirmPassword: e.target.value });
+              if (fieldErrors.confirmPassword) setFieldErrors({ ...fieldErrors, confirmPassword: '' });
+            }}
+            error={fieldErrors.confirmPassword}
             required
             placeholder="Confirm your password"
           />
@@ -161,7 +188,11 @@ export const Register = () => {
             label="Address (Optional)"
             type="text"
             value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, address: e.target.value });
+              if (fieldErrors.address) setFieldErrors({ ...fieldErrors, address: '' });
+            }}
+            error={fieldErrors.address}
             placeholder="Enter your address"
           />
 

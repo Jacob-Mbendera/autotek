@@ -3,6 +3,7 @@ import { useGetAllServicesQuery } from '../../store/api/adminApi';
 import { useUpdateTowingServiceMutation, useUpdateCarServiceMutation } from '../../store/api/serviceApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
+import { getErrorInfo } from '../../utils/errorHandler';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -61,8 +62,9 @@ export const AdminServices = () => {
       // Update the selected service with new status
       setSelectedService({ ...selectedService, status: newStatus });
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to update service status');
       dispatch(showNotification({ 
-        message: error.data?.message || 'Failed to update service status', 
+        message: errorInfo.message, 
         type: 'error' 
       }));
     }

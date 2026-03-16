@@ -8,6 +8,7 @@ import {
 } from '../../store/api/returnApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
+import { getErrorInfo } from '../../utils/errorHandler';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -120,8 +121,9 @@ export const AdminReturns = () => {
       setActionType(null);
       refetch();
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to approve return');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to approve return',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
@@ -150,8 +152,9 @@ export const AdminReturns = () => {
       setRejectNotes('');
       refetch();
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to reject return');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to reject return',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
@@ -174,8 +177,9 @@ export const AdminReturns = () => {
       setRefundAmount('');
       refetch();
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to process refund');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to process refund',
+        message: errorInfo.message,
         type: 'error',
       }));
     }

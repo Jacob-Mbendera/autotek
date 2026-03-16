@@ -4,6 +4,7 @@ import { useGetOrderQuery } from '../store/api/orderApi';
 import { useCreateReturnMutation } from '../store/api/returnApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -231,8 +232,9 @@ export const RequestReturn = () => {
         navigate(`/returns/${returnId}?email=${encodeURIComponent(order.guestInfo.email)}`);
       }
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to submit return request');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to submit return request',
+        message: errorInfo.message,
         type: 'error',
       }));
     }

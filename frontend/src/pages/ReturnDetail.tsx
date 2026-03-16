@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useGetReturnQuery, useCancelReturnMutation } from '../store/api/returnApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, H2, Body } from '../components/ui/Typography';
@@ -110,8 +111,9 @@ export const ReturnDetail = () => {
 
       setShowCancelModal(false);
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to cancel return');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to cancel return',
+        message: errorInfo.message,
         type: 'error',
       }));
     }

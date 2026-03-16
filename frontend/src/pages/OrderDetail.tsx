@@ -11,6 +11,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import {
   ArrowLeft,
   Package,
@@ -303,8 +304,9 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         userQueryResult.refetch();
       }
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to cancel order');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to cancel order',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
@@ -341,10 +343,10 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         type: 'success',
       }));
     } catch (error: any) {
-      console.error('Failed to update order status:', error);
       setShowStatusUpdateModal(false);
+      const errorInfo = getErrorInfo(error, 'Failed to update order status');
       dispatch(showNotification({
-        message: error.data?.message || error.message || 'Failed to update order status',
+        message: errorInfo.message,
         type: 'error',
       }));
     }

@@ -4,6 +4,7 @@ import { useAppSelector, useAppDispatch } from '../store/types';
 import { removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved, applyCoupon, removeCoupon } from '../store/slices/cartSlice';
 import { useValidateCouponMutation } from '../store/api/couponApi';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -144,6 +145,7 @@ export const Cart = () => {
           code: result.coupon.code,
           discount: result.discount,
           type: result.coupon.type,
+          value: result.coupon.value,
         }));
         dispatch(showNotification({
           message: result.message || 'Coupon applied successfully!',
@@ -152,8 +154,9 @@ export const Cart = () => {
         setPromoCode('');
       }
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Invalid coupon code');
       dispatch(showNotification({
-        message: error.data?.message || 'Invalid coupon code',
+        message: errorInfo.message,
         type: 'error',
       }));
     } finally {

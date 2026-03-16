@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '../store/types';
 import { addItem, clearCart } from '../store/slices/cartSlice';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
@@ -114,8 +115,9 @@ export const ProductDetail = () => {
         }));
       }
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to update wishlist');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to update wishlist',
+        message: errorInfo.message,
         type: 'error',
       }));
     }

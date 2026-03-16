@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '../store/types';
 import { addItem } from '../store/slices/cartSlice';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { addToComparison } from '../store/slices/comparisonSlice';
 import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
@@ -123,8 +124,9 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
     } catch (error: any) {
       // Revert optimistic update on error
       setOptimisticWishlistState(!newWishlistState);
+      const errorInfo = getErrorInfo(error, 'Failed to update wishlist');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to update wishlist',
+        message: errorInfo.message,
         type: 'error',
       }));
     } finally {

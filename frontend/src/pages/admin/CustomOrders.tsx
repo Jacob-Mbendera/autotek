@@ -3,6 +3,7 @@ import { useGetAllCustomOrdersQuery, useGetCustomOrderQuery } from '../../store/
 import { useUpdateCustomOrderMutation } from '../../store/api/customOrderApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
+import { getErrorInfo } from '../../utils/errorHandler';
 import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -88,8 +89,9 @@ export const AdminCustomOrders = () => {
       // Update the selected order with new status
       setSelectedOrder({ ...selectedOrder, status: newStatus });
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to update custom order status');
       dispatch(showNotification({ 
-        message: error.data?.message || 'Failed to update custom order status', 
+        message: errorInfo.message, 
         type: 'error' 
       }));
       if (process.env.NODE_ENV === 'development') {

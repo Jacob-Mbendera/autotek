@@ -6,6 +6,7 @@ import { useGetOrdersQuery } from '../store/api/orderApi';
 import { useGetTowingServicesQuery, useGetCarServicesQuery } from '../store/api/serviceApi';
 import { updateUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -126,8 +127,9 @@ export const Profile = () => {
       setIsEditingProfile(false);
       await refetchUser();
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to update profile');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to update profile',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
@@ -162,8 +164,9 @@ export const Profile = () => {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to change password');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to change password',
+        message: errorInfo.message,
         type: 'error',
       }));
     }

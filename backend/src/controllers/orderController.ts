@@ -142,7 +142,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
             password: hashedPassword,
             name: guestInfo.name.trim(),
             phone: guestInfo.phone.trim(),
-            address: shippingAddress.trim() || undefined,
+            address: shippingAddress ? shippingAddress.trim() : undefined,
             role: UserRole.CUSTOMER,
           });
           await newUser.save();
@@ -214,6 +214,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
 
     res.status(201).json(response);
   } catch (error: any) {
+    console.error('Order creation error:', error);
     res.status(500).json({ message: error.message || 'Failed to create order' });
   }
 };

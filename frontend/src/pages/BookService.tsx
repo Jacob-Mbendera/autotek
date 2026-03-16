@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateTowingServiceMutation, useCreateCarServiceMutation } from '../store/api/serviceApi';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -137,11 +138,11 @@ export const BookService = () => {
       // Redirect to services page or orders
       navigate('/services');
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to submit service request. Please try again.');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to submit service request. Please try again.',
+        message: errorInfo.message,
         type: 'error',
       }));
-      console.error('Service booking error:', error);
     }
   };
 

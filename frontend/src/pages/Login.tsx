@@ -4,6 +4,7 @@ import { useLoginMutation } from '../store/api/authApi';
 import { useAppDispatch } from '../store/types';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -36,7 +37,12 @@ export const Login = () => {
       const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
-      setError(err.data?.message || 'Login failed. Please try again.');
+      const errorInfo = getErrorInfo(err);
+      setError(errorInfo.message);
+      // Also show notification for network/server errors
+      if (errorInfo.type === 'network' || errorInfo.type === 'server') {
+        dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+      }
     }
   };
 

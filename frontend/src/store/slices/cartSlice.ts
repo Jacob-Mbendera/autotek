@@ -16,6 +16,7 @@ interface AppliedCoupon {
   code: string;
   discount: number;
   type: string;
+  value: number;
 }
 
 interface CartState {

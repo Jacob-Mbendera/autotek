@@ -6,6 +6,7 @@ import { useInitiatePaymentMutation } from '../store/api/paymentApi';
 import { clearCart, removeCoupon } from '../store/slices/cartSlice';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import type { PaymentMethod } from '../../../shared/types';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -242,7 +243,9 @@ export const Checkout = () => {
       // Navigate to order detail - no email param needed if account was created
       navigate(`/orders/${orderResult.order._id}${!orderResult.user && !isAuthenticated ? `?email=${encodeURIComponent(guestEmail.trim())}` : ''}`);
     } catch (err: any) {
-      setError(err.data?.message || 'Failed to place order. Please try again.');
+      const errorInfo = getErrorInfo(err);
+      setError(errorInfo.message);
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
 
@@ -570,9 +573,9 @@ export const Checkout = () => {
                             {cart.appliedCoupon.code}
                           </Body>
                           <Body className="text-xs text-green-700">
-                            {cart.appliedCoupon.discountType === 'percentage' 
-                              ? `${cart.appliedCoupon.discountValue}% off`
-                              : `MWK ${cart.appliedCoupon.discountValue.toLocaleString()} off`
+                            {cart.appliedCoupon.type === 'percentage'
+                              ? `${cart.appliedCoupon.value}% off`
+                              : `MWK ${cart.appliedCoupon.value.toLocaleString()} off`
                             }
                           </Body>
                         </div>

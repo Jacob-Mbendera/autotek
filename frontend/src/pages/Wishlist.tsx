@@ -4,6 +4,7 @@ import { useAppDispatch } from '../store/types';
 import { addItem } from '../store/slices/cartSlice';
 import { useGetWishlistQuery, useRemoveFromWishlistMutation, useClearWishlistMutation } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { ProductCard } from '../components/ProductCard';
 import { Button } from '../components/ui/Button';
 import { H1, H2, Body } from '../components/ui/Typography';
@@ -44,8 +45,9 @@ export const Wishlist = () => {
       await removeFromWishlist(productId).unwrap();
       dispatch(showNotification({ message: 'Product removed from wishlist', type: 'success' }));
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to remove product from wishlist');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to remove product from wishlist',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
@@ -57,8 +59,9 @@ export const Wishlist = () => {
       setShowClearModal(false);
       dispatch(showNotification({ message: 'Wishlist cleared successfully', type: 'success' }));
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to clear wishlist');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to clear wishlist',
+        message: errorInfo.message,
         type: 'error',
       }));
     }

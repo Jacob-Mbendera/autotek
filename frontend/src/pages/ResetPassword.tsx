@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useVerifyResetTokenMutation, useResetPasswordMutation } from '../store/api/authApi';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { useAppDispatch } from '../store/types';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -75,8 +76,9 @@ export const ResetPassword = () => {
       dispatch(showNotification({ message: 'Password reset successfully!', type: 'success' }));
       navigate('/login');
     } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to reset password. The link may have expired.');
       dispatch(showNotification({
-        message: error.data?.message || 'Failed to reset password. The link may have expired.',
+        message: errorInfo.message,
         type: 'error',
       }));
     }
