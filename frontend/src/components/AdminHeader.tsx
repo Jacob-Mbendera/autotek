@@ -1,10 +1,20 @@
 import { useState } from 'react';
-import { useAppSelector } from '../store/types';
-import { Search, Bell, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../store/types';
+import { logout } from '../store/slices/authSlice';
+import { Search, Bell, User, LogOut } from 'lucide-react';
+import { Button } from './ui/Button';
 
 export const AdminHeader = () => {
   const { user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-slate-900 border-b border-gray-700">
@@ -31,7 +41,7 @@ export const AdminHeader = () => {
             <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
           </button>
 
-          {/* User Profile */}
+          {/* User Profile and Logout */}
           <div className="flex items-center gap-2 lg:gap-3 pl-2 lg:pl-4 border-l border-gray-700">
             <div className="text-right hidden sm:block">
               <div className="text-sm font-medium text-gray-50">
@@ -44,6 +54,15 @@ export const AdminHeader = () => {
             <div className="h-8 w-8 lg:h-10 lg:w-10 bg-gray-700 rounded-full flex items-center justify-center">
               <User className="h-4 w-4 lg:h-5 lg:w-5 text-gray-400" />
             </div>
+            <Button
+              variant="ghost"
+              size="small"
+              onClick={handleLogout}
+              className="text-gray-400 hover:text-white ml-2"
+              aria-label="Log out"
+            >
+              <LogOut className="h-4 w-4 lg:h-5 lg:w-5" />
+            </Button>
           </div>
         </div>
       </div>

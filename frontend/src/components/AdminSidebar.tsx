@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Users,
+  RotateCcw,
 } from 'lucide-react';
 
 export const AdminSidebar = () => {
@@ -26,6 +27,7 @@ export const AdminSidebar = () => {
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
     { name: 'Products', href: '/admin/products', icon: Package },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+    { name: 'Returns', href: '/admin/returns', icon: RotateCcw },
     { name: 'Services', href: '/admin/services', icon: Wrench },
     { name: 'Custom Orders', href: '/admin/custom-orders', icon: FileText },
     { name: 'Users', href: '/admin/users', icon: Users },

@@ -49,29 +49,38 @@ const isWithinReturnWindow = (order: any): boolean => {
   return daysSinceCompletion <= RETURN_WINDOW_DAYS;
 };
 
+// Get product id string from an order item (handles populated and non-populated product)
+const getOrderItemProductId = (item: any): string => {
+  const p = item?.product;
+  return p && (p._id != null ? p._id : p).toString();
+};
+
 // Helper function to calculate refund amount
 const calculateRefundAmount = (order: any, returnItems: any[]): number => {
   let refundAmount = 0;
-  
+
   for (const returnItem of returnItems) {
+    const returnProductId = returnItem.product?.toString() ?? '';
     const orderItem = order.items.find(
-      (item: any) => item.product.toString() === returnItem.product.toString()
+      (item: any) => getOrderItemProductId(item) === returnProductId
     );
-    
+
     if (orderItem) {
       const itemPrice = orderItem.price;
       const itemQuantity = returnItem.quantity;
       refundAmount += itemPrice * itemQuantity;
     }
   }
-  
-  // Apply proportional discount if order had discount
+
+  // Apply proportional discount if order had discount (guard against division by zero)
   if (order.discount && order.discount > 0) {
     const orderTotal = order.totalAmount + order.discount;
-    const returnProportion = refundAmount / orderTotal;
-    refundAmount = refundAmount - (order.discount * returnProportion);
+    if (orderTotal > 0) {
+      const returnProportion = refundAmount / orderTotal;
+      refundAmount = refundAmount - (order.discount * returnProportion);
+    }
   }
-  
+
   return Math.max(0, Math.round(refundAmount * 100) / 100);
 };
 
@@ -318,7 +327,12 @@ export const getReturn = async (req: AuthRequest, res: Response): Promise<void> 
 
     let returnDoc;
 
-    if (req.user) {
+    // Admin can view any return by id
+    if (req.user && req.user.role === 'admin') {
+      returnDoc = await Return.findOne({ _id: id })
+        .populate('order')
+        .populate('items.product');
+    } else if (req.user) {
       returnDoc = await Return.findOne({
         _id: id,
         user: req.user._id,

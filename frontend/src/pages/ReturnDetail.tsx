@@ -77,13 +77,19 @@ const getStatusIcon = (status: ReturnStatus) => {
   }
 };
 
-export const ReturnDetail = () => {
+interface ReturnDetailProps {
+  isAdmin?: boolean;
+}
+
+export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const email = searchParams.get('email');
   const { isAuthenticated } = useAppSelector((state) => state.auth);
+
+  const returnsHref = isAdmin ? '/admin/returns' : '/returns';
 
   const { data, isLoading, error } = useGetReturnQuery(
     id ? { id, email: email || undefined } : { id: '', email: undefined },
@@ -183,7 +189,7 @@ export const ReturnDetail = () => {
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <H2>Return Not Found</H2>
           <Body className="mt-2 text-gray-600">The return you're looking for doesn't exist or you don't have access to it.</Body>
-          <Link to="/returns">
+          <Link to={returnsHref}>
             <Button className="mt-4">View Returns</Button>
           </Link>
         </Card>
@@ -201,15 +207,21 @@ export const ReturnDetail = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Breadcrumb
-        items={[
-          { label: 'Home', href: '/' },
-          { label: 'Returns', href: '/returns' },
-          { label: `Return #${returnDoc._id.slice(-8).toUpperCase()}`, href: '#' },
-        ]}
+        items={isAdmin
+          ? [
+              { label: 'Admin', href: '/admin/dashboard' },
+              { label: 'Returns', href: '/admin/returns' },
+              { label: `Return #${returnDoc._id.slice(-8).toUpperCase()}`, href: '#' },
+            ]
+          : [
+              { label: 'Home', href: '/' },
+              { label: 'Returns', href: '/returns' },
+              { label: `Return #${returnDoc._id.slice(-8).toUpperCase()}`, href: '#' },
+            ]}
       />
 
       <div className="mt-6">
-        <Link to="/returns" className="inline-flex items-center text-teal-600 hover:text-teal-700 mb-4">
+        <Link to={returnsHref} className="inline-flex items-center text-teal-600 hover:text-teal-700 mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Returns
         </Link>

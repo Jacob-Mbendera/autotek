@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings, Heart } from 'lucide-react';
+import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings, Heart, RotateCcw } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
 import { useGetWishlistQuery } from '../store/api/wishlistApi';
@@ -42,6 +42,7 @@ export const Header = () => {
   const navigation = [
     { name: 'Products', href: '/products', icon: Package },
     { name: 'Orders', href: '/orders', icon: Package },
+    { name: 'Returns', href: '/returns', icon: RotateCcw },
     { name: 'Services', href: '/services', icon: Wrench },
   ];
 

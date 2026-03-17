@@ -204,61 +204,6 @@ export const getPaymentByOrder = async (req: AuthRequest, res: Response): Promis
   }
 };
 
-export const paymentCallback = async (req: Request, res: Response): Promise<Response | void> => {
-  try {
-    // This endpoint will be called by payment gateways via webhook
-    const { transactionId, status, reference } = req.body as {
-      transactionId?: string;
-      status?: string;
-      reference?: string;
-    };
-
-    if (!transactionId) {
-      res.status(400).json({ message: 'Transaction ID is required' });
-      return;
-    }
-
-    const payment = await Payment.findOne({ transactionId });
-    if (!payment) {
-      res.status(404).json({ message: 'Payment not found' });
-      return;
-    }
-
-    // Update payment status
-    if (status === 'success' || status === 'completed') {
-      payment.status = PaymentStatus.COMPLETED;
-
-      // Update related entity payment status
-      if (payment.type === 'order' && payment.order) {
-        const order = await Order.findById(payment.order);
-        if (order) {
-          order.paymentStatus = PaymentStatus.COMPLETED;
-          await order.save();
-        }
-      } else if (payment.type === 'towing' && payment.towingService) {
-        const towingService = await TowingService.findById(payment.towingService);
-        if (towingService) {
-          towingService.paymentStatus = 'completed';
-          await towingService.save();
-        }
-      } else if (payment.type === 'car-service' && payment.carService) {
-        const carService = await CarService.findById(payment.carService);
-        if (carService) {
-          carService.paymentStatus = 'completed';
-          await carService.save();
-        }
-      }
-    } else if (status === 'failed') {
-      payment.status = PaymentStatus.FAILED;
-    }
-
-    await payment.save();
-
-    res.json({ success: true, payment });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message || 'Failed to process callback' });
-  }
-};
 
 export const payChanguWebhook = async (req: Request, res: Response): Promise<Response | void> => {
   try {

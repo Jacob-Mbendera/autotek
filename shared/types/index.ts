@@ -30,8 +30,6 @@ export enum ServiceStatus {
 }
 
 export enum PaymentMethod {
-  AIRTEL_MONEY = 'airtel-money',
-  BANK_TRANSFER = 'bank-transfer',
   PAYCHANGU = 'paychangu',
 }
 

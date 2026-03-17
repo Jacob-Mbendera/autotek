@@ -206,8 +206,8 @@ export const AdminReturns = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
-        <H1>Returns Management</H1>
-        <Body className="text-gray-600 mt-2">Manage and process return requests</Body>
+        <H1 className="text-gray-50">Returns Management</H1>
+        <Body className="text-gray-400 mt-2">Manage and process return requests</Body>
       </div>
 
       {/* Statistics */}
@@ -215,39 +215,39 @@ export const AdminReturns = () => {
         <AdminCard>
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Total Returns</Body>
-              <H2 className="text-2xl font-bold text-gray-900 mt-1">{totalReturns}</H2>
+              <Body className="text-sm text-gray-400">Total Returns</Body>
+              <H2 className="text-2xl font-bold text-gray-50 mt-1">{totalReturns}</H2>
             </div>
-            <Package className="h-8 w-8 text-teal-600" />
+            <Package className="h-8 w-8 text-teal-500" />
           </div>
         </AdminCard>
         <AdminCard>
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Pending</Body>
-              <H2 className="text-2xl font-bold text-amber-600 mt-1">{pendingReturns}</H2>
+              <Body className="text-sm text-gray-400">Pending</Body>
+              <H2 className="text-2xl font-bold text-amber-400 mt-1">{pendingReturns}</H2>
             </div>
-            <Clock className="h-8 w-8 text-amber-600" />
+            <Clock className="h-8 w-8 text-amber-500" />
           </div>
         </AdminCard>
         <AdminCard>
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Approved</Body>
-              <H2 className="text-2xl font-bold text-blue-600 mt-1">{approvedReturns}</H2>
+              <Body className="text-sm text-gray-400">Approved</Body>
+              <H2 className="text-2xl font-bold text-blue-400 mt-1">{approvedReturns}</H2>
             </div>
-            <CheckCircle className="h-8 w-8 text-blue-600" />
+            <CheckCircle className="h-8 w-8 text-blue-500" />
           </div>
         </AdminCard>
         <AdminCard>
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Total Refunded</Body>
-              <H2 className="text-2xl font-bold text-green-600 mt-1">
+              <Body className="text-sm text-gray-400">Total Refunded</Body>
+              <H2 className="text-2xl font-bold text-green-400 mt-1">
                 MWK {totalRefundAmount.toLocaleString()}
               </H2>
             </div>
-            <DollarSign className="h-8 w-8 text-green-600" />
+            <DollarSign className="h-8 w-8 text-green-500" />
           </div>
         </AdminCard>
       </div>
@@ -263,7 +263,8 @@ export const AdminReturns = () => {
                 placeholder="Search by return ID, order ID, or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                dark
+                className="pl-10 bg-slate-800 border-gray-700 text-gray-50 placeholder-gray-400"
               />
             </div>
           </div>
@@ -271,7 +272,7 @@ export const AdminReturns = () => {
             <select
               value={statusFilter || ''}
               onChange={(e) => setStatusFilter(e.target.value as ReturnStatus || undefined)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="px-3 py-2 bg-slate-800 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
             >
               <option value="">All Statuses</option>
               <option value="pending">Pending</option>
@@ -287,16 +288,16 @@ export const AdminReturns = () => {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              dark
               className="w-40"
-              placeholder="Start Date"
             />
             <span className="text-gray-400">to</span>
             <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
+              dark
               className="w-40"
-              placeholder="End Date"
             />
             {(startDate || endDate) && (
               <Button variant="ghost" size="sm" onClick={() => { setStartDate(''); setEndDate(''); }}>
@@ -315,8 +316,8 @@ export const AdminReturns = () => {
       ) : filteredReturns.length === 0 ? (
         <AdminCard className="p-12 text-center">
           <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <H2 className="text-gray-900">No Returns Found</H2>
-          <Body className="text-gray-600 mt-2">No returns match your filters.</Body>
+          <H2 className="text-gray-100">No Returns Found</H2>
+          <Body className="text-gray-400 mt-2">No returns match your filters.</Body>
         </AdminCard>
       ) : (
         <div className="space-y-4">
@@ -333,37 +334,37 @@ export const AdminReturns = () => {
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <H2 className="text-lg font-bold text-gray-900">
+                      <H2 className="text-lg font-bold text-gray-100">
                         Return #{returnDoc._id.slice(-8).toUpperCase()}
                       </H2>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(returnDoc.status)}`}>
                         {returnDoc.status.charAt(0).toUpperCase() + returnDoc.status.slice(1)}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-300">
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
+                        <User className="h-4 w-4 text-gray-400" />
                         <span>{userEmail}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
+                        <FileText className="h-4 w-4 text-gray-400" />
                         <span>Order #{orderId.slice(-8).toUpperCase()}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4" />
+                        <Package className="h-4 w-4 text-gray-400" />
                         <span>{returnDoc.items.length} item(s)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
+                        <DollarSign className="h-4 w-4 text-gray-400" />
                         <span>MWK {returnDoc.refundAmount.toLocaleString()}</span>
                       </div>
                     </div>
-                    <div className="mt-2 text-xs text-gray-500">
+                    <div className="mt-2 text-xs text-gray-400">
                       {format(new Date(returnDoc.createdAt), 'MMM dd, yyyy HH:mm')}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Link to={`/returns/${returnDoc._id}`}>
+                    <Link to={`/admin/returns/${returnDoc._id}`}>
                       <Button variant="outline" size="sm">
                         <Eye className="h-4 w-4 mr-2" />
                         View

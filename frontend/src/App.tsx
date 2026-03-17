@@ -276,6 +276,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/returns/:id"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <ReturnDetail isAdmin />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
