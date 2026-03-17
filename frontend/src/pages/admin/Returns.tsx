@@ -31,6 +31,7 @@ import {
   Calendar,
   User,
   FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { ReturnStatus } from '@shared/types';
 import { format } from 'date-fns';
@@ -50,6 +51,17 @@ const getStatusBadgeColor = (status: ReturnStatus) => {
     default:
       return 'bg-gray-100 text-gray-700 border-gray-300';
   }
+};
+
+const formatReturnReason = (reason: string): string => {
+  const labels: Record<string, string> = {
+    defective: 'Defective/Damaged',
+    'wrong-item': 'Wrong Item',
+    'not-as-described': 'Not as Described',
+    'changed-mind': 'Changed Mind',
+    other: 'Other',
+  };
+  return labels[reason] || reason;
 };
 
 export const AdminReturns = () => {
@@ -358,6 +370,16 @@ export const AdminReturns = () => {
                         <DollarSign className="h-4 w-4 text-gray-400" />
                         <span>MWK {returnDoc.refundAmount.toLocaleString()}</span>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Reason:</span>
+                        <span>{formatReturnReason(returnDoc.returnReason)}</span>
+                      </div>
+                      {(returnDoc.images?.length ?? 0) > 0 && (
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4 text-gray-400" />
+                          <span>{returnDoc.images.length} image(s)</span>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-2 text-xs text-gray-400">
                       {format(new Date(returnDoc.createdAt), 'MMM dd, yyyy HH:mm')}

@@ -241,14 +241,14 @@ Test the complete returns and refunds user journey from customer perspective and
 4. **View Pending Returns**
    - ✅ See the newly created return
    - ✅ Customer information shown (testuser@autotek.com)
-   - ✅ Order details visible
-   - ✅ Return reason displayed
+   - ✅ Order details visible (order ID, item count, refund amount)
+   - ✅ Return reason shown in list (e.g. Defective)
    - ✅ Status: "Pending"
-   - ✅ Images (if uploaded) visible
+   - ✅ Image count shown in list if customer uploaded images
    - ✅ Action buttons available:
      - "Approve" button
      - "Reject" button
-     - "View Details" link
+     - "View" (opens return detail for full reason, comments, and images)
 
 5. **Filter/Search (if available)**
    - Try filtering by status: "Pending"
