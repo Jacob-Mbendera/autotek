@@ -32,7 +32,7 @@ export const Checkout = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   
   const [shippingAddress, setShippingAddress] = useState(user?.address || '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paychangu' as PaymentMethod);
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -103,12 +103,8 @@ export const Checkout = () => {
     updateStep();
   }, [shippingAddress, paymentMethod]);
 
-  // Payment method constants
-  const PAYMENT_METHODS = {
-    AIRTEL_MONEY: 'airtel-money' as PaymentMethod,
-    BANK_TRANSFER: 'bank-transfer' as PaymentMethod,
-    PAYCHANGU: 'paychangu' as PaymentMethod,
-  };
+  // Payment method constant
+  const PAYMENT_METHOD_PAYCHANGU = 'paychangu' as PaymentMethod;
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,8 +206,8 @@ export const Checkout = () => {
         }));
       }
 
-      // If PayChangu, initiate payment and redirect to PayChangu checkout
-      if (paymentMethod === PAYMENT_METHODS.PAYCHANGU) {
+      // Initiate PayChangu payment and redirect to PayChangu checkout
+      if (paymentMethod === PAYMENT_METHOD_PAYCHANGU) {
         // Use authenticated user email if account was created, otherwise use guest email
         const emailForUrl = orderResult.user?.email || guestEmail.trim();
         const returnUrl = `${window.location.origin}/payment/success?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
@@ -387,48 +383,25 @@ export const Checkout = () => {
                 <H1 className="text-xl">Payment Method</H1>
               </div>
               <div className="space-y-3">
-                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <label className="flex items-center p-4 border-2 border-teal-500 bg-teal-50 rounded-lg">
                   <input
                     type="radio"
                     name="paymentMethod"
-                    value={PAYMENT_METHODS.AIRTEL_MONEY}
-                    checked={paymentMethod === PAYMENT_METHODS.AIRTEL_MONEY}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="mr-3"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">Airtel Money</div>
-                    <div className="text-sm text-gray-600">Pay with Airtel Money</div>
-                  </div>
-                </label>
-
-                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={PAYMENT_METHODS.BANK_TRANSFER}
-                    checked={paymentMethod === PAYMENT_METHODS.BANK_TRANSFER}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="mr-3"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">Bank Transfer</div>
-                    <div className="text-sm text-gray-600">Bank Transfer (Manual verification)</div>
-                  </div>
-                </label>
-
-                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={PAYMENT_METHODS.PAYCHANGU}
-                    checked={paymentMethod === PAYMENT_METHODS.PAYCHANGU}
+                    value={PAYMENT_METHOD_PAYCHANGU}
+                    checked={paymentMethod === PAYMENT_METHOD_PAYCHANGU}
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                     className="mr-3"
                   />
                   <div className="flex-1">
                     <div className="font-semibold text-gray-900">PayChangu</div>
-                    <div className="text-sm text-gray-600">Pay with card, mobile money, or bank transfer</div>
+                    <div className="text-sm text-gray-600">
+                      Secure payment gateway supporting:
+                      <ul className="mt-1 ml-4 list-disc text-xs">
+                        <li>Credit/Debit Cards (Visa, Mastercard)</li>
+                        <li>Mobile Money (Airtel Money, TNM Mpamba)</li>
+                        <li>Bank Transfer</li>
+                      </ul>
+                    </div>
                   </div>
                 </label>
               </div>
@@ -535,9 +508,7 @@ export const Checkout = () => {
                     </Button>
                   </div>
                   <Body className="text-sm text-gray-600">
-                    {paymentMethod === PAYMENT_METHODS.AIRTEL_MONEY && 'Airtel Money'}
-                    {paymentMethod === PAYMENT_METHODS.BANK_TRANSFER && 'Bank Transfer'}
-                    {paymentMethod === PAYMENT_METHODS.PAYCHANGU && 'PayChangu'}
+                    PayChangu (Cards, Mobile Money, Bank Transfer)
                   </Body>
                 </div>
 
