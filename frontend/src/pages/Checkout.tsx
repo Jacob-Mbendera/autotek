@@ -12,7 +12,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { H1, Body } from '../components/ui/Typography';
-import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil } from 'lucide-react';
+import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil, Smartphone, Building2, Shield, Lock } from 'lucide-react';
 
 export const Checkout = () => {
   const navigate = useNavigate();
@@ -378,33 +378,114 @@ export const Checkout = () => {
           {/* Step 2: Payment Method */}
           {currentStep === 2 && (
             <Card variant="md">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-6">
                 <CreditCard className="h-5 w-5 text-teal-600" />
                 <H1 className="text-xl">Payment Method</H1>
               </div>
-              <div className="space-y-3">
-                <label className="flex items-center p-4 border-2 border-teal-500 bg-teal-50 rounded-lg">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={PAYMENT_METHOD_PAYCHANGU}
-                    checked={paymentMethod === PAYMENT_METHOD_PAYCHANGU}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="mr-3"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">PayChangu</div>
-                    <div className="text-sm text-gray-600">
-                      Secure payment gateway supporting:
-                      <ul className="mt-1 ml-4 list-disc text-xs">
-                        <li>Credit/Debit Cards (Visa, Mastercard)</li>
-                        <li>Mobile Money (Airtel Money, TNM Mpamba)</li>
-                        <li>Bank Transfer</li>
-                      </ul>
+
+              {/* PayChangu Payment Section */}
+              <div className="border-2 border-blue-200 rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-white">
+                {/* PayChangu Header */}
+                <div className="bg-white px-6 py-5 border-b-2 border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771401/autotek/payment%20methods/PayChangu_Logo-04_blue-DXGspjyy_zgdgpp.png"
+                        alt="PayChangu"
+                        className="h-10 w-auto"
+                      />
+                      <div className="border-l border-gray-300 pl-4">
+                        <p className="text-gray-700 text-sm font-medium">Modern online payments for Malawi</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full">
+                      <Shield className="h-4 w-4 text-green-600" />
+                      <span className="text-green-700 text-xs font-medium">Secure</span>
                     </div>
                   </div>
-                </label>
+                </div>
+
+                {/* Payment Methods Grid */}
+                <div className="p-6">
+                  <label className="flex items-start cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value={PAYMENT_METHOD_PAYCHANGU}
+                      checked={paymentMethod === PAYMENT_METHOD_PAYCHANGU}
+                      onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <div className="ml-4 flex-1">
+                      <p className="text-sm text-gray-600 mb-4">
+                        Choose from multiple secure payment options:
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                        {/* Cards */}
+                        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                              <CreditCard className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900 text-sm">Cards</h4>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-600">Visa, Mastercard</p>
+                          <div className="mt-2 flex gap-1.5">
+                            <div className="px-2 py-0.5 bg-blue-50 rounded text-xs font-medium text-blue-700">Visa</div>
+                            <div className="px-2 py-0.5 bg-blue-50 rounded text-xs font-medium text-blue-700">Mastercard</div>
+                          </div>
+                        </div>
+
+                        {/* Mobile Money */}
+                        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-green-100 rounded-lg">
+                              <Smartphone className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900 text-sm">Mobile Money</h4>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-600">Instant mobile payments</p>
+                          <div className="mt-2 flex gap-1.5">
+                            <div className="px-2 py-0.5 bg-red-50 rounded text-xs font-medium text-red-700">Airtel</div>
+                            <div className="px-2 py-0.5 bg-blue-50 rounded text-xs font-medium text-blue-700">TNM</div>
+                          </div>
+                        </div>
+
+                        {/* Bank Transfer */}
+                        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-purple-100 rounded-lg">
+                              <Building2 className="h-5 w-5 text-purple-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900 text-sm">Bank Transfer</h4>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-600">Direct bank payment</p>
+                          <div className="mt-2">
+                            <div className="px-2 py-0.5 bg-purple-50 rounded text-xs font-medium text-purple-700">All Major Banks</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Security Notice */}
+                      <div className="flex items-start gap-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <Lock className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-gray-700 font-medium">256-bit SSL Encryption</p>
+                          <p className="text-xs text-gray-600 mt-0.5">Your payment information is fully encrypted and secure. Licensed by Reserve Bank of Malawi.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
               </div>
+
               <div className="mt-6 flex justify-between">
                 <Button
                   type="button"
@@ -507,9 +588,20 @@ export const Checkout = () => {
                       Edit
                     </Button>
                   </div>
-                  <Body className="text-sm text-gray-600">
-                    PayChangu (Cards, Mobile Money, Bank Transfer)
-                  </Body>
+                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <img
+                      src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771401/autotek/payment%20methods/PayChangu_Logo-04_blue-DXGspjyy_zgdgpp.png"
+                      alt="PayChangu"
+                      className="h-7 w-auto flex-shrink-0"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-blue-900 text-sm">Secure Payment</p>
+                        <Shield className="h-4 w-4 text-green-600" />
+                      </div>
+                      <p className="text-xs text-blue-700">Cards, Mobile Money & Bank Transfer available</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Applied Coupon */}
