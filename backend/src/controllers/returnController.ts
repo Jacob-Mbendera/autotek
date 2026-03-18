@@ -567,36 +567,27 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    // Update refund amount and status
     returnDoc.refundAmount = finalRefundAmount;
-    returnDoc.refundStatus = 'processing' as any;
+    returnDoc.refundStatus = 'completed' as any;
+    returnDoc.status = 'completed' as any;
     await returnDoc.save();
 
     // TODO: Integrate with payment gateway to process actual refund
-    // For now, we'll simulate the refund processing
-    // In production, this would call the payment gateway API (PayChangu, Airtel Money, etc.)
-    
-    // Simulate refund processing delay
-    setTimeout(async () => {
-      try {
-        returnDoc.refundStatus = 'completed' as any;
-        returnDoc.status = 'completed' as any;
-        await returnDoc.save();
+    // In production, this would call the payment gateway API (PayChangu) to process the refund
+    // For now, we're completing the refund immediately for testing purposes
 
-        // Send refund confirmation email
-        const email = returnDoc.user
-          ? (returnDoc.user as any).email
-          : returnDoc.guestInfo?.email;
-        if (email) {
-          await emailService.sendRefundProcessedEmail(returnDoc, returnDoc.user as any, returnDoc.guestInfo?.email);
-        }
-      } catch (error) {
-        console.error('Error updating refund status:', error);
-      }
-    }, 2000);
+    // Send refund confirmation email
+    const email = returnDoc.user
+      ? (returnDoc.user as any).email
+      : returnDoc.guestInfo?.email;
+    if (email) {
+      await emailService.sendRefundProcessedEmail(returnDoc, returnDoc.user as any, returnDoc.guestInfo?.email);
+    }
 
     res.json({
       return: returnDoc,
-      message: 'Refund processing initiated',
+      message: 'Refund processed successfully',
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to process refund' });
