@@ -35,6 +35,8 @@ import { uploadMultipleImages } from '../config/cloudinary';
 import { cleanupFile } from '../middleware/upload';
 import path from 'path';
 import { emailService } from '../services/emailService';
+import { processPayChanguRefund } from '../utils/paymentRefunds';
+import Payment from '../models/Payment';
 
 const RETURN_WINDOW_DAYS = 30;
 
@@ -567,15 +569,47 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Update refund amount and status
+    // Get the original payment record
+    const orderId = (returnDoc.order as any)._id || returnDoc.order;
+    const payment = await Payment.findOne({ order: orderId, type: 'order' }).sort({ createdAt: -1 });
+
+    if (!payment || !payment.transactionId) {
+      res.status(400).json({
+        message: 'Original payment transaction not found. Cannot process refund.'
+      });
+      return;
+    }
+
+    // Update refund amount and set to processing
     returnDoc.refundAmount = finalRefundAmount;
+    returnDoc.refundStatus = 'processing' as any;
+    await returnDoc.save();
+
+    // Process refund through PayChangu
+    const refundResult = await processPayChanguRefund({
+      transactionId: payment.transactionId,
+      amount: finalRefundAmount,
+      reason: returnDoc.returnReason,
+      orderId: orderId.toString(),
+    });
+
+    if (!refundResult.success) {
+      // Refund failed
+      returnDoc.refundStatus = 'failed' as any;
+      await returnDoc.save();
+
+      res.status(400).json({
+        return: returnDoc,
+        message: refundResult.message || 'Refund processing failed',
+        error: refundResult.error,
+      });
+      return;
+    }
+
+    // Refund successful
     returnDoc.refundStatus = 'completed' as any;
     returnDoc.status = 'completed' as any;
     await returnDoc.save();
-
-    // TODO: Integrate with payment gateway to process actual refund
-    // In production, this would call the payment gateway API (PayChangu) to process the refund
-    // For now, we're completing the refund immediately for testing purposes
 
     // Send refund confirmation email
     const email = returnDoc.user
@@ -587,6 +621,11 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
 
     res.json({
       return: returnDoc,
+      refund: {
+        refundId: refundResult.refundId,
+        amount: finalRefundAmount,
+        status: refundResult.status,
+      },
       message: 'Refund processed successfully',
     });
   } catch (error: any) {
