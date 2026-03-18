@@ -703,7 +703,7 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
                       type="number"
                       value={refundAmount}
                       onChange={(e) => setRefundAmount(e.target.value)}
-                      placeholder={returnDoc.refundAmount.toString()}
+                      placeholder={returnDoc.refundAmount.toLocaleString()}
                       min={0}
                       step={0.01}
                     />

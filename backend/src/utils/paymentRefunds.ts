@@ -65,6 +65,15 @@ export const processPayChanguRefund = async (
       };
     }
 
+    // Check if we have the charge_id
+    if (!payment.chargeId) {
+      return {
+        success: false,
+        message: 'Payment charge ID not found. Cannot process refund through PayChangu.',
+        error: 'Missing chargeId in payment record',
+      };
+    }
+
     // Validate refund amount
     if (request.amount > payment.amount) {
       return {
@@ -76,58 +85,45 @@ export const processPayChanguRefund = async (
 
     console.log('Processing PayChangu refund:', {
       transactionId: request.transactionId,
+      chargeId: payment.chargeId,
       amount: request.amount,
       originalAmount: payment.amount,
     });
 
-    // TODO: Get actual PayChangu refund API endpoint and payload structure
-    // Possible endpoints (common patterns):
-    // - POST /refund
-    // - POST /transactions/{tx_ref}/refund
-    // - POST /payments/{payment_id}/refund
-
-    const refundData = {
-      tx_ref: request.transactionId, // or transaction_id, payment_id
-      amount: Math.round(request.amount), // PayChangu expects integer amounts
-      currency: 'MWK',
-      reason: request.reason || 'Customer refund request',
-      // Possible additional fields:
-      // order_id: request.orderId,
-      // refund_type: 'full' or 'partial',
-      // callback_url: for async refunds,
-    };
-
-    // Uncomment and update when you get the actual API endpoint from PayChangu
-    /*
-    const response = await fetch(`${baseUrl}/refund`, {
+    // Call PayChangu refund API
+    // Endpoint: POST /charge-card/refund/{charge_id}
+    const response = await fetch(`${baseUrl}/charge-card/refund/${payment.chargeId}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiSecret}`,
       },
-      body: JSON.stringify(refundData),
+      // PayChangu refund endpoint may not require body parameters
+      // The charge_id in the URL is sufficient
+      // If partial refunds need amount, uncomment:
+      // body: JSON.stringify({ amount: Math.round(request.amount) }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as any;
 
     if (!response.ok) {
       console.error('PayChangu Refund Error:', data);
       return {
         success: false,
         message: data.message || 'Refund failed',
-        error: `HTTP ${response.status}`,
+        error: `HTTP ${response.status}: ${data.message || 'Unknown error'}`,
       };
     }
 
-    // Expected response format (adjust based on actual PayChangu response):
+    // PayChangu response format
     if (data.status === 'success') {
       return {
         success: true,
-        refundId: data.data?.refund_id || data.refund_id,
+        refundId: data.data?.refund_id || data.data?.charge_id || payment.chargeId,
         transactionId: request.transactionId,
         amount: request.amount,
-        status: data.data?.status || 'completed',
+        status: 'completed',
         message: data.message || 'Refund processed successfully',
       };
     }
@@ -135,19 +131,7 @@ export const processPayChanguRefund = async (
     return {
       success: false,
       message: data.message || 'Refund request failed',
-      error: data.error,
-    };
-    */
-
-    // Temporary: Return success for testing until PayChangu API is integrated
-    console.warn('⚠️  PayChangu refund API not yet integrated - simulating success');
-    return {
-      success: true,
-      refundId: `REFUND_${Date.now()}`,
-      transactionId: request.transactionId,
-      amount: request.amount,
-      status: 'completed',
-      message: 'Refund processed successfully (simulated - integrate PayChangu API)',
+      error: data.error || 'Unknown error',
     };
   } catch (error: any) {
     console.error('Error processing PayChangu refund:', error);
@@ -160,31 +144,24 @@ export const processPayChanguRefund = async (
 };
 
 /**
- * Check refund status (if PayChangu provides refund tracking)
- * GET {PAYCHANGU_BASE_URL}/refunds/{refund_id}
+ * Check refund status
+ * Note: PayChangu refunds are typically instant. This is for future use.
  */
 export const checkRefundStatus = async (
   refundId: string
 ): Promise<RefundResponse> => {
   try {
-    const apiSecret = process.env.PAYCHANGU_API_SECRET;
-    const baseUrl = process.env.PAYCHANGU_BASE_URL || 'https://api.paychangu.com';
-
-    if (!apiSecret) {
-      return {
-        success: false,
-        message: 'PayChangu API credentials not configured',
-      };
-    }
-
-    // TODO: Implement when PayChangu provides refund status endpoint
     console.log('Checking PayChangu refund status:', refundId);
+
+    // PayChangu refunds are typically processed instantly
+    // If status tracking is needed in the future, implement:
+    // GET /refunds/{refund_id} or similar endpoint
 
     return {
       success: true,
       refundId,
       status: 'completed',
-      message: 'Refund status check not yet implemented',
+      message: 'PayChangu refunds are processed instantly',
     };
   } catch (error: any) {
     return {

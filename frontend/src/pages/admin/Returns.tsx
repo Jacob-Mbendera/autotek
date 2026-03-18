@@ -519,7 +519,7 @@ export const AdminReturns = () => {
                   type="number"
                   value={refundAmount}
                   onChange={(e) => setRefundAmount(e.target.value)}
-                  placeholder={selectedReturnDoc.refundAmount.toString()}
+                  placeholder={selectedReturnDoc.refundAmount.toLocaleString()}
                   min="0"
                   step="0.01"
                 />

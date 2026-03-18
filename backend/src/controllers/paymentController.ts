@@ -209,12 +209,14 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
   try {
     // PayChangu webhook handler
     // PayChangu will send webhook with payment status updates
-    const { sessionId, status, transactionId, reference, amount } = req.body as {
+    const { sessionId, status, transactionId, reference, amount, charge_id, chargeId } = req.body as {
       sessionId?: string;
       status?: string;
       transactionId?: string;
       reference?: string;
       amount?: number;
+      charge_id?: string; // PayChangu's charge ID (snake_case)
+      chargeId?: string; // PayChangu's charge ID (camelCase) - check both formats
     };
 
     // Verify webhook signature (if PayChangu provides one)
@@ -239,6 +241,8 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
     if (status === 'success' || status === 'completed' || status === 'paid') {
       payment.status = PaymentStatus.COMPLETED;
       payment.transactionId = transactionId || payment.transactionId;
+      // Store PayChangu's charge_id for refund purposes
+      payment.chargeId = charge_id || chargeId || payment.chargeId;
 
       // Update related entity payment status
       if (payment.type === 'order' && payment.order) {
@@ -302,6 +306,36 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
     if (!payment) {
       res.status(404).json({ message: 'Payment not found' });
       return;
+    }
+
+    // Verify payment with PayChangu API to get charge_id
+    const apiSecret = process.env.PAYCHANGU_API_SECRET;
+    const baseUrl = process.env.PAYCHANGU_BASE_URL || 'https://api.paychangu.com';
+
+    if (apiSecret && payment.transactionId) {
+      try {
+        const verifyResponse = await fetch(`${baseUrl}/verify-payment/${payment.transactionId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiSecret}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (verifyResponse.ok) {
+          const verifyData = await verifyResponse.json() as any;
+          // Extract charge_id from PayChangu response
+          if (verifyData.data?.charge_id) {
+            payment.chargeId = verifyData.data.charge_id;
+          } else if (verifyData.data?.reference) {
+            // reference might be the charge_id
+            payment.chargeId = verifyData.data.reference;
+          }
+        }
+      } catch (error) {
+        console.error('Error verifying payment with PayChangu:', error);
+        // Continue anyway - we'll update charge_id from webhook later
+      }
     }
 
     // Update payment status to completed (user reached success page from PayChangu)

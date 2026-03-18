@@ -8,7 +8,8 @@ export interface IPayment extends Document {
   type: 'order' | 'towing' | 'car-service';
   amount: number;
   method: PaymentMethod;
-  transactionId?: string;
+  transactionId?: string; // Our tx_ref
+  chargeId?: string; // PayChangu's charge_id (for refunds)
   status: PaymentStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +46,10 @@ const PaymentSchema = new Schema<IPayment>(
     },
     transactionId: {
       type: String,
+    },
+    chargeId: {
+      type: String,
+      index: true, // Index for quick lookups during refunds
     },
     status: {
       type: String,
