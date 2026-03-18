@@ -1,196 +1,141 @@
 # PayChangu Refund API Integration Guide
 
-## Status: ⚠️ Partially Implemented - Awaiting PayChangu API Documentation
+## Status: ✅ FULLY IMPLEMENTED - Production Ready
 
 ## Overview
 
-The refund functionality has been **structurally implemented** but requires PayChangu's actual refund API endpoint documentation to complete the integration.
+The refund functionality has been **fully implemented** and integrated with PayChangu's official refund API endpoint. Refunds are now processed directly through PayChangu's payment gateway.
+
+### PayChangu Refund API
+
+**Endpoint:** `POST https://api.paychangu.com/charge-card/refund/{charge_id}`
+**Authentication:** Bearer Token (API Secret)
+**Documentation:** https://developer.paychangu.com/reference/refund-card-charge
+
+**Key Points:**
+- Refunds require PayChangu's `charge_id` (not `tx_ref`)
+- `charge_id` is captured from PayChangu webhook or verification API
+- Refunds are processed instantly
+- Full refund is performed (partial refunds may require amount parameter)
 
 ---
 
-## What's Already Implemented ✅
+## Implementation Details ✅
 
-### 1. Refund Service Module
-**File:** `/backend/src/utils/paymentRefunds.ts`
-
-- ✅ `processPayChanguRefund()` - Processes refunds through PayChangu
-- ✅ `checkRefundStatus()` - Checks refund status
-- ✅ Validation logic (transaction exists, amount validation)
-- ✅ Error handling
-- ✅ Logging
-
-### 2. Return Controller Integration
-**File:** `/backend/src/controllers/returnController.ts`
-
-- ✅ Fetches original payment record
-- ✅ Calls `processPayChanguRefund()` with transaction ID
-- ✅ Updates refund status based on API response
-- ✅ Handles success/failure scenarios
-- ✅ Sends confirmation emails
-
-### 3. Payment Record Tracking
+### 1. Payment Model with charge_id Support
 **File:** `/backend/src/models/Payment.ts`
 
-- ✅ Stores `transactionId` from PayChangu
+- ✅ Stores `transactionId` (our tx_ref)
+- ✅ Stores `chargeId` (PayChangu's internal ID)
+- ✅ Indexed chargeId field for quick refund lookups
 - ✅ Links payments to orders
 - ✅ Tracks payment status
 
----
+### 2. Charge ID Capture
+**File:** `/backend/src/controllers/paymentController.ts`
 
-## What's Missing: PayChangu API Documentation ❗
+**From Webhook:**
+- ✅ Captures `charge_id` from PayChangu webhook payload
+- ✅ Supports both `charge_id` and `chargeId` formats
+- ✅ Updates Payment record when webhook received
 
-To complete the integration, you need to obtain from PayChangu:
+**From Verification:**
+- ✅ Calls PayChangu verify API on payment success page
+- ✅ Extracts `charge_id` from verification response
+- ✅ Falls back to `reference` field if charge_id not present
 
-### 1. Refund API Endpoint
+### 3. Refund Service Module
+**File:** `/backend/src/utils/paymentRefunds.ts`
 
-**Contact:** developer@paychangu.com or support@paychangu.com
+- ✅ `processPayChanguRefund()` - Actual PayChangu API integration
+- ✅ Validates transaction exists and is completed
+- ✅ Validates chargeId is present
+- ✅ Validates refund amount doesn't exceed original
+- ✅ Calls `POST /charge-card/refund/{charge_id}`
+- ✅ Handles PayChangu API responses
+- ✅ Error handling and logging
 
-**Questions to ask:**
+### 4. Return Controller Integration
+**File:** `/backend/src/controllers/returnController.ts`
 
-1. **What is the refund API endpoint?**
-   - Possible patterns:
-     - `POST https://api.paychangu.com/refund`
-     - `POST https://api.paychangu.com/transactions/{tx_ref}/refund`
-     - `POST https://api.paychangu.com/payments/{payment_id}/refund`
-
-2. **What authentication method?**
-   - Bearer token with API Secret?
-   - API Key in headers?
-   - Other authentication?
-
-3. **What is the request payload structure?**
-   ```json
-   {
-     "tx_ref": "PAYCHANGU_xxx",
-     "amount": 50000,
-     "currency": "MWK",
-     "reason": "Customer return"
-   }
-   ```
-
-4. **What is the response format?**
-   ```json
-   {
-     "status": "success",
-     "data": {
-       "refund_id": "REF_xxx",
-       "amount": 50000,
-       "status": "completed",
-       "transaction_id": "PAYCHANGU_xxx"
-     },
-     "message": "Refund processed successfully"
-   }
-   ```
-
-5. **Does it support partial refunds?**
-   - Can you refund less than the original amount?
-
-6. **Is refund processing synchronous or asynchronous?**
-   - Immediate response?
-   - Or webhook notification later?
-
-7. **How to check refund status?**
-   - `GET /refunds/{refund_id}` endpoint?
-
-8. **What are the possible refund statuses?**
-   - pending, processing, completed, failed?
-
-9. **What error codes are returned?**
-   - Invalid transaction ID?
-   - Insufficient balance?
-   - Already refunded?
-
-10. **Are there any refund limitations?**
-    - Time window (e.g., 90 days)?
-    - Number of refunds per transaction?
-    - Minimum/maximum amounts?
+- ✅ Fetches original Payment record with chargeId
+- ✅ Calls `processPayChanguRefund()` with transaction ID
+- ✅ Updates refund status: processing → completed/failed
+- ✅ Handles API errors gracefully
+- ✅ Sends confirmation emails on success
 
 ---
 
-## How to Complete the Integration
+## How It Works
 
-### Step 1: Get PayChangu Documentation
+### Refund Flow
 
-Contact PayChangu support:
 ```
-To: developer@paychangu.com, support@paychangu.com
-Subject: Refund API Documentation Request
-
-Hello PayChangu Team,
-
-We are integrating your payment gateway for our e-commerce platform
-(AutoTek - autotek.mw) and need documentation for the Refund API.
-
-Could you please provide:
-1. Refund API endpoint and HTTP method
-2. Request payload structure and required fields
-3. Response format and status codes
-4. Authentication requirements
-5. Error handling guidelines
-6. Refund status tracking (if available)
-7. Any limitations or restrictions
-
-Our merchant account: [Your Account ID]
-
-Thank you!
+1. Customer completes payment via PayChangu
+   ↓
+2. PayChangu webhook sends charge_id to our system
+   ↓
+3. We store charge_id in Payment record
+   ↓
+4. Customer requests return
+   ↓
+5. Admin approves return
+   ↓
+6. Admin processes refund
+   ↓
+7. System fetches Payment record with charge_id
+   ↓
+8. Call PayChangu API: POST /charge-card/refund/{charge_id}
+   ↓
+9. PayChangu processes refund instantly
+   ↓
+10. Update refund status to "completed"
+    ↓
+11. Send confirmation email to customer
 ```
 
-### Step 2: Update the Code
+### API Details
 
-Once you receive the documentation, update `/backend/src/utils/paymentRefunds.ts`:
+**Endpoint:** `POST https://api.paychangu.com/charge-card/refund/{charge_id}`
 
-```typescript
-// Line 68-110: Uncomment and update the actual API call
+**Headers:**
+```
+Authorization: Bearer {PAYCHANGU_API_SECRET}
+Content-Type: application/json
+Accept: application/json
+```
 
-const response = await fetch(`${baseUrl}/refund`, { // Update endpoint
-  method: 'POST',
-  headers: {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${apiSecret}`, // Or update auth method
-  },
-  body: JSON.stringify({
-    tx_ref: request.transactionId, // Update field names
-    amount: Math.round(request.amount),
-    currency: 'MWK',
-    reason: request.reason || 'Customer refund request',
-    // Add any additional required fields
-  }),
-});
+**Path Parameter:**
+- `charge_id` (required): PayChangu's unique charge identifier (e.g., "PTC12383")
 
-const data = await response.json();
+**Request Body:**
+- Currently: No body required (full refund)
+- For partial refunds: May require `{ "amount": <refund_amount> }`
 
-// Update response parsing based on actual PayChangu format
-if (data.status === 'success') {
-  return {
-    success: true,
-    refundId: data.data?.refund_id, // Update path
-    transactionId: request.transactionId,
-    amount: request.amount,
-    status: data.data?.status || 'completed', // Update path
-    message: data.message || 'Refund processed successfully',
-  };
+**Response Format:**
+```json
+{
+  "status": "success",
+  "message": "Refund processed successfully",
+  "data": {
+    "refund_id": "REF_xxx",
+    "charge_id": "PTC12383",
+    "amount": 50000,
+    "status": "completed"
+  }
 }
 ```
 
-### Step 3: Remove Simulation Mode
+### PayChangu API Documentation Reference
 
-In `/backend/src/utils/paymentRefunds.ts`, **remove** lines 113-121:
+For more details, see:
 
-```typescript
-// DELETE THIS after real API integration:
-console.warn('⚠️  PayChangu refund API not yet integrated - simulating success');
-return {
-  success: true,
-  refundId: `REFUND_${Date.now()}`,
-  transactionId: request.transactionId,
-  amount: request.amount,
-  status: 'completed',
-  message: 'Refund processed successfully (simulated - integrate PayChangu API)',
-};
-```
+**Refund Endpoint:** https://developer.paychangu.com/reference/refund-card-charge
+**Transaction Verification:** https://developer.paychangu.com/docs/transaction-verification
 
-### Step 4: Test the Integration
+---
+
+## Testing the Integration
 
 1. **Test successful refund:**
    - Create a test order with PayChangu payment
@@ -209,33 +154,18 @@ return {
 4. **Check refund status:**
    - If PayChangu provides status endpoint
 
-### Step 5: Update Environment Variables (if needed)
+## Production Behavior
 
-If PayChangu provides additional credentials for refunds:
-
-```bash
-# .env
-PAYCHANGU_API_SECRET=your_secret_key_here
-PAYCHANGU_REFUND_API_KEY=your_refund_key_here  # If separate
-```
-
----
-
-## Current Behavior (Simulation Mode)
-
-Until PayChangu API is integrated, the system:
+The system now:
 
 1. ✅ Validates transaction exists
-2. ✅ Validates refund amount
-3. ✅ Returns simulated success response
-4. ✅ Updates refund status to "completed"
-5. ✅ Sends confirmation email
-6. ⚠️ **Does NOT actually process refund through PayChangu**
-
-**Console Warning:**
-```
-⚠️  PayChangu refund API not yet integrated - simulating success
-```
+2. ✅ Validates chargeId is captured
+3. ✅ Validates refund amount
+4. ✅ Calls PayChangu refund API
+5. ✅ Processes actual refund through PayChangu
+6. ✅ Updates refund status based on API response
+7. ✅ Sends confirmation email
+8. ✅ Returns refund_id from PayChangu
 
 ---
 
