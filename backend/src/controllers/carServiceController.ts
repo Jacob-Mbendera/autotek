@@ -4,6 +4,7 @@ import CarService from '../models/CarService';
 import User from '../models/User';
 import { ServiceStatus, ServiceType } from '../types/shared';
 import { emailService } from '../services/emailService';
+import { geocodeAddressWithFallback } from '../utils/geocoding';
 
 export const createCarService = async (
   req: AuthRequest,
@@ -74,7 +75,7 @@ export const createCarService = async (
     });
 
     await carService.save();
-    
+
     // Send service confirmation email
     try {
       const user = await User.findById(req.user!._id);
@@ -85,13 +86,16 @@ export const createCarService = async (
       console.error('Failed to send service confirmation email:', emailError);
       // Don't fail the service creation if email fails
     }
-    
+
+    // Geocode address for coordinates
+    const coords = await geocodeAddressWithFallback(carService.address);
+
     // Transform response to match frontend interface
     const transformed = {
       ...carService.toObject(),
       location: {
-        latitude: 0,
-        longitude: 0,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
         address: carService.address,
       },
       vehicleType: carService.vehicleDetails?.make || '',
@@ -99,7 +103,7 @@ export const createCarService = async (
       estimatedCost: carService.price,
       preferredTime: carService.preferredDate ? new Date(carService.preferredDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
     };
-    
+
     res.status(201).json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to create car service' });
@@ -136,19 +140,30 @@ export const getCarServices = async (
       .sort({ createdAt: -1 })
       .lean();
 
-    // Transform to match frontend interface
-    const transformedServices = carServices.map((service: any) => ({
-      ...service,
-      location: {
-        latitude: 0, // TODO: Get from geocoding
-        longitude: 0, // TODO: Get from geocoding
-        address: service.address,
-      },
-      vehicleType: service.vehicleDetails?.make || '',
-      vehicleModel: service.vehicleDetails?.model,
-      estimatedCost: service.price,
-      preferredTime: service.preferredDate ? new Date(service.preferredDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
-    }));
+    // Transform to match frontend interface with geocoded coordinates
+    const transformedServices = await Promise.all(
+      carServices.map(async (service: any) => {
+        const coords = await geocodeAddressWithFallback(service.address);
+
+        return {
+          ...service,
+          location: {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            address: service.address,
+          },
+          vehicleType: service.vehicleDetails?.make || '',
+          vehicleModel: service.vehicleDetails?.model,
+          estimatedCost: service.price,
+          preferredTime: service.preferredDate
+            ? new Date(service.preferredDate).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : undefined,
+        };
+      })
+    );
 
     res.json({ services: transformedServices });
   } catch (error: any) {
@@ -181,18 +196,26 @@ export const getCarService = async (
       return;
     }
 
+    // Geocode address for coordinates
+    const coords = await geocodeAddressWithFallback((carService as any).address);
+
     // Transform to match frontend interface
     const transformed = {
       ...carService,
       location: {
-        latitude: 0, // TODO: Get from geocoding
-        longitude: 0, // TODO: Get from geocoding
+        latitude: coords.latitude,
+        longitude: coords.longitude,
         address: (carService as any).address,
       },
       vehicleType: (carService as any).vehicleDetails?.make || '',
       vehicleModel: (carService as any).vehicleDetails?.model,
       estimatedCost: (carService as any).price,
-      preferredTime: (carService as any).preferredDate ? new Date((carService as any).preferredDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+      preferredTime: (carService as any).preferredDate
+        ? new Date((carService as any).preferredDate).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : undefined,
     };
 
     res.json({ service: transformed });

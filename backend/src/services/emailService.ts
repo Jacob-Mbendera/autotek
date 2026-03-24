@@ -15,6 +15,11 @@ class EmailService {
 
   constructor() {
     // Initialize transporter if email credentials are provided
+    // Supports multiple email service configurations:
+    // 1. SendGrid: EMAIL_HOST=smtp.sendgrid.net, EMAIL_USER=apikey, EMAIL_PASS=<api_key>
+    // 2. Gmail: EMAIL_HOST=smtp.gmail.com, EMAIL_USER=<email>, EMAIL_PASS=<app_password>
+    // 3. Custom SMTP: Any SMTP server credentials
+
     if (
       process.env.EMAIL_HOST &&
       process.env.EMAIL_USER &&
@@ -23,26 +28,43 @@ class EmailService {
       this.transporter = nodemailer.createTransport({
         host: process.env.EMAIL_HOST,
         port: Number(process.env.EMAIL_PORT) || 587,
-        secure: false, // true for 465, false for other ports
+        secure: process.env.EMAIL_PORT === '465', // true for 465, false for other ports
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
       });
+
+      console.log(`✅ Email service initialized: ${process.env.EMAIL_HOST}`);
+    } else {
+      // Warn in production if email not configured
+      if (process.env.NODE_ENV === 'production') {
+        console.error('⚠️ WARNING: Email service not configured in production!');
+        console.error('Please set EMAIL_HOST, EMAIL_USER, EMAIL_PASS environment variables');
+      } else {
+        console.log('ℹ️ Email service not configured - emails will be logged to console');
+      }
     }
   }
 
   private async sendEmail(options: EmailOptions): Promise<void> {
     const emailFrom = process.env.EMAIL_FROM || 'AutoTek <noreply@autotek.mw>';
 
-    // In development, log emails instead of sending
-    if (process.env.NODE_ENV === 'development' || !this.transporter) {
-      console.log('\n=== EMAIL ===');
-      console.log('To:', options.to);
-      console.log('Subject:', options.subject);
-      console.log('HTML:', options.html.substring(0, 200) + '...');
-      console.log('=============\n');
-      return;
+    // If no transporter configured, log in development or error in production
+    if (!this.transporter) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('\n=== EMAIL (Not Sent - Dev Mode) ===');
+        console.log('To:', options.to);
+        console.log('Subject:', options.subject);
+        console.log('HTML Preview:', options.html.substring(0, 200) + '...');
+        console.log('===================================\n');
+        return;
+      } else {
+        console.error('❌ ERROR: Attempted to send email but no transporter configured!');
+        console.error('Email details:', { to: options.to, subject: options.subject });
+        // In production, we should log this but not crash
+        return;
+      }
     }
 
     try {
@@ -53,9 +75,13 @@ class EmailService {
         html: options.html,
         text: options.text || options.html.replace(/<[^>]*>/g, ''),
       });
+
+      console.log(`✅ Email sent successfully to ${options.to}: ${options.subject}`);
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('❌ Error sending email:', error);
+      console.error('Email details:', { to: options.to, subject: options.subject });
       // Don't throw - email failures shouldn't break the app
+      // But in production, you might want to log this to an error tracking service
     }
   }
 

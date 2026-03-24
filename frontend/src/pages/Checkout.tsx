@@ -230,14 +230,14 @@ export const Checkout = () => {
 
       // For other payment methods, clear cart and redirect to order confirmation
       dispatch(clearCart());
-      
+
       // Store guest email in sessionStorage for order lookup if guest (and account wasn't created)
       if (!orderResult.user && !isAuthenticated) {
         sessionStorage.setItem('guestOrderEmail', guestEmail.trim());
       }
-      
-      // Navigate to order detail - no email param needed if account was created
-      navigate(`/orders/${orderResult.order._id}${!orderResult.user && !isAuthenticated ? `?email=${encodeURIComponent(guestEmail.trim())}` : ''}`);
+
+      // Navigate to order detail (email retrieved from sessionStorage, not URL for privacy)
+      navigate(`/orders/${orderResult.order._id}`);
     } catch (err: any) {
       const errorInfo = getErrorInfo(err);
       setError(errorInfo.message);

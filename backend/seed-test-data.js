@@ -1,10 +1,18 @@
 /**
  * Test Data Seeding Script for AutoTek
  * Creates test data for returns & refunds testing
+ * WARNING: This script should ONLY be run in development!
  */
 
 require('dotenv').config();
 const mongoose = require('mongoose');
+
+// CRITICAL: Prevent running in production
+if (process.env.NODE_ENV === 'production') {
+  console.error('\n❌ ERROR: Cannot run seed scripts in production environment!');
+  console.error('This script creates test data and should only be used in development.\n');
+  process.exit(1);
+}
 
 // Schema definitions (inline to avoid TypeScript compilation)
 const UserSchema = new mongoose.Schema({
@@ -49,6 +57,7 @@ const PaymentSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   method: { type: String, required: true },
   transactionId: String,
+  chargeId: String,
   status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
 }, { timestamps: true });
 
@@ -237,7 +246,7 @@ async function createCompletedOrders(user, products) {
       totalAmount: order2Subtotal - order2Discount,
       discount: order2Discount,
       status: 'completed',
-      paymentMethod: 'airtel-money',
+      paymentMethod: 'paychangu',
       paymentStatus: 'completed',
       shippingAddress: user.address || '123 Test Street, Lilongwe, Malawi',
       createdAt: order2Date,
@@ -266,7 +275,7 @@ async function createCompletedOrders(user, products) {
       totalAmount: order3Total,
       discount: 0,
       status: 'completed',
-      paymentMethod: 'bank-transfer',
+      paymentMethod: 'paychangu',
       paymentStatus: 'completed',
       shippingAddress: user.address || '123 Test Street, Lilongwe, Malawi',
       createdAt: order3Date,
@@ -287,6 +296,7 @@ async function createCompletedOrders(user, products) {
         amount: order.totalAmount,
         method: order.paymentMethod,
         transactionId: `TEST_${order._id}_${Date.now()}`,
+        chargeId: `CHARGE_TEST_${order._id}_${Date.now()}`, // Mock chargeId for refund testing
         status: 'completed',
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,

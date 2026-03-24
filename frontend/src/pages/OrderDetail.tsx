@@ -105,9 +105,10 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   const isAdmin = Boolean(isAdminProp || isAdminRoute);
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   
-  // Get email from URL params or sessionStorage for guest orders
+  // Get email from sessionStorage for guest orders (not URL for privacy)
+  // Fallback to URL param for backward compatibility with old links
   const searchParams = new URLSearchParams(location.search);
-  const guestEmail = searchParams.get('email') || sessionStorage.getItem('guestOrderEmail') || undefined;
+  const guestEmail = sessionStorage.getItem('guestOrderEmail') || searchParams.get('email') || undefined;
   
   // Check for existing returns for this order (skip if admin)
   const { data: returnsData } = useGetReturnsQuery(
@@ -372,8 +373,8 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   // Navigate to return request page
   const handleRequestReturn = () => {
     if (!id) return;
-    const params = guestEmail ? `?orderId=${id}&email=${encodeURIComponent(guestEmail)}` : `?orderId=${id}`;
-    navigate(`/returns/new${params}`);
+    // Email retrieved from sessionStorage in return page, not URL for privacy
+    navigate(`/returns/new?orderId=${id}`);
   };
 
   return (
@@ -747,7 +748,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
               )}
               {hasExistingReturn() && !isAdmin && (
                 <Link
-                  to={`/returns/${returnsData?.returns.find((r) => (typeof r.order === 'object' ? r.order._id : r.order) === id)?._id}${guestEmail ? `?email=${encodeURIComponent(guestEmail)}` : ''}`}
+                  to={`/returns/${returnsData?.returns.find((r) => (typeof r.order === 'object' ? r.order._id : r.order) === id)?._id}`}
                   className="block"
                 >
                   <Button

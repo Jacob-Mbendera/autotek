@@ -7,6 +7,13 @@ import { ServiceStatus, ServiceType } from '../types/shared';
 
 dotenv.config();
 
+// CRITICAL: Prevent running in production
+if (process.env.NODE_ENV === 'production') {
+  console.error('\n❌ ERROR: Cannot run seed scripts in production environment!');
+  console.error('This script creates test data and should only be used in development.\n');
+  process.exit(1);
+}
+
 // Sample data for Malawi
 const malawiCities = [
   'Lilongwe',

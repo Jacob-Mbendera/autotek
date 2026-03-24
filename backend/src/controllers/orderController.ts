@@ -4,10 +4,13 @@ import Order from '../models/Order';
 import Product from '../models/Product';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
-import { OrderStatus, UserRole } from '../types/shared';
+import Payment from '../models/Payment';
+import { OrderStatus, UserRole, PaymentStatus } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { hashPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
+import { processPayChanguRefund } from '../utils/paymentRefunds';
+import { log } from '../utils/logger';
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -318,25 +321,86 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Check if user is admin (admins can cancel any order)
-    if (req.user && req.user.role === 'admin') {
-      order.status = OrderStatus.CANCELLED;
-      await order.save();
-      res.json({ order, message: 'Order cancelled successfully' });
-      return;
-    }
-
-    // Regular user/guest can only cancel their own orders
+    // Update order status to cancelled
     order.status = OrderStatus.CANCELLED;
     await order.save();
 
-    // TODO: Process refund if payment was completed
-    // This would involve:
-    // 1. Check payment status
-    // 2. If paid, initiate refund through payment gateway
-    // 3. Update payment status
+    // Process refund if payment was completed
+    let refundResult = null;
+    try {
+      // Find associated payment
+      const payment = await Payment.findOne({
+        order: order._id,
+        status: 'completed',
+      });
 
-    res.json({ order, message: 'Order cancelled successfully' });
+      if (payment && payment.transactionId) {
+        log.info(`Order cancelled - processing refund`, {
+          orderId: order._id,
+          transactionId: payment.transactionId,
+          amount: payment.amount
+        });
+
+        // Process refund through PayChangu
+        refundResult = await processPayChanguRefund({
+          transactionId: payment.transactionId,
+          amount: payment.amount,
+          reason: 'Order cancelled by customer',
+          orderId: order._id.toString(),
+        });
+
+        if (refundResult.success) {
+          // Update payment status to refunded
+          payment.status = PaymentStatus.REFUNDED;
+          payment.refundId = refundResult.refundId;
+          await payment.save();
+
+          log.payment.refund(order._id.toString(), payment.amount, true, {
+            refundId: refundResult.refundId,
+            message: refundResult.message
+          });
+
+          // Send refund confirmation email
+          try {
+            const customerEmail = order.user
+              ? (await User.findById(order.user))?.email
+              : order.guestInfo?.email;
+
+            if (customerEmail) {
+              await emailService.sendRefundProcessedEmail({
+                email: customerEmail,
+                orderNumber: order._id.toString(),
+                refundAmount: payment.amount,
+                currency: 'MWK',
+              });
+            }
+          } catch (emailError) {
+            log.error('Failed to send refund email', emailError);
+            // Don't fail the cancellation if email fails
+          }
+        } else {
+          log.payment.refund(order._id.toString(), payment.amount, false, {
+            error: refundResult.message
+          });
+          // Continue with cancellation even if refund fails - admin can process manually
+        }
+      }
+    } catch (refundError: any) {
+      log.error('Error processing refund', refundError);
+      // Continue with cancellation even if refund processing fails
+    }
+
+    // Return success response with refund info
+    const message = refundResult?.success
+      ? `Order cancelled successfully. Refund of MWK ${order.totalAmount} processed.`
+      : 'Order cancelled successfully.';
+
+    res.json({
+      order,
+      message,
+      refundProcessed: refundResult?.success || false,
+      refundMessage: refundResult?.message,
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to cancel order' });
   }

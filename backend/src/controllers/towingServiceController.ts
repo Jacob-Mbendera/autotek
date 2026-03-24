@@ -4,6 +4,7 @@ import TowingService from '../models/TowingService';
 import User from '../models/User';
 import { ServiceStatus } from '../types/shared';
 import { emailService } from '../services/emailService';
+import { geocodeAddressWithFallback } from '../utils/geocoding';
 
 export const createTowingService = async (
   req: AuthRequest,
@@ -55,7 +56,7 @@ export const createTowingService = async (
     });
 
     await towingService.save();
-    
+
     // Send service confirmation email
     try {
       const user = await User.findById(req.user!._id);
@@ -66,25 +67,29 @@ export const createTowingService = async (
       console.error('Failed to send service confirmation email:', emailError);
       // Don't fail the service creation if email fails
     }
-    
+
+    // Geocode addresses for coordinates
+    const pickupCoords = await geocodeAddressWithFallback(towingService.pickupLocation);
+    const destCoords = await geocodeAddressWithFallback(towingService.destination);
+
     // Transform response to match frontend interface
     const transformed = {
       ...towingService.toObject(),
       location: {
-        latitude: 0,
-        longitude: 0,
+        latitude: pickupCoords.latitude,
+        longitude: pickupCoords.longitude,
         address: towingService.pickupLocation,
       },
       destination: {
-        latitude: 0,
-        longitude: 0,
+        latitude: destCoords.latitude,
+        longitude: destCoords.longitude,
         address: towingService.destination,
       },
       vehicleType: towingService.vehicleDetails?.make || '',
       vehicleModel: towingService.vehicleDetails?.model,
       estimatedCost: towingService.price,
     };
-    
+
     res.status(201).json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to create towing service' });
@@ -121,23 +126,34 @@ export const getTowingServices = async (
       .sort({ createdAt: -1 })
       .lean();
 
-    // Transform to match frontend interface
-    const transformedServices = towingServices.map((service: any) => ({
-      ...service,
-      location: {
-        latitude: 0, // TODO: Get from geocoding
-        longitude: 0, // TODO: Get from geocoding
-        address: service.pickupLocation,
-      },
-      destination: service.destination ? {
-        latitude: 0, // TODO: Get from geocoding
-        longitude: 0, // TODO: Get from geocoding
-        address: service.destination,
-      } : undefined,
-      vehicleType: service.vehicleDetails?.make || '',
-      vehicleModel: service.vehicleDetails?.model,
-      estimatedCost: service.price,
-    }));
+    // Transform to match frontend interface with geocoded coordinates
+    const transformedServices = await Promise.all(
+      towingServices.map(async (service: any) => {
+        const pickupCoords = await geocodeAddressWithFallback(service.pickupLocation);
+        const destCoords = service.destination
+          ? await geocodeAddressWithFallback(service.destination)
+          : null;
+
+        return {
+          ...service,
+          location: {
+            latitude: pickupCoords.latitude,
+            longitude: pickupCoords.longitude,
+            address: service.pickupLocation,
+          },
+          destination: destCoords
+            ? {
+                latitude: destCoords.latitude,
+                longitude: destCoords.longitude,
+                address: service.destination,
+              }
+            : undefined,
+          vehicleType: service.vehicleDetails?.make || '',
+          vehicleModel: service.vehicleDetails?.model,
+          estimatedCost: service.price,
+        };
+      })
+    );
 
     res.json({ services: transformedServices });
   } catch (error: any) {
@@ -170,19 +186,27 @@ export const getTowingService = async (
       return;
     }
 
+    // Geocode addresses for coordinates
+    const pickupCoords = await geocodeAddressWithFallback((towingService as any).pickupLocation);
+    const destCoords = (towingService as any).destination
+      ? await geocodeAddressWithFallback((towingService as any).destination)
+      : null;
+
     // Transform to match frontend interface
     const transformed = {
       ...towingService,
       location: {
-        latitude: 0, // TODO: Get from geocoding
-        longitude: 0, // TODO: Get from geocoding
+        latitude: pickupCoords.latitude,
+        longitude: pickupCoords.longitude,
         address: (towingService as any).pickupLocation,
       },
-      destination: (towingService as any).destination ? {
-        latitude: 0, // TODO: Get from geocoding
-        longitude: 0, // TODO: Get from geocoding
-        address: (towingService as any).destination,
-      } : undefined,
+      destination: destCoords
+        ? {
+            latitude: destCoords.latitude,
+            longitude: destCoords.longitude,
+            address: (towingService as any).destination,
+          }
+        : undefined,
       vehicleType: (towingService as any).vehicleDetails?.make || '',
       vehicleModel: (towingService as any).vehicleDetails?.model,
       estimatedCost: (towingService as any).price,

@@ -10,6 +10,7 @@ export interface IPayment extends Document {
   method: PaymentMethod;
   transactionId?: string; // Our tx_ref
   chargeId?: string; // PayChangu's charge_id (for refunds)
+  refundId?: string; // PayChangu's refund ID
   status: PaymentStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -50,6 +51,9 @@ const PaymentSchema = new Schema<IPayment>(
     chargeId: {
       type: String,
       index: true, // Index for quick lookups during refunds
+    },
+    refundId: {
+      type: String,
     },
     status: {
       type: String,

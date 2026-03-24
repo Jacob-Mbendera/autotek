@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import { AuthRequest } from '../middleware/auth';
 import Payment from '../models/Payment';
 import Order from '../models/Order';
@@ -6,6 +7,7 @@ import TowingService from '../models/TowingService';
 import CarService from '../models/CarService';
 import { PaymentMethod, PaymentStatus } from '../types/shared';
 import { initiatePayment } from '../utils/paymentGateways';
+import { log } from '../utils/logger';
 
 export const initiatePaymentRequest = async (
   req: AuthRequest,
@@ -219,20 +221,66 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
       chargeId?: string; // PayChangu's charge ID (camelCase) - check both formats
     };
 
-    // Verify webhook signature (if PayChangu provides one)
+    // Verify webhook signature for security
     const webhookSecret = process.env.PAYCHANGU_WEBHOOK_SECRET;
-    // TODO: Implement signature verification when PayChangu provides webhook signature
+
+    if (webhookSecret) {
+      // PayChangu signature verification (HMAC-SHA256)
+      // PayChangu sends signature in "Signature" header (lowercase in Express)
+      // Docs: https://developer.paychangu.com/docs/webhooks
+      const signature = req.headers['signature'] ||
+                       req.headers['x-paychangu-signature'] ||
+                       req.headers['x-signature'];
+
+      if (signature) {
+        const expectedSignature = crypto
+          .createHmac('sha256', webhookSecret)
+          .update(JSON.stringify(req.body))
+          .digest('hex');
+
+        if (signature !== expectedSignature) {
+          const sigStr = Array.isArray(signature) ? signature[0] : signature;
+          log.error('PayChangu webhook: Invalid signature', {
+            receivedSignature: sigStr.substring(0, 10) + '...',
+            sessionId,
+            reference
+          });
+          res.status(401).json({ message: 'Invalid webhook signature' });
+          return;
+        }
+        log.payment.webhook('PayChangu', 'Signature verified', { sessionId, reference });
+      } else {
+        // If webhook secret is configured but no signature received
+        log.warn('PayChangu webhook: No signature provided but PAYCHANGU_WEBHOOK_SECRET is set');
+        // In development, allow webhooks without signatures for testing
+        // In production, reject unsigned webhooks
+        if (process.env.NODE_ENV === 'production') {
+          res.status(401).json({ message: 'Webhook signature required in production' });
+          return;
+        }
+      }
+    } else {
+      // Webhook secret not configured - log warning
+      log.warn('PayChangu webhook: PAYCHANGU_WEBHOOK_SECRET not configured. Webhook verification disabled.');
+      // TODO: Contact PayChangu support at support@paychangu.com to get webhook secret
+    }
 
     // Find payment by transactionId or sessionId
+    // Build query conditions - only use $regex if reference is defined
+    const queryConditions: any[] = [
+      { transactionId: transactionId || sessionId },
+    ];
+
+    if (reference && typeof reference === 'string') {
+      queryConditions.push({ transactionId: { $regex: reference } });
+    }
+
     const payment = await Payment.findOne({
-      $or: [
-        { transactionId: transactionId || sessionId },
-        { transactionId: { $regex: reference } },
-      ],
+      $or: queryConditions,
     });
 
     if (!payment) {
-      console.warn('PayChangu webhook: Payment not found', { sessionId, transactionId, reference });
+      log.warn('PayChangu webhook: Payment not found', { sessionId, transactionId, reference });
       res.status(404).json({ message: 'Payment not found' });
       return;
     }
@@ -270,9 +318,15 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
 
     await payment.save();
 
+    log.payment.webhook('PayChangu', 'Payment updated', {
+      paymentId: payment._id,
+      status: payment.status,
+      type: payment.type
+    });
+
     res.json({ success: true, payment });
   } catch (error: any) {
-    console.error('PayChangu webhook error:', error);
+    log.error('PayChangu webhook error', error);
     res.status(500).json({ message: error.message || 'Failed to process PayChangu webhook' });
   }
 };
@@ -333,7 +387,7 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
           }
         }
       } catch (error) {
-        console.error('Error verifying payment with PayChangu:', error);
+        log.error('Error verifying payment with PayChangu', error);
         // Continue anyway - we'll update charge_id from webhook later
       }
     }
