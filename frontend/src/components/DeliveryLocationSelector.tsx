@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGetDeliveryLocationsQuery } from '../store/api/deliveryLocationApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
@@ -18,31 +18,10 @@ export const DeliveryLocationSelector = ({
 }: DeliveryLocationSelectorProps) => {
   const { data, isLoading, isError } = useGetDeliveryLocationsQuery();
 
-  const [selectedTown, setSelectedTown] = useState<string>('');
-  const [selectedLandmark, setSelectedLandmark] = useState<string>('');
-  const [customAddress, setCustomAddress] = useState<string>('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
-
-  // Initialize from value prop only when component mounts or value changes structurally
-  useEffect(() => {
-    if (value) {
-      if (value.town && value.town !== selectedTown) {
-        setSelectedTown(value.town);
-      }
-      if (value.landmark && value.landmark !== selectedLandmark) {
-        setSelectedLandmark(value.landmark);
-        if (value.landmark === 'Other/Custom') {
-          setShowCustomInput(true);
-        }
-      }
-      if (value.customAddress && value.customAddress !== customAddress) {
-        setCustomAddress(value.customAddress);
-        setShowCustomInput(true);
-      }
-    }
-    // Only run when the actual town or landmark changes, not on every value update
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.town, value?.landmark]);
+  const [selectedTown, setSelectedTown] = useState<string>(value?.town || '');
+  const [selectedLandmark, setSelectedLandmark] = useState<string>(value?.landmark || '');
+  const [customAddress, setCustomAddress] = useState<string>(value?.customAddress || '');
+  const [showCustomInput, setShowCustomInput] = useState(value?.landmark === 'Other/Custom');
 
   // Get landmarks for selected town
   const selectedTownData = data?.deliveryLocations.find((loc) => loc.town === selectedTown);
@@ -63,6 +42,13 @@ export const DeliveryLocationSelector = ({
     // If "Other/Custom" is selected, show custom address input
     if (landmark === 'Other/Custom') {
       setShowCustomInput(true);
+      setCustomAddress('');
+      // Notify parent immediately that "Other/Custom" was selected
+      onChange({
+        town: selectedTown,
+        landmark,
+        customAddress: '',
+      });
     } else {
       setShowCustomInput(false);
       setCustomAddress('');
@@ -79,13 +65,12 @@ export const DeliveryLocationSelector = ({
     const custom = e.target.value;
     setCustomAddress(custom);
 
-    if (custom.trim()) {
-      onChange({
-        town: selectedTown,
-        landmark: selectedLandmark,
-        customAddress: custom.trim(),
-      });
-    }
+    // Always notify parent of changes, even if empty
+    onChange({
+      town: selectedTown,
+      landmark: selectedLandmark,
+      customAddress: custom,
+    });
   };
 
   if (isLoading) {

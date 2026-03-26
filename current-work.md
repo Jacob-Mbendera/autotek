@@ -86,7 +86,10 @@ See detailed results in `BACKEND_DELIVERY_API_TEST_RESULTS.md`
 
 **Recent Fixes**:
 - ✅ Fixed ShippingAddress export issue - changed to `type` imports
-- ✅ Fixed custom address textarea closing after first character (useEffect dependency issue)
+- ✅ Fixed custom address textarea closing after first character
+  - Root cause: Component was syncing with parent state via useEffect, causing re-renders
+  - Solution: Removed useEffect, component now manages its own state and only notifies parent via onChange
+  - Added immediate onChange call when "Other/Custom" is selected
 
 **Frontend Testing Guide Created**: ✅
 - **File**: `FRONTEND_DELIVERY_TEST_GUIDE.md`
