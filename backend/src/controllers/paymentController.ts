@@ -28,9 +28,21 @@ export const initiatePaymentRequest = async (
 
     // Determine which entity is being paid for
     if (orderId) {
-      entity = await Order.findOne({ _id: orderId, user: req.user!._id });
+      // Support both authenticated users and guest orders
+      if (req.user) {
+        // Authenticated user - find order by user ID
+        entity = await Order.findOne({ _id: orderId, user: req.user._id });
+      } else {
+        // Guest user - find order by ID (guest orders have no user field or guestInfo)
+        entity = await Order.findById(orderId);
+        // Verify it's actually a guest order (has guestInfo, not user)
+        if (entity && entity.user) {
+          entity = null; // Don't allow guests to pay for authenticated user orders
+        }
+      }
+
       if (!entity) {
-        res.status(404).json({ message: 'Order not found' });
+        res.status(404).json({ message: 'Order not found or unauthorized' });
         return;
       }
       type = 'order';
@@ -93,17 +105,28 @@ export const initiatePaymentRequest = async (
     const finalCancelUrl = cancelUrl || `${baseUrl}/payment/cancel?paymentId={PAYMENT_ID}`;
 
     // Prepare customer information for PayChangu
+    // Support both authenticated users and guest orders
+    const guestInfo = entity.guestInfo;
+    const userEmail = req.user?.email || guestInfo?.email || entity.user?.email || entity.email;
+    const userName = req.user?.name || guestInfo?.name || entity.user?.name || entity.name || 'Customer';
+    const userPhone = phoneNumber || req.user?.phone || guestInfo?.phone;
+
     const customerInfo = paymentMethod === PaymentMethod.PAYCHANGU ? {
-      email: req.user?.email || entity.user?.email || entity.email,
-      firstName: req.user?.name?.split(' ')[0] || entity.user?.name?.split(' ')[0] || entity.name?.split(' ')[0] || 'Customer',
-      lastName: req.user?.name?.split(' ').slice(1).join(' ') || entity.user?.name?.split(' ').slice(1).join(' ') || entity.name?.split(' ').slice(1).join(' ') || '',
+      email: userEmail,
+      firstName: userName.split(' ')[0] || 'Customer',
+      lastName: userName.split(' ').slice(1).join(' ') || '',
     } : undefined;
+
+    if (!userPhone) {
+      res.status(400).json({ message: 'Phone number is required for payment' });
+      return;
+    }
 
     const paymentResponse = await initiatePayment(
       paymentMethod,
       {
         amount,
-        phoneNumber: phoneNumber || req.user!.phone,
+        phoneNumber: userPhone,
         reference,
         description: `Payment for ${type}`,
       },
@@ -132,6 +155,15 @@ export const initiatePaymentRequest = async (
 
     const payment = new Payment(paymentData);
     await payment.save();
+
+    // Link payment back to the entity
+    if (type === 'towing' && entity) {
+      entity.payment = payment._id;
+      await entity.save();
+    } else if (type === 'car-service' && entity) {
+      entity.payment = payment._id;
+      await entity.save();
+    }
 
     res.status(201).json({
       payment,
@@ -194,6 +226,60 @@ export const getPaymentByOrder = async (req: AuthRequest, res: Response): Promis
 
     // Check if user has access to this payment
     if (payment.order && (payment.order as any).user.toString() !== req.user!._id.toString()) {
+      if (req.user!.role !== 'admin') {
+        res.status(403).json({ message: 'Access denied' });
+        return;
+      }
+    }
+
+    res.json({ payment });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to fetch payment' });
+  }
+};
+
+export const getPaymentByTowingService = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { serviceId } = req.params;
+
+    const payment = await Payment.findOne({ towingService: serviceId, type: 'towing' })
+      .populate('towingService')
+      .sort({ createdAt: -1 }); // Get the most recent payment
+
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found for this service' });
+      return;
+    }
+
+    // Check if user has access to this payment
+    if (payment.towingService && (payment.towingService as any).user.toString() !== req.user!._id.toString()) {
+      if (req.user!.role !== 'admin') {
+        res.status(403).json({ message: 'Access denied' });
+        return;
+      }
+    }
+
+    res.json({ payment });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to fetch payment' });
+  }
+};
+
+export const getPaymentByCarService = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { serviceId } = req.params;
+
+    const payment = await Payment.findOne({ carService: serviceId, type: 'car-service' })
+      .populate('carService')
+      .sort({ createdAt: -1 }); // Get the most recent payment
+
+    if (!payment) {
+      res.status(404).json({ message: 'Payment not found for this service' });
+      return;
+    }
+
+    // Check if user has access to this payment
+    if (payment.carService && (payment.carService as any).user.toString() !== req.user!._id.toString()) {
       if (req.user!.role !== 'admin') {
         res.status(403).json({ message: 'Access denied' });
         return;
@@ -303,12 +389,18 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
         const towingService = await TowingService.findById(payment.towingService);
         if (towingService) {
           towingService.paymentStatus = 'completed';
+          if (!towingService.payment) {
+            towingService.payment = payment._id;
+          }
           await towingService.save();
         }
       } else if (payment.type === 'car-service' && payment.carService) {
         const carService = await CarService.findById(payment.carService);
         if (carService) {
           carService.paymentStatus = 'completed';
+          if (!carService.payment) {
+            carService.payment = payment._id;
+          }
           await carService.save();
         }
       }
@@ -406,12 +498,18 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
       const towingService = await TowingService.findById(payment.towingService);
       if (towingService) {
         towingService.paymentStatus = 'completed';
+        if (!towingService.payment) {
+          towingService.payment = payment._id;
+        }
         await towingService.save();
       }
     } else if (payment.type === 'car-service' && payment.carService) {
       const carService = await CarService.findById(payment.carService);
       if (carService) {
         carService.paymentStatus = 'completed';
+        if (!carService.payment) {
+          carService.payment = payment._id;
+        }
         await carService.save();
       }
     }
