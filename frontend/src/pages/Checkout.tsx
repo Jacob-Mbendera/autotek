@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation } from '../store/api/orderApi';
@@ -59,17 +59,6 @@ export const Checkout = () => {
     return !!(address.town && address.landmark);
   };
 
-  // Update step based on form completion
-  const updateStep = () => {
-    if (!isAddressValid(shippingAddress)) {
-      setCurrentStep(1);
-    } else if (isAddressValid(shippingAddress) && !paymentMethod) {
-      setCurrentStep(2);
-    } else if (isAddressValid(shippingAddress) && paymentMethod) {
-      setCurrentStep(3); // Advance to Review step
-    }
-  };
-
   // Step navigation functions
   const handleContinue = () => {
     if (currentStep === 1) {
@@ -108,11 +97,6 @@ export const Checkout = () => {
     setCurrentStep(2);
     setError('');
   };
-
-  // Update step when form changes
-  useEffect(() => {
-    updateStep();
-  }, [shippingAddress, paymentMethod]);
 
   // Payment method constant
   const PAYMENT_METHOD_PAYCHANGU = 'paychangu' as PaymentMethod;

@@ -78,10 +78,11 @@ export const Wishlist = () => {
           image: product.images?.[0],
         })
       );
-      dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
+      await removeFromWishlist(product._id).unwrap();
+      dispatch(showNotification({ message: 'Product moved to cart!', type: 'success' }));
     } catch (error) {
       dispatch(showNotification({
-        message: 'Failed to add product to cart',
+        message: 'Failed to move product to cart',
         type: 'error',
       }));
     } finally {
@@ -94,7 +95,7 @@ export const Wishlist = () => {
 
     setMovingAllToCart(true);
     try {
-      let addedCount = 0;
+      let movedCount = 0;
       for (const product of products) {
         if (product.status !== 'out-of-stock' && (product.stock || 0) > 0) {
           dispatch(
@@ -105,16 +106,17 @@ export const Wishlist = () => {
               image: product.images?.[0],
             })
           );
-          addedCount++;
+          await removeFromWishlist(product._id).unwrap();
+          movedCount++;
         }
       }
       dispatch(showNotification({
-        message: `${addedCount} product${addedCount > 1 ? 's' : ''} added to cart!`,
+        message: `${movedCount} product${movedCount > 1 ? 's' : ''} moved to cart!`,
         type: 'success',
       }));
     } catch (error) {
       dispatch(showNotification({
-        message: 'Failed to add some products to cart',
+        message: 'Failed to move some products to cart',
         type: 'error',
       }));
     } finally {
@@ -290,8 +292,8 @@ export const Wishlist = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {products.map((product) => (
                 <div key={product._id} className="relative group">
-                  <ProductCard product={product} />
-                  <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ProductCard product={product} onAddToCart={handleAddToCart} />
+                  <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -300,8 +302,8 @@ export const Wishlist = () => {
                       }}
                       disabled={addingToCart === product._id || product.status === 'out-of-stock' || product.stock === 0}
                       className="bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-xl hover:bg-teal-50 hover:text-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200"
-                      aria-label="Add to cart"
-                      title="Add to cart"
+                      aria-label="Move to cart"
+                      title="Move to cart"
                     >
                       {addingToCart === product._id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

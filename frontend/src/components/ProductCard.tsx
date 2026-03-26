@@ -13,9 +13,10 @@ import { Button } from './ui/Button';
 interface ProductCardProps {
   product: Product;
   onQuickView?: (product: Product) => void;
+  onAddToCart?: (product: Product) => void | Promise<void>;
 }
 
-export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
+export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardProps) => {
   const dispatch = useAppDispatch();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -75,6 +76,11 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (onAddToCart) {
+      onAddToCart(product);
+      return;
+    }
     
     dispatch(
       addItem({
