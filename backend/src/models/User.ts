@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { UserRole } from '../types/shared';
+import { IShippingAddress } from './Order';
 
 export interface IUser extends Document {
   email: string;
@@ -7,7 +8,7 @@ export interface IUser extends Document {
   name: string;
   phone: string;
   role: UserRole;
-  address?: string;
+  address?: IShippingAddress | string;
   resetToken?: string;
   resetTokenExpiry?: Date;
   createdAt: Date;
@@ -43,7 +44,7 @@ const UserSchema = new Schema<IUser>(
       default: UserRole.CUSTOMER,
     },
     address: {
-      type: String,
+      type: Schema.Types.Mixed,
     },
     resetToken: {
       type: String,

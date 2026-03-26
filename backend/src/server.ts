@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import connectDB from './config/database';
@@ -18,9 +19,14 @@ import wishlistRoutes from './routes/wishlistRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import couponRoutes from './routes/couponRoutes';
 import returnRoutes, { adminReturnRouter } from './routes/returnRoutes';
+import deliveryLocationRoutes from './routes/deliveryLocationRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // Middleware
 app.use(cors());
@@ -48,6 +54,22 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/returns', returnRoutes);
 app.use('/api/admin/returns', adminReturnRouter);
+app.use('/api/delivery-locations', deliveryLocationRoutes);
+
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) {
+      res.status(404).json({
+        message: 'Not found',
+        path: req.originalUrl,
+      });
+      return;
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 // Error handler
 app.use(errorHandler);

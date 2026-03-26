@@ -2,6 +2,7 @@ import React, { useState, useEffect, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation } from '../store/api/orderApi';
+import type { ShippingAddress } from '../store/api/orderApi';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
 import { clearCart, removeCoupon } from '../store/slices/cartSlice';
 import { setUser } from '../store/slices/authSlice';
@@ -12,6 +13,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { H1, Body } from '../components/ui/Typography';
+import { DeliveryLocationSelector } from '../components/DeliveryLocationSelector';
 import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil, Smartphone, Building2, Shield, Lock } from 'lucide-react';
 
 export const Checkout = () => {
@@ -31,7 +33,9 @@ export const Checkout = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  const [shippingAddress, setShippingAddress] = useState(user?.address || '');
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(
+    user?.address && typeof user.address === 'object' ? user.address : null
+  );
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paychangu' as PaymentMethod);
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
@@ -48,13 +52,20 @@ export const Checkout = () => {
     { id: 3, name: 'Review', icon: CheckCircle },
   ];
 
+  // Helper to check if address is valid
+  const isAddressValid = (address: ShippingAddress | null): boolean => {
+    if (!address) return false;
+    if (address.customAddress) return address.customAddress.trim().length > 0;
+    return !!(address.town && address.landmark);
+  };
+
   // Update step based on form completion
   const updateStep = () => {
-    if (!shippingAddress.trim()) {
+    if (!isAddressValid(shippingAddress)) {
       setCurrentStep(1);
-    } else if (shippingAddress.trim() && !paymentMethod) {
+    } else if (isAddressValid(shippingAddress) && !paymentMethod) {
       setCurrentStep(2);
-    } else if (shippingAddress.trim() && paymentMethod) {
+    } else if (isAddressValid(shippingAddress) && paymentMethod) {
       setCurrentStep(3); // Advance to Review step
     }
   };
@@ -62,8 +73,8 @@ export const Checkout = () => {
   // Step navigation functions
   const handleContinue = () => {
     if (currentStep === 1) {
-      if (!shippingAddress.trim()) {
-        setError('Please enter a shipping address');
+      if (!isAddressValid(shippingAddress)) {
+        setError('Please select a delivery location');
         return;
       }
       setCurrentStep(2);
@@ -147,8 +158,8 @@ export const Checkout = () => {
       }
     }
 
-    if (!shippingAddress.trim()) {
-      setError('Please enter a shipping address');
+    if (!isAddressValid(shippingAddress)) {
+      setError('Please select a delivery location');
       return;
     }
 
@@ -172,7 +183,7 @@ export const Checkout = () => {
       // Prepare order data
       const orderData: any = {
         items: orderItems,
-        shippingAddress: shippingAddress.trim(),
+        shippingAddress: shippingAddress,
         paymentMethod: paymentMethod as PaymentMethod,
       };
 
@@ -350,16 +361,11 @@ export const Checkout = () => {
                 <H1 className="text-xl">Shipping Address</H1>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address <span className="text-red-500">*</span>
-                </label>
-                <textarea
+                <DeliveryLocationSelector
                   value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
+                  onChange={setShippingAddress}
+                  error={error && !isAddressValid(shippingAddress) ? error : undefined}
                   required
-                  placeholder="Enter your full shipping address"
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
                 />
               </div>
               <div className="mt-6 flex justify-end">
@@ -565,8 +571,12 @@ export const Checkout = () => {
                       Edit
                     </Button>
                   </div>
-                  <Body className="text-sm text-gray-600 whitespace-pre-line">
-                    {shippingAddress}
+                  <Body className="text-sm text-gray-600">
+                    {shippingAddress?.customAddress
+                      ? shippingAddress.customAddress
+                      : shippingAddress?.town && shippingAddress?.landmark
+                      ? `${shippingAddress.town}, ${shippingAddress.landmark}`
+                      : 'No address provided'}
                   </Body>
                 </div>
 

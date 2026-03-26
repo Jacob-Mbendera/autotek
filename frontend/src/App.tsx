@@ -10,6 +10,8 @@ import { CompareProducts } from './pages/CompareProducts';
 import { ProductDetail } from './pages/ProductDetail';
 import { Services } from './pages/Services';
 import { BookService } from './pages/BookService';
+import { MyServices } from './pages/MyServices';
+import { ServicePayment } from './pages/ServicePayment';
 import { Cart } from './pages/Cart';
 import { Checkout } from './pages/Checkout';
 import { Orders } from './pages/Orders';
@@ -20,7 +22,7 @@ import { ReturnDetail } from './pages/ReturnDetail';
 import { RequestReturn } from './pages/RequestReturn';
 import { PaymentSuccess } from './pages/PaymentSuccess';
 import { PaymentCancel } from './pages/PaymentCancel';
-import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport, AdminReturns } from './pages/admin';
+import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport, AdminReturns, DeliveryLocations } from './pages/admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
@@ -102,6 +104,26 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <BookService />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-services"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MyServices />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/service-payment"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ServicePayment />
               </Layout>
             </ProtectedRoute>
           }
@@ -232,6 +254,16 @@ function App() {
             <ProtectedRoute adminOnly>
               <AdminLayout>
                 <AdminUsers />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/delivery-locations"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <DeliveryLocations />
               </AdminLayout>
             </ProtectedRoute>
           }

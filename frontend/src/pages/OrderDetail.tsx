@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGetOrderQuery, useCancelOrderMutation } from '../store/api/orderApi';
+import type { ShippingAddress } from '../store/api/orderApi';
 import { useGetReturnsQuery } from '../store/api/returnApi';
 import { useAppSelector } from '../store/types';
 import { useGetAdminOrderQuery, useUpdateOrderStatusMutation } from '../store/api/adminApi';
@@ -12,6 +13,23 @@ import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+
+// Helper function to format shipping address
+const formatShippingAddress = (address: ShippingAddress | string): string => {
+  if (typeof address === 'string') {
+    return address;
+  }
+
+  if (address.customAddress) {
+    return address.customAddress;
+  }
+
+  if (address.town && address.landmark) {
+    return `${address.town}, ${address.landmark}`;
+  }
+
+  return 'Address not specified';
+};
 import {
   ArrowLeft,
   Package,
@@ -627,7 +645,9 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
               <MapPin className="h-5 w-5 text-teal-600" />
               <H1 className="text-lg font-bold text-gray-900">Shipping Address</H1>
             </div>
-            <Body className="text-gray-700 whitespace-pre-line">{order.shippingAddress}</Body>
+            <Body className="text-gray-700 whitespace-pre-line">
+              {formatShippingAddress(order.shippingAddress)}
+            </Body>
           </Card>
 
           {/* Payment Information */}

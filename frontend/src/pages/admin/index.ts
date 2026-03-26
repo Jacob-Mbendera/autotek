@@ -7,3 +7,4 @@ export { AdminUsers } from './Users';
 export { AdminSettings } from './Settings';
 export { AdminSupport } from './Support';
 export { AdminReturns } from './Returns';
+export { DeliveryLocations } from './DeliveryLocations';

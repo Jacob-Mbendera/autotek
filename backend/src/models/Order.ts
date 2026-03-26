@@ -7,6 +7,13 @@ export interface IOrderItem {
   price: number;
 }
 
+export interface IShippingAddress {
+  town?: string;
+  landmark?: string;
+  customAddress?: string;
+  legacyAddress?: string;
+}
+
 export interface IOrder extends Document {
   user?: Types.ObjectId; // Optional for guest checkout
   guestInfo?: {
@@ -21,7 +28,7 @@ export interface IOrder extends Document {
   status: OrderStatus;
   paymentMethod?: PaymentMethod;
   paymentStatus: PaymentStatus;
-  shippingAddress: string;
+  shippingAddress: IShippingAddress | string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -107,9 +114,8 @@ const OrderSchema = new Schema<IOrder>(
       default: PaymentStatus.PENDING,
     },
     shippingAddress: {
-      type: String,
+      type: Schema.Types.Mixed,
       required: true,
-      trim: true,
     },
   },
   {

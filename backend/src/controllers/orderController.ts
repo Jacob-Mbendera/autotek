@@ -1,16 +1,38 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import Order from '../models/Order';
+import Order, { IShippingAddress } from '../models/Order';
 import Product from '../models/Product';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
 import Payment from '../models/Payment';
+import DeliveryLocation from '../models/DeliveryLocation';
 import { OrderStatus, UserRole, PaymentStatus } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { hashPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { processPayChanguRefund } from '../utils/paymentRefunds';
 import { log } from '../utils/logger';
+
+// Helper function to format address for display
+const formatShippingAddress = (address: IShippingAddress | string): string => {
+  if (typeof address === 'string') {
+    return address;
+  }
+
+  if (address.customAddress) {
+    return address.customAddress;
+  }
+
+  if (address.legacyAddress) {
+    return address.legacyAddress;
+  }
+
+  if (address.town && address.landmark) {
+    return `${address.town}, ${address.landmark}`;
+  }
+
+  return 'Address not specified';
+};
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -30,6 +52,39 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     if (!req.user && guestInfo) {
       if (!guestInfo.email || !guestInfo.name || !guestInfo.phone) {
         res.status(400).json({ message: 'Guest email, name, and phone are required' });
+        return;
+      }
+    }
+
+    // Validate shipping address
+    if (!shippingAddress) {
+      res.status(400).json({ message: 'Shipping address is required' });
+      return;
+    }
+
+    // If structured address, validate that town and landmark exist
+    if (typeof shippingAddress === 'object' && !shippingAddress.customAddress) {
+      const { town, landmark } = shippingAddress;
+
+      if (!town || !landmark) {
+        res.status(400).json({ message: 'Town and landmark are required for structured address' });
+        return;
+      }
+
+      // Verify town and landmark exist in database
+      const deliveryLocation = await DeliveryLocation.findOne({ town, active: true });
+
+      if (!deliveryLocation) {
+        res.status(400).json({ message: `Town "${town}" not found in available delivery locations` });
+        return;
+      }
+
+      const landmarkExists = deliveryLocation.landmarks.some(
+        (l: any) => l.name === landmark && l.active
+      );
+
+      if (!landmarkExists) {
+        res.status(400).json({ message: `Landmark "${landmark}" not found in ${town}` });
         return;
       }
     }
@@ -145,7 +200,11 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
             password: hashedPassword,
             name: guestInfo.name.trim(),
             phone: guestInfo.phone.trim(),
-            address: shippingAddress ? shippingAddress.trim() : undefined,
+            address: shippingAddress ? (
+              typeof shippingAddress === 'string'
+                ? shippingAddress.trim()
+                : shippingAddress
+            ) : undefined,
             role: UserRole.CUSTOMER,
           });
           await newUser.save();

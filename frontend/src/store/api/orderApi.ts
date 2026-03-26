@@ -11,6 +11,13 @@ export interface OrderItem {
   price: number;
 }
 
+export interface ShippingAddress {
+  town?: string;
+  landmark?: string;
+  customAddress?: string;
+  legacyAddress?: string;
+}
+
 export interface Order {
   _id: string;
   user?: string;
@@ -24,7 +31,7 @@ export interface Order {
   status: OrderStatus;
   paymentMethod?: PaymentMethod;
   paymentStatus: PaymentStatus;
-  shippingAddress: string;
+  shippingAddress: ShippingAddress | string;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,13 +42,15 @@ interface CreateOrderRequest {
     quantity: number;
     price: number;
   }>;
-  shippingAddress: string;
+  shippingAddress: ShippingAddress | string;
   paymentMethod?: PaymentMethod;
   guestInfo?: {
     email: string;
     name: string;
     phone: string;
   };
+  couponCode?: string;
+  password?: string;
 }
 
 interface OrdersResponse {
