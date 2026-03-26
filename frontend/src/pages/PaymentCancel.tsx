@@ -26,6 +26,9 @@ export const PaymentCancel = () => {
   const isLoading = isLoadingOrder || isLoadingPayment;
   const order = orderData?.order;
   const payment = paymentData?.payment;
+  const paymentMethodDisplay = payment?.paymentMethod
+    ? payment.paymentMethod.replace('-', ' ')
+    : 'Not specified';
 
   if (isLoading) {
     return (
@@ -69,7 +72,7 @@ export const PaymentCancel = () => {
                   <div className="flex justify-between">
                     <span className="text-amber-700">Payment Method:</span>
                     <span className="font-medium text-amber-900 capitalize">
-                      {payment.paymentMethod.replace('-', ' ')}
+                      {paymentMethodDisplay}
                     </span>
                   </div>
                 )}
