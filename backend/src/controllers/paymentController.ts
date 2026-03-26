@@ -9,6 +9,25 @@ import { PaymentMethod, PaymentStatus } from '../types/shared';
 import { initiatePayment } from '../utils/paymentGateways';
 import { log } from '../utils/logger';
 
+const normalizeRedirectUrl = (url: string | undefined, fallbackUrl: string): string => {
+  const candidateUrl = (url || fallbackUrl).trim();
+
+  try {
+    const parsedUrl = new URL(candidateUrl);
+
+    // In local development, force localhost redirects to include Vite's default port.
+    if (process.env.NODE_ENV !== 'production' && parsedUrl.hostname === 'localhost') {
+      if (!parsedUrl.port) {
+        parsedUrl.port = '5173';
+      }
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return fallbackUrl;
+  }
+};
+
 export const initiatePaymentRequest = async (
   req: AuthRequest,
   res: Response
@@ -100,9 +119,23 @@ export const initiatePaymentRequest = async (
     const reference = `${type.toUpperCase()}_${entityId}_${Date.now()}`;
 
     // For PayChangu, construct return and cancel URLs if not provided
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const finalReturnUrl = returnUrl || `${baseUrl}/payment/success?paymentId={PAYMENT_ID}`;
-    const finalCancelUrl = cancelUrl || `${baseUrl}/payment/cancel?paymentId={PAYMENT_ID}`;
+    const baseUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const finalReturnUrl = normalizeRedirectUrl(
+      returnUrl,
+      `${baseUrl}/payment/success?paymentId={PAYMENT_ID}`
+    );
+    const finalCancelUrl = normalizeRedirectUrl(
+      cancelUrl,
+      `${baseUrl}/payment/cancel?paymentId={PAYMENT_ID}`
+    );
+    log.info('PayChangu redirect URLs prepared', {
+      type,
+      entityId,
+      returnUrl: finalReturnUrl,
+      cancelUrl: finalCancelUrl,
+      requestReturnUrl: returnUrl,
+      requestCancelUrl: cancelUrl,
+    });
 
     // Prepare customer information for PayChangu
     // Support both authenticated users and guest orders

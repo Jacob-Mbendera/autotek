@@ -41,6 +41,20 @@ export const Checkout = () => {
   const [currentStep, setCurrentStep] = useState(1);
   
   const isLoading = isCreatingOrder || isInitiatingPayment;
+
+  const getFrontendBaseUrl = () => {
+    const configuredBaseUrl = import.meta.env.VITE_BASE_URL?.trim();
+    if (configuredBaseUrl) {
+      return configuredBaseUrl.replace(/\/$/, '');
+    }
+
+    const currentOrigin = window.location.origin;
+    if (import.meta.env.DEV && /^http:\/\/localhost(?::\d+)?$/.test(currentOrigin)) {
+      return 'http://localhost:5173';
+    }
+
+    return currentOrigin;
+  };
   
   // Calculate final total with discount
   const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
@@ -216,8 +230,9 @@ export const Checkout = () => {
       if (paymentMethod === PAYMENT_METHOD_PAYCHANGU) {
         // Use authenticated user email if account was created, otherwise use guest email
         const emailForUrl = orderResult.user?.email || guestEmail.trim();
-        const returnUrl = `${window.location.origin}/payment/success?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
-        const cancelUrl = `${window.location.origin}/payment/cancel?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
+        const frontendBaseUrl = getFrontendBaseUrl();
+        const returnUrl = `${frontendBaseUrl}/payment/success?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
+        const cancelUrl = `${frontendBaseUrl}/payment/cancel?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
         
         const paymentResult = await initiatePayment({
           orderId: orderResult.order._id,
