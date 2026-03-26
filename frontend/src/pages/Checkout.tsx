@@ -55,6 +55,9 @@ export const Checkout = () => {
   // Helper to check if address is valid
   const isAddressValid = (address: ShippingAddress | null): boolean => {
     if (!address) return false;
+    if (address.landmark === 'Other/Custom') {
+      return (address.customAddress || '').trim().length > 0;
+    }
     if (address.customAddress) return address.customAddress.trim().length > 0;
     return !!(address.town && address.landmark);
   };
@@ -63,7 +66,11 @@ export const Checkout = () => {
   const handleContinue = () => {
     if (currentStep === 1) {
       if (!isAddressValid(shippingAddress)) {
-        setError('Please select a delivery location');
+        if (shippingAddress?.landmark === 'Other/Custom') {
+          setError('Please provide a delivery address');
+        } else {
+          setError('Please select a delivery location');
+        }
         return;
       }
       setCurrentStep(2);
@@ -143,7 +150,11 @@ export const Checkout = () => {
     }
 
     if (!isAddressValid(shippingAddress)) {
-      setError('Please select a delivery location');
+      if (shippingAddress?.landmark === 'Other/Custom') {
+        setError('Please provide a delivery address');
+      } else {
+        setError('Please select a delivery location');
+      }
       return;
     }
 
