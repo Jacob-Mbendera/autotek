@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useGetDeliveryLocationsQuery } from '../store/api/deliveryLocationApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
@@ -18,10 +17,11 @@ export const DeliveryLocationSelector = ({
 }: DeliveryLocationSelectorProps) => {
   const { data, isLoading, isError } = useGetDeliveryLocationsQuery();
 
-  const [selectedTown, setSelectedTown] = useState<string>(value?.town || '');
-  const [selectedLandmark, setSelectedLandmark] = useState<string>(value?.landmark || '');
-  const [customAddress, setCustomAddress] = useState<string>(value?.customAddress || '');
-  const [showCustomInput, setShowCustomInput] = useState(value?.landmark === 'Other/Custom');
+  // Use value prop directly (controlled component)
+  const selectedTown = value?.town || '';
+  const selectedLandmark = value?.landmark || '';
+  const customAddress = value?.customAddress || '';
+  const showCustomInput = selectedLandmark === 'Other/Custom';
 
   // Get landmarks for selected town
   const selectedTownData = data?.deliveryLocations.find((loc) => loc.town === selectedTown);
@@ -29,30 +29,24 @@ export const DeliveryLocationSelector = ({
 
   // Handle town selection
   const handleTownChange = (town: string) => {
-    setSelectedTown(town);
-    setSelectedLandmark('');
-    setShowCustomInput(false);
-    setCustomAddress('');
+    onChange({
+      town,
+      landmark: '',
+      customAddress: '',
+    });
   };
 
   // Handle landmark selection
   const handleLandmarkChange = (landmark: string) => {
-    setSelectedLandmark(landmark);
-
-    // If "Other/Custom" is selected, show custom address input
+    // If "Other/Custom" is selected, set empty customAddress to show textarea
     if (landmark === 'Other/Custom') {
-      setShowCustomInput(true);
-      setCustomAddress('');
-      // Notify parent immediately that "Other/Custom" was selected
       onChange({
         town: selectedTown,
         landmark,
         customAddress: '',
       });
     } else {
-      setShowCustomInput(false);
-      setCustomAddress('');
-      // Emit the structured address
+      // Emit the structured address (no customAddress)
       onChange({
         town: selectedTown,
         landmark,
@@ -63,9 +57,8 @@ export const DeliveryLocationSelector = ({
   // Handle custom address input
   const handleCustomAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const custom = e.target.value;
-    setCustomAddress(custom);
 
-    // Always notify parent of changes, even if empty
+    // Always notify parent of changes
     onChange({
       town: selectedTown,
       landmark: selectedLandmark,

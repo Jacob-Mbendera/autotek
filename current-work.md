@@ -86,10 +86,12 @@ See detailed results in `BACKEND_DELIVERY_API_TEST_RESULTS.md`
 
 **Recent Fixes**:
 - ✅ Fixed ShippingAddress export issue - changed to `type` imports
-- ✅ Fixed custom address textarea closing after first character
-  - Root cause: Component was syncing with parent state via useEffect, causing re-renders
-  - Solution: Removed useEffect, component now manages its own state and only notifies parent via onChange
-  - Added immediate onChange call when "Other/Custom" is selected
+- ✅ Fixed custom address textarea issues (closing after first character, not showing on "Other/Custom")
+  - Root cause: Mixed controlled/uncontrolled component with state synchronization issues
+  - Solution: Converted to fully controlled component - all state derived from `value` prop
+  - Removed all internal state (useState, useEffect) - component is now stateless
+  - Textarea visibility controlled by `value.landmark === 'Other/Custom'`
+  - No re-mounting or state loss when navigating between checkout steps
 
 **Frontend Testing Guide Created**: ✅
 - **File**: `FRONTEND_DELIVERY_TEST_GUIDE.md`
