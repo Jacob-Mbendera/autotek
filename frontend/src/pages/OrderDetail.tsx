@@ -21,7 +21,7 @@ const formatShippingAddress = (address: ShippingAddress | string): string => {
   }
 
   if (address.customAddress) {
-    return address.customAddress;
+    return address.town ? `${address.town} - ${address.customAddress}` : address.customAddress;
   }
 
   if (address.town && address.landmark) {

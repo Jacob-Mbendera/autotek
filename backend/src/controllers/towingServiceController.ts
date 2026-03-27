@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import TowingService from '../models/TowingService';
 import User from '../models/User';
-import { ServiceStatus } from '../types/shared';
+import { ServiceStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { geocodeAddressWithFallback } from '../utils/geocoding';
 
@@ -11,16 +11,25 @@ export const createTowingService = async (
   res: Response
 ): Promise<void> => {
   try {
+    if (req.user?.role === UserRole.ADMIN) {
+      res.status(403).json({ message: 'Admin accounts cannot create customer towing requests' });
+      return;
+    }
+
     // Support both old format (pickupLocation, destination) and new format (location, destination objects)
     let pickupLocation: string;
     let destination: string;
+    let pickupLocationDescription: string | undefined;
+    let destinationDescription: string | undefined;
     let vehicleDetails: any = {};
 
     if (req.body.location && req.body.destination) {
       // New format from frontend: location and destination are objects with address
       pickupLocation = req.body.location.address || req.body.location;
       destination = req.body.destination.address || req.body.destination;
-      
+      pickupLocationDescription = req.body.pickupDescription;
+      destinationDescription = req.body.destinationDescription;
+
       // Build vehicleDetails from vehicleType and vehicleModel
       if (req.body.vehicleType) {
         vehicleDetails.make = req.body.vehicleType;
@@ -32,6 +41,8 @@ export const createTowingService = async (
       // Old format: direct strings
       pickupLocation = req.body.pickupLocation;
       destination = req.body.destination;
+      pickupLocationDescription = req.body.pickupLocationDescription;
+      destinationDescription = req.body.destinationDescription;
       vehicleDetails = req.body.vehicleDetails || {};
     } else {
       res.status(400).json({
@@ -50,7 +61,9 @@ export const createTowingService = async (
     const towingService = new TowingService({
       user: req.user!._id,
       pickupLocation,
+      pickupLocationDescription,
       destination,
+      destinationDescription,
       vehicleDetails,
       price: req.body.price,
     });
@@ -79,11 +92,13 @@ export const createTowingService = async (
         latitude: pickupCoords.latitude,
         longitude: pickupCoords.longitude,
         address: towingService.pickupLocation,
+        description: towingService.pickupLocationDescription,
       },
       destination: {
         latitude: destCoords.latitude,
         longitude: destCoords.longitude,
         address: towingService.destination,
+        description: towingService.destinationDescription,
       },
       vehicleType: towingService.vehicleDetails?.make || '',
       vehicleModel: towingService.vehicleDetails?.model,
@@ -140,12 +155,14 @@ export const getTowingServices = async (
             latitude: pickupCoords.latitude,
             longitude: pickupCoords.longitude,
             address: service.pickupLocation,
+            description: service.pickupLocationDescription,
           },
           destination: destCoords
             ? {
                 latitude: destCoords.latitude,
                 longitude: destCoords.longitude,
                 address: service.destination,
+                description: service.destinationDescription,
               }
             : undefined,
           vehicleType: service.vehicleDetails?.make || '',
@@ -199,12 +216,14 @@ export const getTowingService = async (
         latitude: pickupCoords.latitude,
         longitude: pickupCoords.longitude,
         address: (towingService as any).pickupLocation,
+        description: (towingService as any).pickupLocationDescription,
       },
       destination: destCoords
         ? {
             latitude: destCoords.latitude,
             longitude: destCoords.longitude,
             address: (towingService as any).destination,
+            description: (towingService as any).destinationDescription,
           }
         : undefined,
       vehicleType: (towingService as any).vehicleDetails?.make || '',
@@ -215,6 +234,69 @@ export const getTowingService = async (
     res.json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch towing service' });
+  }
+};
+
+export const cancelTowingService = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const towingService = await TowingService.findById(req.params.id).populate('payment');
+
+    if (!towingService) {
+      res.status(404).json({ message: 'Towing service not found' });
+      return;
+    }
+
+    // Verify ownership (unless admin)
+    if (req.user!.role !== 'admin' && towingService.user.toString() !== req.user!._id.toString()) {
+      res.status(403).json({ message: 'Not authorized to cancel this service' });
+      return;
+    }
+
+    // Check if service can be cancelled
+    if (towingService.status === ServiceStatus.CANCELLED) {
+      res.status(400).json({ message: 'Service is already cancelled' });
+      return;
+    }
+
+    if (towingService.status === ServiceStatus.COMPLETED) {
+      res.status(400).json({ message: 'Cannot cancel a completed service' });
+      return;
+    }
+
+    if (towingService.status === ServiceStatus.IN_PROGRESS) {
+      res.status(400).json({
+        message: 'Cannot cancel service in progress. Please contact support.',
+        canCancel: false
+      });
+      return;
+    }
+
+    // Update service status
+    towingService.status = ServiceStatus.CANCELLED;
+    await towingService.save();
+
+    // TODO: Handle refund if payment was completed
+    // This will be implemented when we add payment integration for services
+    let refundInfo = null;
+    if (towingService.paymentStatus === 'completed') {
+      // Future: Process refund via PayChangu API
+      refundInfo = {
+        message: 'Refund will be processed within 3-5 business days',
+        refundAmount: towingService.price,
+        status: 'pending'
+      };
+    }
+
+    res.json({
+      message: 'Service cancelled successfully',
+      service: towingService,
+      refund: refundInfo
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to cancel towing service' });
   }
 };
 
@@ -242,18 +324,9 @@ export const updateTowingService = async (
       if (assignedDriver) towingService.assignedDriver = assignedDriver;
       if (price !== undefined) towingService.price = price;
     } else {
-      // Users can only update their own service if it's pending
-      if (towingService.user.toString() !== req.user!._id.toString()) {
-        res.status(403).json({ message: 'Access denied' });
-        return;
-      }
-
-      if (status === ServiceStatus.CANCELLED && towingService.status === ServiceStatus.PENDING) {
-        towingService.status = ServiceStatus.CANCELLED;
-      } else {
-        res.status(403).json({ message: 'You can only cancel pending services' });
-        return;
-      }
+      // Users should use /cancel endpoint instead
+      res.status(403).json({ message: 'Use /cancel endpoint to cancel services' });
+      return;
     }
 
     await towingService.save();

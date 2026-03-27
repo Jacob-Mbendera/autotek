@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import CarService from '../models/CarService';
 import User from '../models/User';
-import { ServiceStatus, ServiceType } from '../types/shared';
+import { ServiceStatus, ServiceType, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { geocodeAddressWithFallback } from '../utils/geocoding';
 
@@ -11,6 +11,11 @@ export const createCarService = async (
   res: Response
 ): Promise<void> => {
   try {
+    if (req.user?.role === UserRole.ADMIN) {
+      res.status(403).json({ message: 'Admin accounts cannot create customer car service requests' });
+      return;
+    }
+
     const { serviceType } = req.body;
 
     if (!serviceType) {
@@ -27,12 +32,14 @@ export const createCarService = async (
 
     // Support both old format (address) and new format (location object)
     let address: string;
+    let addressDescription: string | undefined;
     let vehicleDetails: any = {};
 
     if (req.body.location) {
       // New format from frontend: location is an object with address
       address = req.body.location.address || req.body.location;
-      
+      addressDescription = req.body.addressDescription;
+
       // Build vehicleDetails from vehicleType and vehicleModel
       if (req.body.vehicleType) {
         vehicleDetails.make = req.body.vehicleType;
@@ -43,6 +50,7 @@ export const createCarService = async (
     } else if (req.body.address) {
       // Old format: direct address string
       address = req.body.address;
+      addressDescription = req.body.addressDescription;
       vehicleDetails = req.body.vehicleDetails || {};
     } else {
       res.status(400).json({
@@ -69,6 +77,7 @@ export const createCarService = async (
       serviceType,
       vehicleDetails,
       address,
+      addressDescription,
       preferredDate: preferredDateValue,
       notes: req.body.notes,
       price: req.body.price,
@@ -97,6 +106,7 @@ export const createCarService = async (
         latitude: coords.latitude,
         longitude: coords.longitude,
         address: carService.address,
+        description: carService.addressDescription,
       },
       vehicleType: carService.vehicleDetails?.make || '',
       vehicleModel: carService.vehicleDetails?.model,
@@ -151,6 +161,7 @@ export const getCarServices = async (
             latitude: coords.latitude,
             longitude: coords.longitude,
             address: service.address,
+            description: service.addressDescription,
           },
           vehicleType: service.vehicleDetails?.make || '',
           vehicleModel: service.vehicleDetails?.model,
@@ -206,6 +217,7 @@ export const getCarService = async (
         latitude: coords.latitude,
         longitude: coords.longitude,
         address: (carService as any).address,
+        description: (carService as any).addressDescription,
       },
       vehicleType: (carService as any).vehicleDetails?.make || '',
       vehicleModel: (carService as any).vehicleDetails?.model,
@@ -221,6 +233,69 @@ export const getCarService = async (
     res.json({ service: transformed });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to fetch car service' });
+  }
+};
+
+export const cancelCarService = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const carService = await CarService.findById(req.params.id).populate('payment');
+
+    if (!carService) {
+      res.status(404).json({ message: 'Car service not found' });
+      return;
+    }
+
+    // Verify ownership (unless admin)
+    if (req.user!.role !== 'admin' && carService.user.toString() !== req.user!._id.toString()) {
+      res.status(403).json({ message: 'Not authorized to cancel this service' });
+      return;
+    }
+
+    // Check if service can be cancelled
+    if (carService.status === ServiceStatus.CANCELLED) {
+      res.status(400).json({ message: 'Service is already cancelled' });
+      return;
+    }
+
+    if (carService.status === ServiceStatus.COMPLETED) {
+      res.status(400).json({ message: 'Cannot cancel a completed service' });
+      return;
+    }
+
+    if (carService.status === ServiceStatus.IN_PROGRESS) {
+      res.status(400).json({
+        message: 'Cannot cancel service in progress. Please contact support.',
+        canCancel: false
+      });
+      return;
+    }
+
+    // Update service status
+    carService.status = ServiceStatus.CANCELLED;
+    await carService.save();
+
+    // TODO: Handle refund if payment was completed
+    // This will be implemented when we add payment integration for services
+    let refundInfo = null;
+    if (carService.paymentStatus === 'completed') {
+      // Future: Process refund via PayChangu API
+      refundInfo = {
+        message: 'Refund will be processed within 3-5 business days',
+        refundAmount: carService.price,
+        status: 'pending'
+      };
+    }
+
+    res.json({
+      message: 'Service cancelled successfully',
+      service: carService,
+      refund: refundInfo
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to cancel car service' });
   }
 };
 
@@ -249,18 +324,9 @@ export const updateCarService = async (
       if (price !== undefined) carService.price = price;
       if (notes !== undefined) carService.notes = notes;
     } else {
-      // Users can only update their own service if it's pending
-      if (carService.user.toString() !== req.user!._id.toString()) {
-        res.status(403).json({ message: 'Access denied' });
-        return;
-      }
-
-      if (status === ServiceStatus.CANCELLED && carService.status === ServiceStatus.PENDING) {
-        carService.status = ServiceStatus.CANCELLED;
-      } else {
-        res.status(403).json({ message: 'You can only cancel pending services' });
-        return;
-      }
+      // Users should use /cancel endpoint instead
+      res.status(403).json({ message: 'Use /cancel endpoint to cancel services' });
+      return;
     }
 
     await carService.save();

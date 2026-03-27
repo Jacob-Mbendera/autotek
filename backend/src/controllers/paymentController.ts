@@ -5,7 +5,7 @@ import Payment from '../models/Payment';
 import Order from '../models/Order';
 import TowingService from '../models/TowingService';
 import CarService from '../models/CarService';
-import { PaymentMethod, PaymentStatus } from '../types/shared';
+import { PaymentMethod, PaymentStatus, UserRole } from '../types/shared';
 import { initiatePayment } from '../utils/paymentGateways';
 import { log } from '../utils/logger';
 
@@ -33,6 +33,11 @@ export const initiatePaymentRequest = async (
   res: Response
 ): Promise<void> => {
   try {
+    if (req.user?.role === UserRole.ADMIN) {
+      res.status(403).json({ message: 'Admin accounts cannot initiate customer payments' });
+      return;
+    }
+
     const { orderId, towingServiceId, carServiceId, paymentMethod, phoneNumber, returnUrl, cancelUrl } = req.body;
 
     if (!paymentMethod || !Object.values(PaymentMethod).includes(paymentMethod)) {

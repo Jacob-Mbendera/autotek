@@ -21,6 +21,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
+import { UserRole } from '@shared/types';
 import type { ServiceType } from '@shared/types';
 
 export const BookService = () => {
@@ -43,11 +44,14 @@ export const BookService = () => {
 
   // Towing-specific fields
   const [destination, setDestination] = useState('');
+  const [pickupDescription, setPickupDescription] = useState('');
+  const [destinationDescription, setDestinationDescription] = useState('');
 
   // Car service-specific fields
   const [carServiceType, setCarServiceType] = useState<ServiceType | ''>('');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
+  const [addressDescription, setAddressDescription] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isLoading = isCreatingTowing || isCreatingCar;
@@ -56,8 +60,17 @@ export const BookService = () => {
     // If user is not authenticated, redirect to login
     if (!user) {
       navigate(`/login?returnUrl=/book-service?service=${serviceType}${serviceId ? `&id=${serviceId}` : ''}`);
+      return;
     }
-  }, [user, navigate, serviceType, serviceId]);
+
+    if (user.role === UserRole.ADMIN) {
+      dispatch(showNotification({
+        message: 'Admin accounts cannot create customer service requests',
+        type: 'error',
+      }));
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, navigate, serviceType, serviceId, dispatch]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -106,11 +119,13 @@ export const BookService = () => {
             longitude: 0, // TODO: Get from geocoding
             address: location,
           },
+          pickupDescription: pickupDescription || undefined,
           destination: {
             latitude: 0, // TODO: Get from geocoding
             longitude: 0, // TODO: Get from geocoding
             address: destination,
           },
+          destinationDescription: destinationDescription || undefined,
           notes: notes || undefined,
         };
 
@@ -126,6 +141,7 @@ export const BookService = () => {
             longitude: 0, // TODO: Get from geocoding
             address: location,
           },
+          addressDescription: addressDescription || undefined,
           preferredDate: preferredDate || undefined,
           preferredTime: preferredTime || undefined,
           notes: notes || undefined,
@@ -261,18 +277,42 @@ export const BookService = () => {
                     required
                     error={errors.location}
                   />
+                  <div className="mt-2">
+                    <Input
+                      label={serviceType === 'towing' ? 'Pickup Description (Optional)' : 'Location Description (Optional)'}
+                      value={serviceType === 'towing' ? pickupDescription : addressDescription}
+                      onChange={(e) => serviceType === 'towing' ? setPickupDescription(e.target.value) : setAddressDescription(e.target.value)}
+                      placeholder="e.g., near the blue gate, opposite the church"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Help us find you: Describe nearby landmarks or features
+                    </p>
+                  </div>
                 </div>
                 {serviceType === 'towing' && (
-                  <div>
-                    <Input
-                      label="Destination"
-                      value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                      placeholder="Enter destination address"
-                      required
-                      error={errors.destination}
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <Input
+                        label="Destination"
+                        value={destination}
+                        onChange={(e) => setDestination(e.target.value)}
+                        placeholder="Enter destination address"
+                        required
+                        error={errors.destination}
+                      />
+                      <div className="mt-2">
+                        <Input
+                          label="Destination Description (Optional)"
+                          value={destinationDescription}
+                          onChange={(e) => setDestinationDescription(e.target.value)}
+                          placeholder="e.g., next to the market, behind the gas station"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Help the driver find your destination
+                        </p>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

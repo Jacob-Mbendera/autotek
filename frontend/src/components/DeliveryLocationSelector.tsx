@@ -38,17 +38,19 @@ export const DeliveryLocationSelector = ({
 
   // Handle landmark selection
   const handleLandmarkChange = (landmark: string) => {
+    const townToUse = selectedTown || value?.town || '';
+
     // If "Other/Custom" is selected, set empty customAddress to show textarea
     if (landmark === 'Other/Custom') {
       onChange({
-        town: selectedTown,
+        town: townToUse,
         landmark,
         customAddress: '',
       });
     } else {
       // Emit the structured address (no customAddress)
       onChange({
-        town: selectedTown,
+        town: townToUse,
         landmark,
       });
     }
@@ -57,10 +59,11 @@ export const DeliveryLocationSelector = ({
   // Handle custom address input
   const handleCustomAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const custom = e.target.value;
+    const townToUse = selectedTown || value?.town || '';
 
     // Always notify parent of changes
     onChange({
-      town: selectedTown,
+      town: townToUse,
       landmark: selectedLandmark,
       customAddress: custom,
     });

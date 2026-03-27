@@ -1,4 +1,4 @@
-import React, { useState, Fragment } from 'react';
+import React, { useEffect, useState, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation } from '../store/api/orderApi';
@@ -8,6 +8,7 @@ import { clearCart, removeCoupon } from '../store/slices/cartSlice';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+import { UserRole } from '@shared/types';
 import type { PaymentMethod } from '../../../shared/types';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -55,6 +56,16 @@ export const Checkout = () => {
 
     return currentOrigin;
   };
+
+  useEffect(() => {
+    if (user?.role === UserRole.ADMIN) {
+      dispatch(showNotification({
+        message: 'Admin accounts cannot place customer orders',
+        type: 'error',
+      }));
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, dispatch, navigate]);
   
   // Calculate final total with discount
   const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
@@ -583,7 +594,9 @@ export const Checkout = () => {
                   </div>
                   <Body className="text-sm text-gray-600">
                     {shippingAddress?.customAddress
-                      ? shippingAddress.customAddress
+                      ? shippingAddress.town
+                        ? `${shippingAddress.town} - ${shippingAddress.customAddress}`
+                        : shippingAddress.customAddress
                       : shippingAddress?.town && shippingAddress?.landmark
                       ? `${shippingAddress.town}, ${shippingAddress.landmark}`
                       : 'No address provided'}

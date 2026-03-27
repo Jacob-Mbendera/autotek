@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
+import { useAppSelector, useAppDispatch } from '../store/types';
+import { showNotification } from '../store/slices/uiSlice';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, H2, Body } from '../components/ui/Typography';
 import { Loader2, CreditCard, Shield, ArrowLeft } from 'lucide-react';
-import { PaymentMethod } from '@shared/types';
+import { PaymentMethod, UserRole } from '@shared/types';
 
 export const ServicePayment = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
   const [searchParams] = useSearchParams();
   const [initiatePayment, { isLoading }] = useInitiatePaymentMutation();
 
@@ -33,8 +37,17 @@ export const ServicePayment = () => {
   useEffect(() => {
     if (!towingServiceId && !carServiceId) {
       navigate('/my-services');
+      return;
     }
-  }, [towingServiceId, carServiceId, navigate]);
+
+    if (user?.role === UserRole.ADMIN) {
+      dispatch(showNotification({
+        message: 'Admin accounts cannot make customer service payments',
+        type: 'error',
+      }));
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [towingServiceId, carServiceId, navigate, user, dispatch]);
 
   const handlePayment = async () => {
     try {

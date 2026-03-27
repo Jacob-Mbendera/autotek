@@ -20,7 +20,7 @@ const formatShippingAddress = (address: IShippingAddress | string): string => {
   }
 
   if (address.customAddress) {
-    return address.customAddress;
+    return address.town ? `${address.town} - ${address.customAddress}` : address.customAddress;
   }
 
   if (address.legacyAddress) {
@@ -36,6 +36,11 @@ const formatShippingAddress = (address: IShippingAddress | string): string => {
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (req.user?.role === UserRole.ADMIN) {
+      res.status(403).json({ message: 'Admin accounts cannot place customer orders' });
+      return;
+    }
+
     const { items, shippingAddress, paymentMethod, guestInfo, couponCode, password } = req.body;
 
     if (!items || items.length === 0) {
