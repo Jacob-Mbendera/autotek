@@ -24,9 +24,13 @@ import {
   XCircle,
   Search,
   AlertCircle,
+  Building2,
+  List,
 } from 'lucide-react';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
+import { AdminCard } from '../../components/ui/AdminCard';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 
 export const DeliveryLocations = () => {
   const dispatch = useAppDispatch();
@@ -49,6 +53,12 @@ export const DeliveryLocations = () => {
   const [newLandmarkName, setNewLandmarkName] = useState('');
   const [addingLandmarkTo, setAddingLandmarkTo] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteTownTarget, setDeleteTownTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteLandmarkTarget, setDeleteLandmarkTarget] = useState<{
+    townId: string;
+    landmarkId: string;
+    landmarkName: string;
+  } | null>(null);
 
   // Handle add town
   const handleAddTown = async () => {
@@ -92,14 +102,12 @@ export const DeliveryLocations = () => {
   };
 
   // Handle delete town
-  const handleDeleteTown = async (townId: string, townName: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${townName}"? This will soft delete the town.`)) {
-      return;
-    }
-
+  const handleDeleteTown = async () => {
+    if (!deleteTownTarget) return;
     try {
-      await deleteTown(townId).unwrap();
+      await deleteTown(deleteTownTarget.id).unwrap();
       dispatch(showNotification({ message: 'Town deleted successfully', type: 'success' }));
+      setDeleteTownTarget(null);
     } catch (error: any) {
       dispatch(showNotification({ message: error.data?.message || 'Failed to delete town', type: 'error' }));
     }
@@ -144,14 +152,15 @@ export const DeliveryLocations = () => {
   };
 
   // Handle delete landmark
-  const handleDeleteLandmark = async (townId: string, landmarkId: string, landmarkName: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${landmarkName}"?`)) {
-      return;
-    }
-
+  const handleDeleteLandmark = async () => {
+    if (!deleteLandmarkTarget) return;
     try {
-      await deleteLandmark({ townId, landmarkId }).unwrap();
+      await deleteLandmark({
+        townId: deleteLandmarkTarget.townId,
+        landmarkId: deleteLandmarkTarget.landmarkId,
+      }).unwrap();
       dispatch(showNotification({ message: 'Landmark deleted successfully', type: 'success' }));
+      setDeleteLandmarkTarget(null);
     } catch (error: any) {
       dispatch(showNotification({ message: error.data?.message || 'Failed to delete landmark', type: 'error' }));
     }
@@ -161,65 +170,118 @@ export const DeliveryLocations = () => {
   const filteredLocations = data?.deliveryLocations.filter((location) =>
     location.town.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const totalTowns = data?.deliveryLocations.length || 0;
+  const totalLandmarks =
+    data?.deliveryLocations.reduce((sum, location) => sum + location.landmarks.length, 0) || 0;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="p-8">
-        <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          <AlertCircle className="w-5 h-5" />
-          <span>Failed to load delivery locations</span>
+      <div className="space-y-6">
+        <div>
+          <H1 className="text-3xl font-bold text-gray-50 mb-2">Delivery Locations</H1>
+          <Body className="text-gray-400">Manage towns and landmarks for Malawi delivery addresses</Body>
         </div>
+        <AdminCard>
+          <div className="flex items-center gap-3 text-red-300">
+            <AlertCircle className="h-5 w-5" />
+            <Body className="text-red-300">Failed to load delivery locations.</Body>
+          </div>
+        </AdminCard>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <H1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Locations</H1>
-        <Body className="text-gray-600">
+      <div>
+        <H1 className="text-3xl font-bold text-gray-50 mb-2">Delivery Locations</H1>
+        <Body className="text-gray-400">
           Manage towns and landmarks for Malawi delivery addresses
         </Body>
       </div>
 
-      {/* Search and Add */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <Input
-            type="text"
-            placeholder="Search towns..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Button onClick={() => setShowAddTownModal(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Town
-        </Button>
+      {/* Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <AdminCard variant="kpi" accentColor="teal">
+          <div className="flex items-center justify-between">
+            <div>
+              <Body className="text-sm text-gray-400">Total Towns</Body>
+              <H2 className="text-2xl font-bold text-gray-50">{totalTowns}</H2>
+            </div>
+            <Building2 className="h-6 w-6 text-teal-400" />
+          </div>
+        </AdminCard>
+        <AdminCard variant="kpi" accentColor="blue">
+          <div className="flex items-center justify-between">
+            <div>
+              <Body className="text-sm text-gray-400">Total Landmarks</Body>
+              <H2 className="text-2xl font-bold text-gray-50">{totalLandmarks}</H2>
+            </div>
+            <MapPin className="h-6 w-6 text-blue-400" />
+          </div>
+        </AdminCard>
+        <AdminCard variant="kpi" accentColor="purple">
+          <div className="flex items-center justify-between">
+            <div>
+              <Body className="text-sm text-gray-400">Search Results</Body>
+              <H2 className="text-2xl font-bold text-gray-50">{filteredLocations?.length || 0}</H2>
+            </div>
+            <List className="h-6 w-6 text-purple-400" />
+          </div>
+        </AdminCard>
       </div>
+
+      {/* Search and Add */}
+      <AdminCard className="space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Input
+              dark
+              type="text"
+              placeholder="Search towns..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button onClick={() => setShowAddTownModal(true)} className="md:w-auto w-full">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Town
+          </Button>
+        </div>
+      </AdminCard>
 
       {/* Towns List */}
       <div className="space-y-4">
+        {filteredLocations?.length === 0 && (
+          <AdminCard className="text-center py-12">
+            <MapPin className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+            <H2 className="text-xl font-semibold text-gray-200 mb-2">No towns found</H2>
+            <Body className="text-gray-400">
+              Try a different search term or add a new town.
+            </Body>
+          </AdminCard>
+        )}
         {filteredLocations?.map((location) => (
-          <Card key={location._id} className="p-6">
+          <AdminCard key={location._id} className="space-y-4">
             {/* Town Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <MapPin className="w-6 h-6 text-teal-600" />
+                <MapPin className="w-6 h-6 text-teal-400" />
                 {editingTown === location._id ? (
                   <div className="flex items-center gap-2">
                     <Input
+                      dark
                       value={editTownName}
                       onChange={(e) => setEditTownName(e.target.value)}
                       className="w-64"
@@ -239,11 +301,11 @@ export const DeliveryLocations = () => {
                     </Button>
                   </div>
                 ) : (
-                  <H2 className="text-2xl font-bold text-gray-900">{location.town}</H2>
+                  <H2 className="text-2xl font-bold text-gray-50">{location.town}</H2>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">{location.landmarks.length} landmarks</span>
+                <span className="text-sm text-gray-400">{location.landmarks.length} landmarks</span>
                 {!editingTown && (
                   <>
                     <Button
@@ -259,7 +321,7 @@ export const DeliveryLocations = () => {
                     <Button
                       size="sm"
                       variant="danger"
-                      onClick={() => handleDeleteTown(location._id, location.town)}
+                      onClick={() => setDeleteTownTarget({ id: location._id, name: location.town })}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -273,11 +335,12 @@ export const DeliveryLocations = () => {
               {location.landmarks.map((landmark) => (
                 <div
                   key={landmark._id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
+                  className="flex items-center justify-between p-3 bg-slate-900 rounded-lg border border-gray-700"
                 >
                   {editingLandmark?.landmarkId === landmark._id ? (
                     <div className="flex-1 flex items-center gap-2">
                       <Input
+                        dark
                         value={editLandmarkName}
                         onChange={(e) => setEditLandmarkName(e.target.value)}
                         className="flex-1"
@@ -307,7 +370,7 @@ export const DeliveryLocations = () => {
                         ) : (
                           <XCircle className="w-4 h-4 text-gray-400" />
                         )}
-                        <span className={landmark.active ? 'text-gray-900' : 'text-gray-400'}>
+                        <span className={landmark.active ? 'text-gray-100' : 'text-gray-500'}>
                           {landmark.name}
                         </span>
                       </div>
@@ -325,7 +388,13 @@ export const DeliveryLocations = () => {
                         <Button
                           size="sm"
                           variant="danger"
-                          onClick={() => handleDeleteLandmark(location._id, landmark._id, landmark.name)}
+                          onClick={() =>
+                            setDeleteLandmarkTarget({
+                              townId: location._id,
+                              landmarkId: landmark._id,
+                              landmarkName: landmark.name,
+                            })
+                          }
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
@@ -337,8 +406,9 @@ export const DeliveryLocations = () => {
 
               {/* Add Landmark */}
               {addingLandmarkTo === location._id ? (
-                <div className="flex items-center gap-2 p-3 bg-teal-50 rounded-lg">
+                <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-lg border border-teal-700/50">
                   <Input
+                    dark
                     value={newLandmarkName}
                     onChange={(e) => setNewLandmarkName(e.target.value)}
                     placeholder="New landmark name"
@@ -370,7 +440,7 @@ export const DeliveryLocations = () => {
                 </Button>
               )}
             </div>
-          </Card>
+          </AdminCard>
         ))}
       </div>
 
@@ -379,7 +449,7 @@ export const DeliveryLocations = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-6">
-              <H2 className="text-2xl font-bold">Add New Town</H2>
+              <H2 className="text-2xl font-bold text-gray-900">Add New Town</H2>
               <Button
                 variant="secondary"
                 size="sm"
@@ -462,6 +532,38 @@ export const DeliveryLocations = () => {
           </Card>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!deleteTownTarget}
+        onClose={() => setDeleteTownTarget(null)}
+        onConfirm={handleDeleteTown}
+        title="Delete Town"
+        message={
+          deleteTownTarget
+            ? `Delete "${deleteTownTarget.name}" and all associated landmarks? This action will soft delete the town.`
+            : ''
+        }
+        confirmText="Delete Town"
+        cancelText="Cancel"
+        variant="danger"
+        dark
+      />
+
+      <ConfirmationModal
+        isOpen={!!deleteLandmarkTarget}
+        onClose={() => setDeleteLandmarkTarget(null)}
+        onConfirm={handleDeleteLandmark}
+        title="Delete Landmark"
+        message={
+          deleteLandmarkTarget
+            ? `Delete landmark "${deleteLandmarkTarget.landmarkName}" from this town?`
+            : ''
+        }
+        confirmText="Delete Landmark"
+        cancelText="Cancel"
+        variant="danger"
+        dark
+      />
     </div>
   );
 };
