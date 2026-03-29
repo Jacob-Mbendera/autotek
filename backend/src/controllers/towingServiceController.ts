@@ -116,20 +116,17 @@ export const getTowingServices = async (
   res: Response
 ): Promise<void> => {
   try {
+    if (!req.user) {
+      res.json({ services: [] });
+      return;
+    }
+
     const query: any = {};
     const { status } = req.query;
 
-    // If authenticated and not admin, only show user's own services
-    // If not authenticated (public), show all services
-    // Safely check user without accessing role if undefined
-    const user = req.user;
-    if (user) {
-      const userRole = user.role;
-      if (userRole && userRole !== 'admin') {
-        query.user = user._id;
+    if (req.user.role !== UserRole.ADMIN) {
+      query.user = req.user._id;
     }
-    }
-    // If no user (public access), show all services (no filter)
 
     if (status) {
       query.status = status;
@@ -183,15 +180,16 @@ export const getTowingService = async (
   res: Response
 ): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
     const query: any = { _id: req.params.id };
 
-    // If authenticated and not admin, only allow access to own services
-    // If not authenticated (public), allow access to all services
-    // Use optional chaining to safely access user role
-    if (req.user?.role && req.user.role !== 'admin') {
+    if (req.user.role !== UserRole.ADMIN) {
       query.user = req.user._id;
     }
-    // If no user (public access), allow viewing any service
 
     const towingService = await TowingService.findOne(query)
       .populate('user', 'name email phone address')

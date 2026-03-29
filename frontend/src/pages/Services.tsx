@@ -1,10 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector } from '../store/types';
-import { useGetTowingServicesQuery, useGetCarServicesQuery, type TowingService, type CarService } from '../store/api/serviceApi';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
 import { H1, H2, H3, Body } from '../components/ui/Typography';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import {
@@ -26,16 +24,7 @@ import {
   Gauge,
   Car,
   Phone,
-  Mail,
-  MessageCircle,
-  Search,
-  Filter,
-  X,
-  Loader2,
-  Eye,
-  AlertCircle,
 } from 'lucide-react';
-import type { ServiceStatus } from '@shared/types';
 
 // Service type definitions for display
 const serviceTypeInfo: Record<string, { name: string; icon: any; gradient: string; bgGradient: string; description: string }> = {
@@ -86,25 +75,11 @@ const serviceTypeInfo: Record<string, { name: string; icon: any; gradient: strin
 export const Services = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ServiceStatus | ''>('');
-  const [typeFilter, setTypeFilter] = useState<'towing' | 'car-service' | ''>('');
-  const [selectedService, setSelectedService] = useState<TowingService | CarService | null>(null);
-  const [showServiceModal, setShowServiceModal] = useState(false);
 
   const heroRef = useScrollReveal(0.2);
   const towingRef = useScrollReveal(0.2);
   const servicesRef = useScrollReveal(0.2);
   const howItWorksRef = useScrollReveal(0.2);
-
-  // Fetch services from API
-  const { data: towingData, isLoading: isLoadingTowing, error: towingError } = useGetTowingServicesQuery({
-    status: statusFilter || undefined,
-  });
-
-  const { data: carServiceData, isLoading: isLoadingCar, error: carError } = useGetCarServicesQuery({
-    status: statusFilter || undefined,
-  });
 
   useEffect(() => {
     document.body.classList.add('page-transition');
@@ -119,83 +94,6 @@ export const Services = () => {
     } else {
       navigate(`/book-service?service=${serviceType}${serviceId ? `&id=${serviceId}` : ''}`);
     }
-  };
-
-  const handleViewService = (service: TowingService | CarService) => {
-    setSelectedService(service);
-    setShowServiceModal(true);
-  };
-
-  // Combine and filter services
-  const allServices = useMemo(() => {
-    const towingServices = (towingData?.services || []).map((s) => ({ ...s, type: 'towing' as const }));
-    const carServices = (carServiceData?.services || []).map((s) => ({ ...s, type: 'car-service' as const }));
-    return [...towingServices, ...carServices];
-  }, [towingData, carServiceData]);
-
-  const filteredServices = useMemo(() => {
-    let filtered = allServices;
-
-    // Filter by type
-    if (typeFilter) {
-      filtered = filtered.filter((s) => s.type === typeFilter);
-    }
-
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter((s) => {
-        if (s.type === 'towing') {
-          const ts = s as TowingService;
-          return (
-            ts.vehicleType?.toLowerCase().includes(term) ||
-            ts.vehicleModel?.toLowerCase().includes(term) ||
-            ts.location?.address?.toLowerCase().includes(term) ||
-            ts.destination?.address?.toLowerCase().includes(term)
-          );
-        } else {
-          const cs = s as CarService;
-          return (
-            cs.serviceType?.toLowerCase().includes(term) ||
-            cs.vehicleType?.toLowerCase().includes(term) ||
-            cs.vehicleModel?.toLowerCase().includes(term) ||
-            cs.location?.address?.toLowerCase().includes(term)
-          );
-        }
-      });
-    }
-
-    return filtered;
-  }, [allServices, typeFilter, searchTerm]);
-
-  const getStatusColor = (status: ServiceStatus) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-amber-100 text-amber-700';
-      case 'accepted':
-        return 'bg-blue-100 text-blue-700';
-      case 'in-progress':
-        return 'bg-purple-100 text-purple-700';
-      case 'completed':
-        return 'bg-green-100 text-green-700';
-      case 'cancelled':
-        return 'bg-red-100 text-red-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const formatPrice = (price?: number) => {
-    if (!price) return 'Contact for quote';
-    return `MWK ${price.toLocaleString()}`;
   };
 
   const benefits = [
@@ -231,9 +129,6 @@ export const Services = () => {
       description: 'Your vehicle is serviced professionally, and you pay securely',
     },
   ];
-
-  const isLoading = isLoadingTowing || isLoadingCar;
-  const hasError = towingError || carError;
 
   return (
     <div className="w-full page-transition">
@@ -376,196 +271,27 @@ export const Services = () => {
         </div>
       </section>
 
-      {/* Services List Section - NEW */}
-      <section className="py-16 bg-gradient-to-b from-white to-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <H2 className="text-4xl font-bold text-gray-900 mb-4">Available Services</H2>
-            <Body className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Browse and book from our available towing and car services
-            </Body>
-          </div>
-
-          {/* Search and Filters */}
-          <Card variant="md" className="mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by vehicle, location..."
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Service Type</label>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value as 'towing' | 'car-service' | '')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                >
-                  <option value="">All Types</option>
-                  <option value="towing">Towing</option>
-                  <option value="car-service">Car Service</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as ServiceStatus | '')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
-            {(searchTerm || typeFilter || statusFilter) && (
-              <div className="mt-4 flex items-center justify-end">
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setTypeFilter('');
-                    setStatusFilter('');
-                  }}
-                  className="gap-2"
-                >
-                  <Filter className="h-4 w-4" />
-                  Clear Filters
-                </Button>
-              </div>
+      <section className="py-10 bg-gradient-to-b from-gray-50 to-white border-b border-gray-100">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <Body className="text-gray-600 text-lg leading-relaxed">
+            {isAuthenticated ? (
+              <>
+                Book towing or car maintenance below. Track and manage your requests anytime in{' '}
+                <Link to="/my-services" className="text-teal-600 font-semibold hover:underline">
+                  My Services
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                Book towing or car maintenance below.{' '}
+                <Link to="/login?returnUrl=/my-services" className="text-teal-600 font-semibold hover:underline">
+                  Sign in
+                </Link>{' '}
+                to view and manage your bookings.
+              </>
             )}
-          </Card>
-
-          {/* Services List */}
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 text-teal-500 animate-spin" />
-            </div>
-          ) : hasError ? (
-            <Card variant="md" className="text-center py-12">
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <Body className="text-red-600">Failed to load services. Please try again later.</Body>
-            </Card>
-          ) : filteredServices.length === 0 ? (
-            <Card variant="md" className="text-center py-12">
-              <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <Body className="text-gray-600 text-lg font-semibold mb-2">No services found</Body>
-              <Body className="text-gray-500 mb-4">
-                {searchTerm || typeFilter || statusFilter
-                  ? 'Try adjusting your search or filters'
-                  : 'No services available at the moment'}
-              </Body>
-              {!searchTerm && !typeFilter && !statusFilter && (
-                <Button onClick={() => handleBookService('car-service')}>
-                  <Wrench className="h-5 w-5 mr-2" />
-                  Book a Service
-                </Button>
-              )}
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredServices.map((service) => {
-                const isTowing = service.type === 'towing';
-                const serviceInfo = isTowing
-                  ? null
-                  : serviceTypeInfo[(service as CarService).serviceType || ''] || {
-                      name: (service as CarService).serviceType || 'Car Service',
-                      icon: Wrench,
-                      gradient: 'from-gray-500 to-gray-600',
-                      bgGradient: 'from-gray-50 to-gray-100',
-                      description: 'Professional car service',
-                    };
-                const Icon = isTowing ? Truck : serviceInfo?.icon || Wrench;
-
-                return (
-                  <Card
-                    key={service._id}
-                    variant="md"
-                    className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-3 border-2 border-transparent hover:border-teal-200 overflow-hidden relative"
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${serviceInfo?.bgGradient || 'from-teal-50 to-teal-100'} opacity-50`}></div>
-                    <div className="relative p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={`h-16 w-16 bg-gradient-to-br ${serviceInfo?.gradient || 'from-teal-500 to-teal-600'} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                          <Icon className="h-8 w-8 text-white" />
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(service.status)}`}>
-                          {service.status}
-                        </span>
-                      </div>
-
-                      <H3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-teal-600 transition-colors">
-                        {isTowing ? 'Towing Service' : serviceInfo?.name || 'Car Service'}
-                      </H3>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Car className="h-4 w-4 text-gray-400" />
-                          <span>{isTowing ? (service as TowingService).vehicleType : (service as CarService).vehicleType}</span>
-                          {(service as TowingService).vehicleModel && (
-                            <span className="text-gray-400">• {(service as TowingService).vehicleModel}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          <span className="line-clamp-1">{service.location?.address || 'Location not specified'}</span>
-                        </div>
-                        {isTowing && (service as TowingService).destination && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
-                            <span className="line-clamp-1">{(service as TowingService).destination?.address}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <DollarSign className="h-4 w-4 text-gray-400" />
-                          <span>{formatPrice(service.estimatedCost)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Clock className="h-4 w-4" />
-                          <span>{formatDate(service.createdAt)}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="primary"
-                          size="small"
-                          onClick={() => handleViewService(service)}
-                          className="flex-1 gap-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View Details
-                        </Button>
-                        {service.status === 'pending' && (
-                          <Button
-                            variant="secondary"
-                            size="small"
-                            onClick={() => handleBookService(service.type, service._id)}
-                            className="gap-2"
-                          >
-                            <Calendar className="h-4 w-4" />
-                            Book
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+          </Body>
         </div>
       </section>
 
@@ -803,7 +529,7 @@ export const Services = () => {
               variant="outline"
               size="large"
               onClick={() => handleBookService('towing')}
-              className="border-2 border-white text-white hover:bg-white/10 group"
+              className="!bg-transparent !text-white !border-white hover:!bg-white/15 hover:!text-white focus:ring-offset-teal-800 group"
             >
               <Truck className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
               Emergency Towing
@@ -811,116 +537,6 @@ export const Services = () => {
           </div>
         </div>
       </section>
-
-      {/* Service Details Modal */}
-      {showServiceModal && selectedService && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card variant="lg" className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <H2 className="text-2xl font-bold text-gray-900">
-                {selectedService.type === 'towing' ? 'Towing Service Details' : 'Car Service Details'}
-              </H2>
-              <Button variant="ghost" size="small" onClick={() => setShowServiceModal(false)}>
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Status</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedService.status)}`}>
-                  {selectedService.status}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-sm font-medium text-gray-700">Vehicle Type</span>
-                <Body className="text-gray-900 mt-1">
-                  {selectedService.type === 'towing'
-                    ? (selectedService as TowingService).vehicleType
-                    : (selectedService as CarService).vehicleType}
-                </Body>
-              </div>
-
-              {selectedService.vehicleModel && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Vehicle Model</span>
-                  <Body className="text-gray-900 mt-1">{selectedService.vehicleModel}</Body>
-                </div>
-              )}
-
-              {selectedService.type === 'car-service' && (selectedService as CarService).serviceType && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Service Type</span>
-                  <Body className="text-gray-900 mt-1">
-                    {serviceTypeInfo[(selectedService as CarService).serviceType || '']?.name || (selectedService as CarService).serviceType}
-                  </Body>
-                </div>
-              )}
-
-              <div>
-                <span className="text-sm font-medium text-gray-700">Location</span>
-                <Body className="text-gray-900 mt-1">{selectedService.location?.address || 'Not specified'}</Body>
-              </div>
-
-              {selectedService.type === 'towing' && (selectedService as TowingService).destination && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Destination</span>
-                  <Body className="text-gray-900 mt-1">{(selectedService as TowingService).destination?.address}</Body>
-                </div>
-              )}
-
-              {selectedService.type === 'car-service' && (selectedService as CarService).preferredDate && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Preferred Date</span>
-                  <Body className="text-gray-900 mt-1">{(selectedService as CarService).preferredDate}</Body>
-                </div>
-              )}
-
-              {selectedService.type === 'car-service' && (selectedService as CarService).preferredTime && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Preferred Time</span>
-                  <Body className="text-gray-900 mt-1">{(selectedService as CarService).preferredTime}</Body>
-                </div>
-              )}
-
-              <div>
-                <span className="text-sm font-medium text-gray-700">Estimated Cost</span>
-                <Body className="text-gray-900 mt-1">{formatPrice(selectedService.estimatedCost)}</Body>
-              </div>
-
-              {selectedService.notes && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Notes</span>
-                  <Body className="text-gray-900 mt-1">{selectedService.notes}</Body>
-                </div>
-              )}
-
-              <div>
-                <span className="text-sm font-medium text-gray-700">Created</span>
-                <Body className="text-gray-900 mt-1">{formatDate(selectedService.createdAt)}</Body>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setShowServiceModal(false);
-                    handleBookService(selectedService.type, selectedService._id);
-                  }}
-                  className="flex-1"
-                  disabled={selectedService.status !== 'pending'}
-                >
-                  {selectedService.status === 'pending' ? 'Book This Service' : 'Service Unavailable'}
-                </Button>
-                <Button variant="secondary" onClick={() => setShowServiceModal(false)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   );
 };
