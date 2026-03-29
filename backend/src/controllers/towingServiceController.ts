@@ -5,6 +5,7 @@ import User from '../models/User';
 import { ServiceStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { geocodeAddressWithFallback } from '../utils/geocoding';
+import { validateQuoteContactPhones } from '../utils/phoneValidation';
 
 export const createTowingService = async (
   req: AuthRequest,
@@ -295,6 +296,93 @@ export const cancelTowingService = async (
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to cancel towing service' });
+  }
+};
+
+export const requestTowingQuote = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    if (req.user?.role === UserRole.ADMIN) {
+      res.status(403).json({ message: 'Admin accounts cannot use this customer action' });
+      return;
+    }
+
+    const { mobilePhone, whatsAppPhone, quoteRequestNotes } = req.body;
+    const validated = validateQuoteContactPhones(mobilePhone, whatsAppPhone);
+    if (!validated.ok) {
+      res.status(400).json({ message: validated.message });
+      return;
+    }
+
+    let notes: string | undefined;
+    if (quoteRequestNotes != null && quoteRequestNotes !== '') {
+      if (typeof quoteRequestNotes !== 'string') {
+        res.status(400).json({ message: 'Invalid notes' });
+        return;
+      }
+      const t = quoteRequestNotes.trim().slice(0, 500);
+      notes = t || undefined;
+    }
+
+    const towing = await TowingService.findOne({
+      _id: req.params.id,
+      user: req.user!._id,
+    });
+    if (!towing) {
+      res.status(404).json({ message: 'Towing service not found' });
+      return;
+    }
+    if (
+      towing.status === ServiceStatus.CANCELLED ||
+      towing.status === ServiceStatus.COMPLETED
+    ) {
+      res.status(400).json({ message: 'Cannot request a quote for this service' });
+      return;
+    }
+    const price = towing.price;
+    if (price != null && price > 0) {
+      res.status(400).json({ message: 'A price is already set for this request' });
+      return;
+    }
+
+    towing.quoteMobilePhone = validated.mobilePhone;
+    towing.quoteWhatsAppPhone = validated.whatsAppPhone;
+    towing.quoteRequestNotes = notes;
+    towing.quoteRequestSubmittedAt = new Date();
+    await towing.save();
+
+    const user = await User.findById(req.user!._id).lean();
+    const customerName = user?.name || 'Customer';
+    const customerEmail = user?.email || '';
+
+    const vehicleStr =
+      [towing.vehicleDetails?.make, towing.vehicleDetails?.model]
+        .filter(Boolean)
+        .join(' ') || 'Not specified';
+
+    await emailService.sendAdminServiceQuoteRequest({
+      kind: 'towing',
+      serviceId: towing._id.toString(),
+      customerName,
+      customerEmail,
+      mobilePhone: validated.mobilePhone,
+      whatsAppPhone: validated.whatsAppPhone,
+      quoteRequestNotes: notes,
+      summaryEntries: [
+        { label: 'Pickup', value: towing.pickupLocation },
+        { label: 'Destination', value: towing.destination },
+        { label: 'Vehicle', value: vehicleStr },
+      ],
+    });
+
+    res.json({
+      message:
+        'Your quote request was sent. We will contact you on the numbers you provided to confirm your details before setting the price in MWK.',
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to submit quote request' });
   }
 };
 

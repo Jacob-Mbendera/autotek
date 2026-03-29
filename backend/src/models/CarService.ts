@@ -11,10 +11,16 @@ export interface ICarService extends Document {
     licensePlate?: string;
   };
   address: string;
+  addressDescription?: string;
   preferredDate?: Date;
   status: ServiceStatus;
   assignedMechanic?: Types.ObjectId;
   price?: number;
+  quoteMobilePhone?: string;
+  quoteWhatsAppPhone?: string;
+  quoteRequestNotes?: string;
+  quoteRequestSubmittedAt?: Date;
+  payment?: Types.ObjectId;
   paymentStatus: 'pending' | 'completed' | 'failed';
   notes?: string;
   createdAt: Date;
@@ -43,6 +49,9 @@ const CarServiceSchema = new Schema<ICarService>(
       type: String,
       required: true,
     },
+    addressDescription: {
+      type: String,
+    },
     preferredDate: {
       type: Date,
     },
@@ -58,6 +67,26 @@ const CarServiceSchema = new Schema<ICarService>(
     price: {
       type: Number,
       min: 0,
+    },
+    quoteMobilePhone: {
+      type: String,
+      trim: true,
+    },
+    quoteWhatsAppPhone: {
+      type: String,
+      trim: true,
+    },
+    quoteRequestNotes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    quoteRequestSubmittedAt: {
+      type: Date,
+    },
+    payment: {
+      type: Schema.Types.ObjectId,
+      ref: 'Payment',
     },
     paymentStatus: {
       type: String,

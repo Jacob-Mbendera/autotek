@@ -9,7 +9,7 @@ dotenv.config();
 
 // CRITICAL: Prevent running in production
 if (process.env.NODE_ENV === 'production') {
-  console.error('\n❌ ERROR: Cannot run seed scripts in production environment!');
+  console.error('\nERROR: Cannot run seed scripts in production environment!');
   console.error('This script creates test data and should only be used in development.\n');
   process.exit(1);
 }
@@ -241,18 +241,18 @@ async function seedServices() {
     // Connect to MongoDB
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/autotek';
     await mongoose.connect(mongoURI);
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
     // Check existing services
     const existingTowingCount = await TowingService.countDocuments();
     const existingCarCount = await CarService.countDocuments();
-    console.log(`📊 Found ${existingTowingCount} existing towing services`);
-    console.log(`📊 Found ${existingCarCount} existing car services`);
+    console.log(`Found ${existingTowingCount} existing towing services`);
+    console.log(`Found ${existingCarCount} existing car services`);
 
     // Check if we should skip seeding
     const totalExisting = existingTowingCount + existingCarCount;
     if (totalExisting >= 30) {
-      console.log(`✅ Already have ${totalExisting} services. Skipping seeding.`);
+      console.log(`Already have ${totalExisting} services. Skipping seeding.`);
       await mongoose.connection.close();
       process.exit(0);
     }
@@ -260,29 +260,29 @@ async function seedServices() {
     // Get users from database
     const users = await User.find().select('_id');
     if (users.length === 0) {
-      console.error('❌ No users found in database. Please create users first.');
+      console.error('No users found in database. Please create users first.');
       await mongoose.connection.close();
       process.exit(1);
     }
 
     const userIds = users.map((user) => user._id);
-    console.log(`👥 Found ${userIds.length} users to assign services to`);
+    console.log(`Found ${userIds.length} users to assign services to`);
 
     // Generate services
     const towingCount = 18;
     const carCount = 18;
-    console.log(`🌱 Generating ${towingCount} towing services...`);
-    console.log(`🌱 Generating ${carCount} car services...`);
+    console.log(`Generating ${towingCount} towing services...`);
+    console.log(`Generating ${carCount} car services...`);
 
     const towingServices = generateTowingServices(towingCount, userIds);
     const carServices = generateCarServices(carCount, userIds);
 
     // Insert services
     await TowingService.insertMany(towingServices);
-    console.log(`✅ Successfully created ${towingCount} towing services`);
+    console.log(`Successfully created ${towingCount} towing services`);
 
     await CarService.insertMany(carServices);
-    console.log(`✅ Successfully created ${carCount} car services`);
+    console.log(`Successfully created ${carCount} car services`);
 
     // Show summary
     const totalTowing = await TowingService.countDocuments();
@@ -324,32 +324,32 @@ async function seedServices() {
       },
     ]);
 
-    console.log('\n📊 Services Summary:');
+    console.log('\nServices Summary:');
     console.log(`Total Towing Services: ${totalTowing}`);
     console.log(`Total Car Services: ${totalCar}`);
     console.log(`Total Services: ${totalTowing + totalCar}`);
 
-    console.log('\n📊 Towing Services by Status:');
+    console.log('\nTowing Services by Status:');
     towingByStatus.forEach((stat) => {
       console.log(`  ${stat._id}: ${stat.count}`);
     });
 
-    console.log('\n📊 Car Services by Status:');
+    console.log('\nCar Services by Status:');
     carByStatus.forEach((stat) => {
       console.log(`  ${stat._id}: ${stat.count}`);
     });
 
-    console.log('\n📊 Car Services by Type:');
+    console.log('\nCar Services by Type:');
     carByType.forEach((type) => {
       console.log(`  ${type._id}: ${type.count}`);
     });
 
-    console.log('\n✨ Seeding completed successfully!');
-    console.log('\n💡 You can now test the admin services page!');
+    console.log('\nSeeding completed successfully.');
+    console.log('\nYou can now test the admin services page.');
     await mongoose.connection.close();
     process.exit(0);
   } catch (error: any) {
-    console.error('❌ Error seeding services:', error.message);
+    console.error('Error seeding services:', error.message);
     if (process.env.NODE_ENV === 'development') {
       console.error(error);
     }

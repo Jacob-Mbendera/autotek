@@ -13,7 +13,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { 
   ShoppingCart, Plus, Minus, Trash2, ArrowRight, Package, X, AlertCircle, 
   Bookmark, BookmarkCheck, Edit2, Check, Calendar, Tag, AlertTriangle, 
-  CheckCircle, ChevronDown, ChevronUp, Sparkles, DollarSign, TrendingUp,
+  CheckCircle, ChevronDown, ChevronUp, Sparkles, Banknote, TrendingUp,
   ShoppingBag, Truck, Shield, Gift, Percent, BarChart3
 } from 'lucide-react';
 
@@ -282,7 +282,7 @@ export const Cart = () => {
                 </div>
               </div>
               <div className="h-16 w-16 bg-teal-500/20 rounded-full flex items-center justify-center">
-                <DollarSign className="h-8 w-8 text-teal-600" />
+                <Banknote className="h-8 w-8 text-teal-600" />
               </div>
             </div>
           </Card>

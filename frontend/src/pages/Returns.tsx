@@ -20,7 +20,7 @@ import {
   RotateCcw,
   Eye,
   TrendingUp,
-  DollarSign,
+  Banknote,
   FileText,
 } from 'lucide-react';
 import { ReturnStatus } from '@shared/types';
@@ -173,7 +173,7 @@ export const Returns = () => {
                 MWK {totalRefundAmount.toLocaleString()}
               </H2>
             </div>
-            <DollarSign className="h-8 w-8 text-green-600" />
+            <Banknote className="h-8 w-8 text-green-600" />
           </div>
         </Card>
       </div>
@@ -259,7 +259,7 @@ export const Returns = () => {
                         <span>{returnDoc.items.length} item(s)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
+                        <Banknote className="h-4 w-4" />
                         <span>MWK {returnDoc.refundAmount.toLocaleString()}</span>
                       </div>
                       <div className="flex items-center gap-2">

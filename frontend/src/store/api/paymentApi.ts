@@ -15,7 +15,9 @@ export interface Payment {
 }
 
 interface InitiatePaymentRequest {
-  orderId: string;
+  orderId?: string;
+  towingServiceId?: string;
+  carServiceId?: string;
   paymentMethod: PaymentMethod;
   phoneNumber?: string;
   returnUrl?: string;

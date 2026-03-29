@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '../store/types';
 import { useGetOrderQuery } from '../store/api/orderApi';
@@ -19,6 +19,7 @@ export const PaymentSuccess = () => {
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const maxVerificationAttempts = 5;
+  const hasClearedCartRef = useRef(false);
 
   const { data: orderData, isLoading: isLoadingOrder, error: orderError } = useGetOrderQuery(
     { id: orderId || '', email: email || undefined },
@@ -33,6 +34,13 @@ export const PaymentSuccess = () => {
 
   const [verifyPayment, { isLoading: isVerifying }] = useVerifyPaymentMutation();
 
+  const clearCartOnce = () => {
+    if (!hasClearedCartRef.current) {
+      dispatch(clearCart());
+      hasClearedCartRef.current = true;
+    }
+  };
+
   useEffect(() => {
     if (!orderId) {
       navigate('/');
@@ -45,7 +53,11 @@ export const PaymentSuccess = () => {
       // Call verify endpoint to mark payment as complete
       fetch(`${import.meta.env.VITE_API_URL}/payments/verify-txref?orderId=${orderId}${txRef ? `&tx_ref=${txRef}` : ''}`)
         .then(res => res.json())
-        .then(() => {
+        .then((data) => {
+          if (data?.verified || data?.payment?.status === PaymentStatus.COMPLETED) {
+            setPaymentVerified(true);
+            clearCartOnce();
+          }
           // Refetch payment after verification
           setTimeout(() => refetchPayment(), 1000);
         })
@@ -61,8 +73,7 @@ export const PaymentSuccess = () => {
       const payment = paymentData.payment;
       if (payment.status === PaymentStatus.COMPLETED) {
         setPaymentVerified(true);
-        // Clear cart on successful payment
-        dispatch(clearCart());
+        clearCartOnce();
       } else if (payment.status === PaymentStatus.FAILED) {
         // Payment failed, redirect to cancel page
         navigate(`/payment/cancel?orderId=${orderId}`);
@@ -70,7 +81,11 @@ export const PaymentSuccess = () => {
         // For PayChangu, payment might be pending - try to verify
         const verifyTimer = setTimeout(async () => {
           try {
-            await verifyPayment(payment._id).unwrap();
+            const verifyResult = await verifyPayment(payment._id).unwrap();
+            if (verifyResult?.verified || verifyResult?.payment?.status === PaymentStatus.COMPLETED) {
+              setPaymentVerified(true);
+              clearCartOnce();
+            }
             setVerificationAttempts(prev => prev + 1);
             refetchPayment();
           } catch (error) {

@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, FileText, Package, X, User, Phone, Mail, Calendar, DollarSign, Tag, Save, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, FileText, Package, X, User, Phone, Mail, Calendar, Banknote, Tag, Save, ArrowLeft, ArrowRight } from 'lucide-react';
 import { CustomOrderStatus } from '@shared/types';
 
 export const AdminCustomOrders = () => {
@@ -407,7 +407,7 @@ export const AdminCustomOrders = () => {
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Estimated Price</Body>
                         <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-gray-400" />
+                          <Banknote className="h-4 w-4 text-gray-400" />
                           <Body className="text-gray-50 font-medium">
                             MWK {((orderDetailData?.customOrder || selectedOrder)?.estimatedPrice || 0).toLocaleString()}
                           </Body>

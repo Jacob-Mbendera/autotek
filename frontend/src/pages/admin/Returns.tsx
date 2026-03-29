@@ -26,7 +26,7 @@ import {
   AlertCircle,
   Eye,
   TrendingUp,
-  DollarSign,
+  Banknote,
   Download,
   Calendar,
   User,
@@ -259,7 +259,7 @@ export const AdminReturns = () => {
                 MWK {totalRefundAmount.toLocaleString()}
               </H2>
             </div>
-            <DollarSign className="h-8 w-8 text-green-500" />
+            <Banknote className="h-8 w-8 text-green-500" />
           </div>
         </AdminCard>
       </div>
@@ -367,7 +367,7 @@ export const AdminReturns = () => {
                         <span>{returnDoc.items.length} item(s)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-gray-400" />
+                        <Banknote className="h-4 w-4 text-gray-400" />
                         <span>MWK {returnDoc.refundAmount.toLocaleString()}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -418,7 +418,7 @@ export const AdminReturns = () => {
                         size="sm"
                         onClick={() => openActionModal(returnDoc._id, 'refund')}
                       >
-                        <DollarSign className="h-4 w-4 mr-2" />
+                        <Banknote className="h-4 w-4 mr-2" />
                         Process Refund
                       </Button>
                     )}

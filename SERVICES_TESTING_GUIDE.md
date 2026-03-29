@@ -15,7 +15,8 @@
 6. [Part 5: Service Cancellation](#part-5-service-cancellation)
 7. [Part 6: Edge Cases & Error Handling](#part-6-edge-cases--error-handling)
 8. [Part 7: Admin Guardrails](#part-7-admin-guardrails-3-tests)
-9. [Test Results Summary](#test-results-summary)
+9. [Part 8: Admin Service Pricing & Quote Requests](#part-8-admin-service-pricing--quote-requests)
+10. [Test Results Summary](#test-results-summary)
 
 ---
 
@@ -28,14 +29,14 @@
 3. **Database:** MongoDB should be seeded with test data
 4. **Test Accounts:**
    - Customer: `testuser@autotek.com` / `Test123456`
-   - Admin: `testadmin@autotek.com` / `Admin@123`
+   - Admin: `admintest@autotek.com` / `Admin123456` (matches `backend/seed-test-data.js`)
 
 ### Test User Preparation
 
 1. Open browser and navigate to http://localhost:5173
 2. Have two browser windows/tabs ready:
    - Tab 1: Customer view (logged in as testuser)
-   - Tab 2: Admin view (logged in as testadmin) - for later tests
+   - Tab 2: Admin view (logged in as admintest@autotek.com) - for later tests
 
 ---
 
@@ -274,7 +275,7 @@
 
 ---
 
-## Part 3: My Services Management (5 Tests)
+## Part 3: My Services Management (7 Tests)
 
 ### Test 3.1: View My Services Page
 
@@ -295,13 +296,20 @@
 - ✅ Service cards display with:
   - Service type icon (truck for towing, wrench for car service)
   - Service type label
+  - **Reference** (short id, e.g. hash + last 6 chars) for support
   - Status badge
   - Payment status badge
-  - Vehicle information
-  - Location details
-  - Date requested (created)
+  - When **Unpaid** and service not completed/cancelled: **payment reminder** (complete payment to confirm)
+  - **Status guidance** line for pending / assigned / in-progress / completed (not for cancelled)
+  - **Vehicle** line: type and optional model
+  - Location details and **Open in Maps** link(s) (pickup; towing also destination when available)
+  - **Requested** date-time and **Last updated** date-time
   - For **car services** with a preferred schedule: **Preferred** date and time (when provided at booking)
-  - Action buttons (Pay Now, Cancel)
+  - **Price**: **MWK** badge and amount only when a price is set; otherwise label **Price not set yet** (no MWK badge until quoted)
+  - When unpaid and no price: **Price not set yet** banner, amber note that final pricing may change if details are inaccurate, optional **Quote request last sent** timestamp after submitting
+  - When assigned by admin: **Assigned driver** (towing) or **Assigned mechanic** (car) with optional phone
+  - Notes when present
+  - Action buttons: **Pay Now (MWK)** only when priced; **Contact for quote** when price not set; **Cancel** when allowed
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -370,14 +378,14 @@
 6. Observe filtering
 
 **Expected Results:**
-- ✅ Searching "Toyota" shows only towing service with Toyota
+- ✅ Searching "Toyota" shows services where **vehicle type**, **vehicle model**, or other searchable text matches (towing or car)
 - ✅ Searching "Lilongwe" shows services with Lilongwe in location
 - ✅ Search works on:
   - Vehicle type and model (and related text on the card)
   - Service type
   - Location names
 - ✅ Search is case-insensitive
-- ✅ Search updates as you type (debounced)
+- ✅ Search updates as you type (filters immediately)
 - ✅ Clearing search shows all services again
 
 **Test Result:** [ ] Pass [ ] Fail
@@ -395,23 +403,27 @@
 
 **Expected Results:**
 For **Towing Service** card:
-- ✅ Service type: "Towing Service" with truck icon
+- ✅ Title "Towing Service" with truck icon
+- ✅ Reference chip (hash + 6 characters)
 - ✅ Status badge (Pending, Assigned, etc.)
 - ✅ Payment status badge (Unpaid/Paid)
-- ✅ Vehicle type and model displayed (from the booking form fields)
-- ✅ Pickup Location displayed
-- ✅ Destination displayed
-- ✅ Estimated Cost shown
-- ✅ Date created shown
-- ✅ Action buttons visible (Pay Now, Cancel)
+- ✅ Payment reminder when Unpaid and not completed/cancelled
+- ✅ Status guidance text when applicable (e.g. pending: assign provider soon)
+- ✅ **Vehicle:** type and optional model
+- ✅ Pickup and destination summary; optional **Open pickup in Maps** / **Open destination in Maps** (external links)
+- ✅ **Requested** and **Last updated** with date and time
+- ✅ **MWK** badge and numeric price only when `estimatedCost` is set; otherwise **Price not set yet** (no MWK badge)
+- ✅ **Assigned driver** name (and phone if API provides it) when populated
+- ✅ Action buttons visible when rules allow (Pay Now, Cancel)
 
 For **Car Service** card:
-- ✅ Service type: "Car Service - Oil Change" with wrench icon
-- ✅ Status and payment badges
-- ✅ Vehicle info
-- ✅ Service Location
-- ✅ **Preferred** date and time shown when the customer chose a preferred date (and time) at booking
-- ✅ Estimated Cost
+- ✅ Service name from type (e.g. Oil Change) with wrench icon
+- ✅ Same reference, badges, payment reminder, and status guidance pattern as towing where applicable
+- ✅ **Vehicle** line; **Service Location**; **Open location in Maps**
+- ✅ **Requested** / **Last updated** date-time
+- ✅ **Preferred** date and time when provided at booking
+- ✅ **Price not set yet** or **MWK** + amount when quoted
+- ✅ **Assigned mechanic** when populated
 - ✅ Action buttons
 
 **Test Result:** [ ] Pass [ ] Fail
@@ -419,20 +431,123 @@ For **Car Service** card:
 
 ---
 
-## Part 4: Service Payment (4 Tests)
+### Test 3.6: My Services card data (API + assignee fields)
+
+**Purpose:** Confirm the backend returns the fields the My Services cards rely on (vehicle, location coordinates, assignees, timestamps). Run this **before** or **after** UI checks.
+
+**Steps (curl — backend on port 5000):**
+1. From the project root, run:
+   ```bash
+   chmod +x scripts/test-my-services-api.sh
+   ./scripts/test-my-services-api.sh
+   ```
+2. Optional: override credentials or API base:
+   ```bash
+   API_URL=http://localhost:5000/api TEST_EMAIL=testuser@autotek.com TEST_PASSWORD=Test123456 ./scripts/test-my-services-api.sh
+   ```
+
+**Expected Results:**
+- ✅ Login succeeds and a Bearer token is printed as OK
+- ✅ Authenticated **GET /api/towing** returns `services` array (your user only); each item includes `vehicleType`, `vehicleModel`, `location` (with lat/lng/address), `destination` when applicable, `status`, `paymentStatus`, `updatedAt`, `estimatedCost` (or `price` in raw docs — UI uses `estimatedCost` after transform)
+- ✅ When admin has assigned someone, `assignedDriver` is an object with `name` (and optionally `phone`), not only an id string
+- ✅ Authenticated **GET /api/car-services** includes `vehicleType`, `vehicleModel`, `location`, `preferredDate` / `preferredTime` when set, `assignedMechanic` when populated, `updatedAt`, `estimatedCost`
+- ✅ Unauthenticated **GET /api/towing** returns `services: []` (privacy)
+- ✅ Optional: authenticated list responses may include `quoteMobilePhone`, `quoteWhatsAppPhone`, `quoteRequestSubmittedAt`, `quoteRequestNotes` after a quote request (Test 3.7)
+
+**Frontend quick check (same session as Part 3):**
+1. Open **My Services** after booking (Tests 2.3 / 2.5) or with seeded data.
+2. Confirm cards show **Ref**, vehicle line, maps links open Google Maps in a new tab, **Price not set yet** / **Contact for quote** when no price, payment reminder when unpaid and priced, and **Last updated** changes after admin sets price (Part 8).
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 3.7: Contact for quote (customer)
+
+**Purpose:** Verify the quote-request flow: modal, Malawi phone validation, and admin notification payload (email when `ADMIN_NOTIFICATION_EMAIL` or `SUPPORT_EMAIL` is set).
+
+**Steps:**
+1. On **My Services**, open a service with **no** quoted amount (`Price not set yet`).
+2. Click **Contact for quote**.
+3. Confirm the modal explains MWK quoting after confirmation and shows the **pricing accuracy** warning.
+4. Leave **Mobile** empty or enter an invalid number (e.g. `12`); submit or tab away — expect **field-level** error text under the input (Malawi format: `+265` + 9 digits or `0` + 9 digits).
+5. Enter a valid **Mobile**; check **WhatsApp number is the same as mobile** or enter a **separate valid** WhatsApp number.
+6. Optionally add a short **Note for our team**; click **Send quote request**.
+7. Expect a **success** notification with the server message (not a generic fallback).
+8. Confirm the card shows **Quote request last sent** with a timestamp; you may submit again to update numbers.
+
+**Backend (optional curl, before or after UI):**
+```bash
+TOKEN="<customer JWT>"
+BASE="http://localhost:5000/api"
+SID="<towing or car service id, no price yet>"
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "$BASE/towing/$SID/quote-request" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"mobilePhone":"0991234567","whatsAppPhone":"0991234567","quoteRequestNotes":"Test"}'
+```
+Use `/car-services/$SID/quote-request` for car services. Expect **HTTP 200** and a JSON `message`. Invalid phones expect **HTTP 400** with a specific `message`.
+
+**Expected Results:**
+- ✅ Modal validates phones with **clear, field-specific** copy before calling the API
+- ✅ API errors (e.g. invalid phone) show the **backend `message`** in the toast when the request fails
+- ✅ **200** response after valid submit; list/detail includes quote fields after refresh
+- ✅ With email env configured, admin receives a quote-request email; otherwise dev logs show the request
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+## Part 4: Service Payment (5 Tests)
+
+Run **Test 4.0 (curl)** before browser tests when validating backend changes. All amounts are **Malawi Kwacha (MWK)**; there is no dollar amount in the URL.
+
+### Test 4.0: Backend – initiate payment with no quote (MWK) — curl
+
+**Purpose:** Confirm `POST /api/payments/initiate` rejects service payments when `price` is unset (0), with the MWK / quote message.
+
+**Steps:**
+1. Ensure backend is running (e.g. `http://localhost:5000`).
+2. Log in as a customer and obtain a Bearer token (same credentials as other API tests).
+3. Create a towing request **without** a `price` (or use an existing service whose `estimatedCost` is null/0):
+   ```bash
+   TOKEN="<paste JWT>"
+   BASE="http://localhost:5000/api"
+   CREATE=$(curl -s -X POST "$BASE/towing" -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"pickupLocation":"Test Pickup","destination":"Test Destination"}')
+   SID=$(echo "$CREATE" | jq -r '.service._id')
+   curl -s -w "\nHTTP %{http_code}\n" -X POST "$BASE/payments/initiate" \
+     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     -d "{\"paymentMethod\":\"paychangu\",\"towingServiceId\":\"$SID\"}"
+   ```
+   (Repeat with `carServiceId` if you need the same check for car services.)
+
+**Expected Results:**
+- ✅ HTTP **400**
+- ✅ JSON `message` includes that online payment in **Malawi Kwacha (MWK)** is available **after the quote is confirmed** (or equivalent product copy).
+
+**Optional:** From the repo root, `./scripts/test-service-payment-mwk.sh` automates login + creates a zero-price towing if needed, then asserts **400** + MWK message on initiate.
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
 
 ### Test 4.1: Pay Now Button Visibility
 
-**Purpose:** Verify Pay Now button shows only for unpaid services
+**Purpose:** Verify Pay Now (MWK) shows only when online payment is allowed
 
 **Steps:**
-1. On /my-services page, check which services show "Pay Now" button
-2. Note the payment status of each service
+1. On /my-services page, check which services show **Pay Now (MWK)** (or equivalent label)
+2. Note the payment status and whether a quoted **MWK** amount is shown
 
 **Expected Results:**
-- ✅ "Pay Now" button visible for services with payment status "Pending"/"Unpaid"
+- ✅ **Pay Now** visible only when payment is pending **and** an **MWK** amount is set (`estimatedCost` / quote > 0)
+- ✅ **Contact for quote** button shown when there is no amount yet (separate from Pay Now); user sees copy that MWK payment is available after a price is set (Test 3.7 + Part 8)
 - ✅ Button has distinctive color (blue/primary)
-- ✅ Button shows for both pending and assigned services
+- ✅ Button shows for eligible pending and assigned services (when priced)
 - ✅ Button hidden for cancelled services
 - ✅ Button hidden for paid services
 
@@ -446,14 +561,13 @@ For **Car Service** card:
 **Purpose:** Verify payment flow navigation
 
 **Steps:**
-1. On /my-services page, click "Pay Now" on the towing service
+1. On /my-services page, click **Pay Now** on a service that has an MWK amount
 2. Observe redirect
 
 **Expected Results:**
-- ✅ Redirects to /service-payment page
-- ✅ URL includes either `towingServiceId` or `carServiceId` parameter
-- ✅ URL includes amount parameter
-- ✅ Example: `/service-payment?towingServiceId=xxx&amount=50000`
+- ✅ Redirects to `/service-payment` page
+- ✅ URL includes **`towingServiceId` or `carServiceId`** only (amount comes from the loaded service, **not** the query string)
+- ✅ Example: `/service-payment?towingServiceId=xxx` (no `amount=`)
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -465,17 +579,17 @@ For **Car Service** card:
 **Purpose:** Verify service payment page displays correctly
 
 **Steps:**
-1. On /service-payment page, examine the content
-2. Check all displayed information
+1. On `/service-payment` with a priced service id, examine the content
+2. Optionally open the same page with a service id that has **no** quote yet (e.g. deep-link for regression)
 
 **Expected Results:**
-- ✅ Page title: "Pay for Service"
-- ✅ Service amount displayed prominently
-- ✅ PayChangu logo/branding visible
-- ✅ Security assurance message:
+- ✅ Page title: "Pay for Service" (or current equivalent)
+- ✅ When priced: total shown in **MWK**; **Proceed to Payment** enabled
+- ✅ When not priced: clear state (e.g. gray panel) that quote is required; **Proceed** disabled — user cannot start PayChangu without an amount
+- ✅ PayChangu logo/branding visible when flow is available
+- ✅ Security assurance message when paying:
   - "Secure Payment"
   - "Your payment is processed securely through PayChangu..."
-- ✅ "Proceed to Payment" button (blue, prominent)
 - ✅ "Back to My Services" link
 - ✅ Payment method indicator (card, mobile money, bank)
 
@@ -746,7 +860,7 @@ When backend is back up:
 **Purpose:** Verify admin users cannot access customer service booking flow
 
 **Steps:**
-1. Login as `testadmin@autotek.com`
+1. Login as `admintest@autotek.com` / `Admin123456`
 2. Navigate to `/book-service?service=towing`
 
 **Expected Results:**
@@ -763,8 +877,8 @@ When backend is back up:
 **Purpose:** Verify admin users cannot pay for customer services
 
 **Steps:**
-1. Login as `testadmin@autotek.com`
-2. Navigate to `/service-payment?towingServiceId=test-id&amount=50000`
+1. Login as `admintest@autotek.com` / `Admin123456`
+2. Navigate to `/service-payment?towingServiceId=test-id` (amount is not passed in the URL)
 
 **Expected Results:**
 - ✅ Error toast appears indicating admin accounts cannot make customer service payments
@@ -795,15 +909,86 @@ When backend is back up:
 
 ---
 
+## Part 8: Admin Service Pricing & Quote Requests (3 Tests)
+
+Use **Admin**: `admintest@autotek.com` / `Admin123456`. Customer quote requests notify the inbox set in **`ADMIN_NOTIFICATION_EMAIL`** or **`SUPPORT_EMAIL`** (see backend env).
+
+### Test 8.1: View quote request in admin modal
+
+**Purpose:** After a customer sends **Contact for quote** (Test 3.7), admin can see contact details on the service.
+
+**Steps:**
+1. Login as admin; open **Admin → Services** (`/admin/services`).
+2. Locate a service that has a quote request (or complete Test 3.7 first as the customer).
+3. Click **View** on that row.
+
+**Expected Results:**
+- ✅ Section **Quote request (call to confirm before pricing)** shows **Submitted** time, **Mobile**, **WhatsApp**, and **Customer note** when provided
+- ✅ **Service details** and **Payment information** still visible below
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 8.2: Set customer price (MWK) in admin
+
+**Purpose:** Admin can save the quoted amount so the customer sees **MWK** and **Pay Now** on My Services.
+
+**Steps:**
+1. With the same service detail modal open (service not **cancelled**), find **Customer price (MWK)**.
+2. Read the helper text (confirm by phone/WhatsApp before quoting).
+3. Enter a whole number (e.g. `85000`) in **Amount (MWK)**; click **Save price**.
+4. Confirm success notification mentions MWK and paying from My Services.
+5. In the modal, **Current saved price** and **Payment information → Quoted price (MWK)** show the amount.
+6. As the **customer**, open **My Services** and confirm **MWK** + amount and **Pay Now (MWK)** appear for that service.
+
+**Expected Results:**
+- ✅ **Save price** persists; no decimals required (integer MWK)
+- ✅ Cancelled services: pricing block not shown / cannot set price (per UI)
+- ✅ Customer UI updates after refresh (RTK cache invalidation)
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 8.3: Backend – admin PUT price (curl)
+
+**Purpose:** Confirm admin can set `price` via API (same as the UI).
+
+**Steps:**
+1. Obtain **admin** JWT and a **towing** or **car** service `_id` (customer-owned, no price or updating price).
+2. Towing example:
+   ```bash
+   ATOKEN="<admin JWT>"
+   BASE="http://localhost:5000/api"
+   SID="<service id>"
+   curl -s -X PUT "$BASE/towing/$SID" \
+     -H "Authorization: Bearer $ATOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"price":45000}'
+   ```
+3. Repeat with `/car-services/$SID` for a car service if needed.
+
+**Expected Results:**
+- ✅ **200** and response body includes `price: 45000` (or updated document)
+- ✅ Non-admin token receives **403** on `PUT` (customers cannot set price via this route)
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
 ## Test Results Summary
 
 ### Overall Statistics
 
 **Testing Date:** _________________
 **Tester Name:** _________________
-**Total Tests:** 30
-**Tests Passed:** _____ / 30
-**Tests Failed:** _____ / 30
+**Total Tests:** 36
+**Tests Passed:** _____ / 36
+**Tests Failed:** _____ / 36
 **Pass Rate:** _____ %
 
 ### Results by Category
@@ -812,11 +997,12 @@ When backend is back up:
 |----------|-------------|--------|--------|-----------|
 | Part 1: Public Browsing | 3 | ___ | ___ | ___ % |
 | Part 2: Service Booking | 6 | ___ | ___ | ___ % |
-| Part 3: My Services | 5 | ___ | ___ | ___ % |
-| Part 4: Service Payment | 4 | ___ | ___ | ___ % |
+| Part 3: My Services | 7 | ___ | ___ | ___ % |
+| Part 4: Service Payment | 5 | ___ | ___ | ___ % |
 | Part 5: Cancellation | 4 | ___ | ___ | ___ % |
 | Part 6: Edge Cases | 5 | ___ | ___ | ___ % |
 | Part 7: Admin Guardrails | 3 | ___ | ___ | ___ % |
+| Part 8: Admin Pricing & Quotes | 3 | ___ | ___ | ___ % |
 
 ### Critical Issues Found
 

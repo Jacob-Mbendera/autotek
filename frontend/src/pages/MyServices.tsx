@@ -1,13 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useGetTowingServicesQuery,
   useGetCarServicesQuery,
   useCancelTowingServiceMutation,
   useCancelCarServiceMutation,
+  useRequestTowingQuoteMutation,
+  useRequestCarServiceQuoteMutation,
   type TowingService,
   type CarService,
+  type ServiceAssignee,
 } from '../store/api/serviceApi';
+import { useAppDispatch } from '../store/types';
+import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
+import { validateMalawiPhoneField } from '../utils/phoneValidation';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -17,11 +24,9 @@ import {
   Truck,
   Wrench,
   Loader2,
-  Filter,
   Search,
   Calendar,
   MapPin,
-  DollarSign,
   CheckCircle,
   Clock,
   XCircle,
@@ -30,9 +35,13 @@ import {
   X,
   Package,
   TrendingUp,
-  Sparkles,
+  Car,
+  User,
+  ExternalLink,
+  Hash,
+  MessageCircle,
 } from 'lucide-react';
-import type { ServiceStatus, ServiceType } from '@shared/types';
+import type { ServiceStatus } from '@shared/types';
 import { format } from 'date-fns';
 
 // Service type info for car services
@@ -83,8 +92,49 @@ const formatDate = (dateString: string) => {
   return format(new Date(dateString), 'MMM dd, yyyy');
 };
 
+const formatDateTime = (dateString: string) => {
+  return format(new Date(dateString), 'MMM dd, yyyy h:mm a');
+};
+
+const shortRef = (id: string) => id.slice(-6).toUpperCase();
+
+function mapsHref(lat: number, lng: number, address: string): string {
+  const hasCoords =
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    !(lat === 0 && lng === 0);
+  if (hasCoords) {
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+function assigneeFromApi(
+  a: ServiceAssignee | string | undefined
+): { name: string; phone?: string } | null {
+  if (!a || typeof a === 'string') return null;
+  if (a.name) return { name: a.name, phone: a.phone };
+  return null;
+}
+
+function statusGuidance(status: ServiceStatus): string | null {
+  switch (status) {
+    case 'pending':
+      return 'We will assign a provider shortly.';
+    case 'assigned':
+      return 'A provider has been assigned. They may contact you before arrival.';
+    case 'in-progress':
+      return 'Service is in progress.';
+    case 'completed':
+      return 'This service is complete. Thank you for using AutoTek.';
+    default:
+      return null;
+  }
+}
+
 export const MyServices = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'towing' | 'car'>('all');
@@ -94,6 +144,19 @@ export const MyServices = () => {
     id: string;
   } | null>(null);
 
+  const [quoteModal, setQuoteModal] = useState<{
+    type: 'towing' | 'car';
+    service: TowingService | CarService;
+  } | null>(null);
+  const [quoteMobile, setQuoteMobile] = useState('');
+  const [quoteWhatsapp, setQuoteWhatsapp] = useState('');
+  const [sameWhatsappAsMobile, setSameWhatsappAsMobile] = useState(false);
+  const [quoteNotes, setQuoteNotes] = useState('');
+  const [quoteFieldErrors, setQuoteFieldErrors] = useState<{
+    mobile?: string;
+    whatsApp?: string;
+  }>({});
+
   // Fetch services
   const { data: towingData, isLoading: isLoadingTowing } = useGetTowingServicesQuery();
   const { data: carData, isLoading: isLoadingCar } = useGetCarServicesQuery();
@@ -101,6 +164,17 @@ export const MyServices = () => {
   // Cancel mutations
   const [cancelTowing, { isLoading: isCancellingTowing }] = useCancelTowingServiceMutation();
   const [cancelCar, { isLoading: isCancellingCar }] = useCancelCarServiceMutation();
+  const [requestTowingQuote, { isLoading: isSubmittingTowingQuote }] =
+    useRequestTowingQuoteMutation();
+  const [requestCarQuote, { isLoading: isSubmittingCarQuote }] =
+    useRequestCarServiceQuoteMutation();
+
+  useEffect(() => {
+    if (!quoteModal) return;
+    if (sameWhatsappAsMobile) {
+      setQuoteWhatsapp(quoteMobile);
+    }
+  }, [quoteModal, sameWhatsappAsMobile, quoteMobile]);
 
   const towingServices = towingData?.services || [];
   const carServices = carData?.services || [];
@@ -135,13 +209,15 @@ export const MyServices = () => {
           return (
             towingService.location.address.toLowerCase().includes(query) ||
             towingService.destination?.address.toLowerCase().includes(query) ||
-            towingService.vehicleType.toLowerCase().includes(query)
+            towingService.vehicleType.toLowerCase().includes(query) ||
+            (towingService.vehicleModel?.toLowerCase().includes(query) ?? false)
           );
         } else {
           const carService = service as CarService;
           return (
             carService.location.address.toLowerCase().includes(query) ||
             carService.vehicleType.toLowerCase().includes(query) ||
+            (carService.vehicleModel?.toLowerCase().includes(query) ?? false) ||
             serviceTypeInfo[carService.serviceType]?.name.toLowerCase().includes(query)
           );
         }
@@ -182,12 +258,78 @@ export const MyServices = () => {
   };
 
   const handlePayForService = (service: TowingService | CarService, type: 'towing' | 'car') => {
-    // Navigate to payment page with service ID and amount
-    const params = new URLSearchParams({
-      [`${type}ServiceId`]: service._id,
-      amount: (service.estimatedCost || 0).toString(),
-    });
+    if (!service.estimatedCost || service.estimatedCost <= 0) return;
+    const params = new URLSearchParams({ [`${type}ServiceId`]: service._id });
     navigate(`/service-payment?${params.toString()}`);
+  };
+
+  const canPayOnline = (service: TowingService | CarService): boolean => {
+    return (
+      service.paymentStatus === 'pending' &&
+      service.status !== 'cancelled' &&
+      service.estimatedCost != null &&
+      service.estimatedCost > 0
+    );
+  };
+
+  const canRequestQuote = (service: TowingService | CarService): boolean => {
+    return (
+      service.paymentStatus === 'pending' &&
+      service.status !== 'cancelled' &&
+      service.status !== 'completed' &&
+      (service.estimatedCost == null || service.estimatedCost <= 0)
+    );
+  };
+
+  const openQuoteModal = (service: TowingService | CarService, type: 'towing' | 'car') => {
+    setQuoteModal({ type, service });
+    const m = service.quoteMobilePhone || '';
+    const w = service.quoteWhatsAppPhone || '';
+    setQuoteMobile(m);
+    if (m && w) {
+      const same = m === w;
+      setSameWhatsappAsMobile(same);
+      setQuoteWhatsapp(same ? m : w);
+    } else {
+      setSameWhatsappAsMobile(true);
+      setQuoteWhatsapp(m);
+    }
+    setQuoteNotes(service.quoteRequestNotes || '');
+    setQuoteFieldErrors({});
+  };
+
+  const handleSubmitQuoteRequest = async () => {
+    if (!quoteModal) return;
+    const mobilePhone = quoteMobile.trim();
+    const whatsAppPhone = sameWhatsappAsMobile ? mobilePhone : quoteWhatsapp.trim();
+
+    const mobileCheck = validateMalawiPhoneField(mobilePhone, 'Mobile number (for calls)');
+    const whatsCheck = validateMalawiPhoneField(whatsAppPhone, 'WhatsApp number');
+    if (!mobileCheck.ok || !whatsCheck.ok) {
+      setQuoteFieldErrors({
+        mobile: mobileCheck.ok ? undefined : mobileCheck.message,
+        whatsApp: whatsCheck.ok ? undefined : whatsCheck.message,
+      });
+      return;
+    }
+    setQuoteFieldErrors({});
+
+    try {
+      const body = {
+        mobilePhone,
+        whatsAppPhone,
+        quoteRequestNotes: quoteNotes.trim() || undefined,
+      };
+      const res =
+        quoteModal.type === 'towing'
+          ? await requestTowingQuote({ id: quoteModal.service._id, body }).unwrap()
+          : await requestCarQuote({ id: quoteModal.service._id, body }).unwrap();
+      dispatch(showNotification({ message: res.message, type: 'success' }));
+      setQuoteModal(null);
+    } catch (err) {
+      const { message } = getErrorInfo(err, 'Could not send quote request');
+      dispatch(showNotification({ message, type: 'error' }));
+    }
   };
 
   const canCancelService = (service: TowingService | CarService): boolean => {
@@ -328,6 +470,8 @@ export const MyServices = () => {
               const isTowing = type === 'towing';
               const towingService = isTowing ? (service as TowingService) : null;
               const carService = !isTowing ? (service as CarService) : null;
+              const assignedDriver = isTowing ? assigneeFromApi(towingService?.assignedDriver) : null;
+              const assignedMechanic = !isTowing ? assigneeFromApi(carService?.assignedMechanic) : null;
 
               return (
                 <Card key={service._id} className="p-6 hover:shadow-lg transition-shadow">
@@ -350,12 +494,19 @@ export const MyServices = () => {
 
                       {/* Service Details */}
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 gap-y-2 mb-2">
                           <h3 className="text-lg font-semibold text-gray-900">
                             {isTowing
                               ? 'Towing Service'
                               : serviceTypeInfo[carService?.serviceType || 'other']?.name}
                           </h3>
+                          <span
+                            className="inline-flex items-center gap-1 text-xs font-mono text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200"
+                            title="Use this reference when contacting support"
+                          >
+                            <Hash className="w-3 h-3" />
+                            {shortRef(service._id)}
+                          </span>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(
                               service.status
@@ -376,10 +527,59 @@ export const MyServices = () => {
                           </span>
                         </div>
 
+                        {service.paymentStatus === 'pending' &&
+                          service.status !== 'cancelled' &&
+                          service.status !== 'completed' &&
+                          service.estimatedCost != null &&
+                          service.estimatedCost > 0 && (
+                            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
+                              Complete payment in MWK to confirm your booking.
+                            </p>
+                          )}
+
+                        {service.paymentStatus === 'pending' &&
+                          service.status !== 'cancelled' &&
+                          service.status !== 'completed' &&
+                          (!service.estimatedCost || service.estimatedCost <= 0) && (
+                            <div className="space-y-2 mb-2">
+                              <p className="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                                <span className="font-semibold">Price not set yet.</span>{' '}
+                                Use <span className="font-medium">Contact for quote</span> so we can review your
+                                request and send you an amount in Malawi Kwacha (MWK).
+                              </p>
+                              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                                Final pricing may change if vehicle, location, or other details are not accurate.
+                                We will call or message you to confirm before setting your quote.
+                              </p>
+                              {service.quoteRequestSubmittedAt && (
+                                <p className="text-xs text-gray-600">
+                                  Quote request last sent:{' '}
+                                  {formatDateTime(service.quoteRequestSubmittedAt)}. You can send again to update
+                                  your numbers.
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                        {statusGuidance(service.status) && service.status !== 'cancelled' && (
+                          <p className="text-sm text-teal-900 bg-teal-50 border border-teal-100 rounded-md px-3 py-2 mb-2">
+                            {statusGuidance(service.status)}
+                          </p>
+                        )}
+
                         <div className="space-y-2 text-sm text-gray-600">
                           <div className="flex items-start gap-2">
-                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                            <div className="flex-1">
+                            <Car className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                            <div>
+                              <span className="font-medium text-gray-800">Vehicle: </span>
+                              {service.vehicleType || 'Not specified'}
+                              {service.vehicleModel ? ` · ${service.vehicleModel}` : ''}
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <div className="font-medium">
                                 {isTowing
                                   ? `${towingService?.location.address} → ${towingService?.destination?.address || 'Not specified'}`
@@ -400,17 +600,55 @@ export const MyServices = () => {
                                   Location: {carService.location.description}
                                 </div>
                               )}
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                                <a
+                                  href={mapsHref(
+                                    service.location.latitude,
+                                    service.location.longitude,
+                                    service.location.address
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 font-medium text-xs"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  {isTowing ? 'Open pickup in Maps' : 'Open location in Maps'}
+                                </a>
+                                {isTowing &&
+                                  towingService?.destination?.address &&
+                                  towingService.destination.latitude !== undefined &&
+                                  towingService.destination.longitude !== undefined && (
+                                    <a
+                                      href={mapsHref(
+                                        towingService.destination.latitude,
+                                        towingService.destination.longitude,
+                                        towingService.destination.address
+                                      )}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 font-medium text-xs"
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                      Open destination in Maps
+                                    </a>
+                                  )}
+                              </div>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>Requested: {formatDate(service.createdAt)}</span>
+                            <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+                            <span>Requested: {formatDateTime(service.createdAt)}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-400 shrink-0" />
+                            <span>Last updated: {formatDateTime(service.updatedAt)}</span>
                           </div>
 
                           {!isTowing && carService?.preferredDate && (
                             <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-gray-400" />
+                              <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
                               <span>
                                 Preferred: {formatDate(carService.preferredDate)}
                                 {carService.preferredTime ? ` at ${carService.preferredTime}` : ''}
@@ -418,12 +656,47 @@ export const MyServices = () => {
                             </div>
                           )}
 
-                          {service.estimatedCost && (
-                            <div className="flex items-center gap-2">
-                              <DollarSign className="w-4 h-4 text-gray-400" />
-                              <span className="font-medium text-gray-900">
-                                MWK {service.estimatedCost.toLocaleString()}
-                              </span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {service.estimatedCost != null && service.estimatedCost > 0 ? (
+                              <>
+                                <span
+                                  className="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 shrink-0"
+                                  aria-hidden
+                                >
+                                  MWK
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {service.estimatedCost.toLocaleString()}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-gray-600 font-medium">Price not set yet</span>
+                            )}
+                          </div>
+
+                          {assignedDriver && (
+                            <div className="flex items-start gap-2">
+                              <User className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                              <div>
+                                <span className="font-medium text-gray-800">Assigned driver: </span>
+                                {assignedDriver.name}
+                                {assignedDriver.phone && (
+                                  <span className="text-gray-600"> · {assignedDriver.phone}</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {assignedMechanic && (
+                            <div className="flex items-start gap-2">
+                              <User className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                              <div>
+                                <span className="font-medium text-gray-800">Assigned mechanic: </span>
+                                {assignedMechanic.name}
+                                {assignedMechanic.phone && (
+                                  <span className="text-gray-600"> · {assignedMechanic.phone}</span>
+                                )}
+                              </div>
                             </div>
                           )}
 
@@ -437,15 +710,26 @@ export const MyServices = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-col gap-2 ml-4">
-                      {service.paymentStatus === 'pending' && service.status !== 'cancelled' && (
+                    <div className="flex flex-col gap-2 ml-4 shrink-0">
+                      {canPayOnline(service) && (
                         <Button
                           size="sm"
                           variant="primary"
                           onClick={() => handlePayForService(service, type)}
                         >
                           <CreditCard className="w-4 h-4 mr-2" />
-                          Pay Now
+                          Pay Now (MWK)
+                        </Button>
+                      )}
+
+                      {canRequestQuote(service) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openQuoteModal(service, type)}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Contact for quote
                         </Button>
                       )}
 
@@ -470,6 +754,136 @@ export const MyServices = () => {
                 </Card>
               );
             })}
+          </div>
+        )}
+
+        {/* Quote request modal */}
+        {quoteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Contact for quote</h3>
+                <button
+                  type="button"
+                  onClick={() => setQuoteModal(null)}
+                  className="p-1 hover:bg-gray-100 rounded-full"
+                  disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-3">
+                Add the numbers we should use to reach you. Our team will confirm your service details before
+                setting your price in Malawi Kwacha (MWK).
+              </p>
+
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-900">
+                  If pickup location, vehicle, or other information is not accurate, the quoted amount may change
+                  after we verify with you.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="quote-mobile" className="block text-sm font-medium text-gray-700 mb-1">
+                    Mobile number (for calls)
+                  </label>
+                  <Input
+                    id="quote-mobile"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="+265991234567 or 0991234567"
+                    value={quoteMobile}
+                    error={quoteFieldErrors.mobile}
+                    onChange={(e) => {
+                      setQuoteMobile(e.target.value);
+                      setQuoteFieldErrors((prev) => ({ ...prev, mobile: undefined }));
+                    }}
+                    disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                    checked={sameWhatsappAsMobile}
+                    onChange={(e) => {
+                      setSameWhatsappAsMobile(e.target.checked);
+                      setQuoteFieldErrors((prev) => ({ ...prev, whatsApp: undefined }));
+                    }}
+                    disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                  />
+                  WhatsApp number is the same as mobile
+                </label>
+
+                {!sameWhatsappAsMobile && (
+                  <div>
+                    <label htmlFor="quote-wa" className="block text-sm font-medium text-gray-700 mb-1">
+                      WhatsApp number
+                    </label>
+                    <Input
+                      id="quote-wa"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="+265991234567 or 0991234567"
+                      value={quoteWhatsapp}
+                      error={quoteFieldErrors.whatsApp}
+                      onChange={(e) => {
+                        setQuoteWhatsapp(e.target.value);
+                        setQuoteFieldErrors((prev) => ({ ...prev, whatsApp: undefined }));
+                      }}
+                      disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="quote-notes" className="block text-sm font-medium text-gray-700 mb-1">
+                    Note for our team (optional)
+                  </label>
+                  <textarea
+                    id="quote-notes"
+                    rows={3}
+                    maxLength={500}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-sm"
+                    placeholder="Best time to call, landmarks, etc."
+                    value={quoteNotes}
+                    onChange={(e) => setQuoteNotes(e.target.value)}
+                    disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setQuoteModal(null)}
+                  disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={handleSubmitQuoteRequest}
+                  disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                >
+                  {isSubmittingTowingQuote || isSubmittingCarQuote ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send quote request'
+                  )}
+                </Button>
+              </div>
+            </Card>
           </div>
         )}
 

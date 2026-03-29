@@ -1,6 +1,13 @@
 import { baseApi } from './baseApi';
 import type { ServiceStatus, ServiceType } from '../../../../shared/types';
 
+/** Populated assignee from API (or raw id if not populated). */
+export interface ServiceAssignee {
+  _id: string;
+  name?: string;
+  phone?: string;
+}
+
 export interface TowingService {
   _id: string;
   user: string;
@@ -23,8 +30,13 @@ export interface TowingService {
   payment?: string;
   paymentStatus: 'pending' | 'completed' | 'failed';
   notes?: string;
+  quoteMobilePhone?: string;
+  quoteWhatsAppPhone?: string;
+  quoteRequestNotes?: string;
+  quoteRequestSubmittedAt?: string;
   createdAt: string;
   updatedAt: string;
+  assignedDriver?: ServiceAssignee | string;
 }
 
 export interface CarService {
@@ -46,8 +58,13 @@ export interface CarService {
   payment?: string;
   paymentStatus: 'pending' | 'completed' | 'failed';
   notes?: string;
+  quoteMobilePhone?: string;
+  quoteWhatsAppPhone?: string;
+  quoteRequestNotes?: string;
+  quoteRequestSubmittedAt?: string;
   createdAt: string;
   updatedAt: string;
+  assignedMechanic?: ServiceAssignee | string;
 }
 
 interface CreateTowingServiceRequest {
@@ -100,6 +117,12 @@ interface CarServicesResponse {
     total: number;
     totalPages: number;
   };
+}
+
+export interface ServiceQuoteRequestBody {
+  mobilePhone: string;
+  whatsAppPhone: string;
+  quoteRequestNotes?: string;
 }
 
 interface ServicesQueryParams {
@@ -210,6 +233,22 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['CarService'],
     }),
+    requestTowingQuote: builder.mutation<{ message: string }, { id: string; body: ServiceQuoteRequestBody }>({
+      query: ({ id, body }) => ({
+        url: `/towing/${id}/quote-request`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['TowingService', 'Admin'],
+    }),
+    requestCarServiceQuote: builder.mutation<{ message: string }, { id: string; body: ServiceQuoteRequestBody }>({
+      query: ({ id, body }) => ({
+        url: `/car-services/${id}/quote-request`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['CarService', 'Admin'],
+    }),
   }),
 });
 
@@ -224,4 +263,6 @@ export const {
   useUpdateCarServiceMutation,
   useCancelTowingServiceMutation,
   useCancelCarServiceMutation,
+  useRequestTowingQuoteMutation,
+  useRequestCarServiceQuoteMutation,
 } = serviceApi;

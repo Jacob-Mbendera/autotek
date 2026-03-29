@@ -12,7 +12,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { Card } from '../components/ui/Card';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { Heart, Trash2, ShoppingBag, Package, ShoppingCart, Loader2, 
-  TrendingUp, DollarSign, BarChart3, Sparkles, Gift, Star, Award, AlertCircle } from 'lucide-react';
+  TrendingUp, Banknote, BarChart3, Sparkles, Gift, Star, Award, AlertCircle } from 'lucide-react';
 
 export const Wishlist = () => {
   const dispatch = useAppDispatch();
@@ -199,7 +199,7 @@ export const Wishlist = () => {
                   </div>
                 </div>
                 <div className="h-16 w-16 bg-red-500/20 rounded-full flex items-center justify-center">
-                  <DollarSign className="h-8 w-8 text-red-600" />
+                  <Banknote className="h-8 w-8 text-red-600" />
                 </div>
               </div>
             </Card>

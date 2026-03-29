@@ -187,11 +187,11 @@ function getSpecificErrorMessage(
   statusCode?: number,
   defaultMessage?: string
 ): string {
-  // Use provided default message if available
-  if (defaultMessage) {
-    return defaultMessage;
+  // Prefer API/body message whenever the server sent one (validation, business rules)
+  if (error?.data?.message && typeof error.data.message === 'string') {
+    return error.data.message;
   }
-  
+
   // Network errors
   if (type === 'network') {
     // Check if offline
@@ -217,12 +217,6 @@ function getSpecificErrorMessage(
     return ERROR_MESSAGES.SERVER_ERROR_GENERIC;
   }
   
-  // Priority: Check for specific message from backend first (before status-based messages)
-  // This ensures "Invalid email or password" is shown instead of "Your session has expired"
-  if (error?.data?.message && typeof error.data.message === 'string') {
-    return error.data.message;
-  }
-  
   // Client errors with specific messages (only if no specific message from backend)
   if (type === 'client' && statusCode) {
     if (statusCode === 401) {
@@ -244,8 +238,11 @@ function getSpecificErrorMessage(
   if (extractedMessage !== ERROR_MESSAGES.UNKNOWN_ERROR) {
     return extractedMessage;
   }
-  
-  // Final fallback
+
+  if (defaultMessage) {
+    return defaultMessage;
+  }
+
   return ERROR_MESSAGES.UNKNOWN_ERROR;
 }
 

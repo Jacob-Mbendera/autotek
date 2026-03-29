@@ -6,7 +6,7 @@ dotenv.config();
 
 // CRITICAL: Prevent running in production
 if (process.env.NODE_ENV === 'production') {
-  console.error('\n❌ ERROR: Cannot run seed scripts in production environment!');
+  console.error('\nERROR: Cannot run seed scripts in production environment!');
   console.error('This script creates test data and should only be used in development.\n');
   process.exit(1);
 }
@@ -186,20 +186,20 @@ async function seedProducts() {
     // Connect to MongoDB
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/autotek';
     await mongoose.connect(mongoURI);
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
     // Check existing products
     const existingCount = await Product.countDocuments();
-    console.log(`📊 Found ${existingCount} existing products`);
+    console.log(`Found ${existingCount} existing products`);
     
     // Generate products
     const productCount = 50; // Generate 50 products for testing pagination
-    console.log(`🌱 Generating ${productCount} test products...`);
+    console.log(`Generating ${productCount} test products...`);
     const products = generateProducts(productCount);
 
     // Insert products
     await Product.insertMany(products);
-    console.log(`✅ Successfully created ${productCount} products`);
+    console.log(`Successfully created ${productCount} products`);
 
     // Show summary
     const totalProducts = await Product.countDocuments();
@@ -215,19 +215,19 @@ async function seedProducts() {
       },
     ]);
 
-    console.log('\n📊 Product Summary:');
+    console.log('\nProduct Summary:');
     console.log(`Total Products: ${totalProducts}`);
     console.log('\nBy Category:');
     byCategory.forEach((cat) => {
       console.log(`  ${cat._id}: ${cat.count}`);
     });
 
-    console.log('\n✨ Seeding completed successfully!');
-    console.log('\n💡 You can now test pagination in the admin products page!');
+    console.log('\nSeeding completed successfully.');
+    console.log('\nYou can now test pagination in the admin products page.');
     await mongoose.connection.close();
     process.exit(0);
   } catch (error: any) {
-    console.error('❌ Error seeding products:', error.message);
+    console.error('Error seeding products:', error.message);
     await mongoose.connection.close();
     process.exit(1);
   }

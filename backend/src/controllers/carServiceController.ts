@@ -5,6 +5,7 @@ import User from '../models/User';
 import { ServiceStatus, ServiceType, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { geocodeAddressWithFallback } from '../utils/geocoding';
+import { validateQuoteContactPhones } from '../utils/phoneValidation';
 
 export const createCarService = async (
   req: AuthRequest,
@@ -310,6 +311,93 @@ export const cancelCarService = async (
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to cancel car service' });
+  }
+};
+
+export const requestCarServiceQuote = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    if (req.user?.role === UserRole.ADMIN) {
+      res.status(403).json({ message: 'Admin accounts cannot use this customer action' });
+      return;
+    }
+
+    const { mobilePhone, whatsAppPhone, quoteRequestNotes } = req.body;
+    const validated = validateQuoteContactPhones(mobilePhone, whatsAppPhone);
+    if (!validated.ok) {
+      res.status(400).json({ message: validated.message });
+      return;
+    }
+
+    let notes: string | undefined;
+    if (quoteRequestNotes != null && quoteRequestNotes !== '') {
+      if (typeof quoteRequestNotes !== 'string') {
+        res.status(400).json({ message: 'Invalid notes' });
+        return;
+      }
+      const t = quoteRequestNotes.trim().slice(0, 500);
+      notes = t || undefined;
+    }
+
+    const carService = await CarService.findOne({
+      _id: req.params.id,
+      user: req.user!._id,
+    });
+    if (!carService) {
+      res.status(404).json({ message: 'Car service not found' });
+      return;
+    }
+    if (
+      carService.status === ServiceStatus.CANCELLED ||
+      carService.status === ServiceStatus.COMPLETED
+    ) {
+      res.status(400).json({ message: 'Cannot request a quote for this service' });
+      return;
+    }
+    const price = carService.price;
+    if (price != null && price > 0) {
+      res.status(400).json({ message: 'A price is already set for this request' });
+      return;
+    }
+
+    carService.quoteMobilePhone = validated.mobilePhone;
+    carService.quoteWhatsAppPhone = validated.whatsAppPhone;
+    carService.quoteRequestNotes = notes;
+    carService.quoteRequestSubmittedAt = new Date();
+    await carService.save();
+
+    const user = await User.findById(req.user!._id).lean();
+    const customerName = user?.name || 'Customer';
+    const customerEmail = user?.email || '';
+
+    const vehicleStr =
+      [carService.vehicleDetails?.make, carService.vehicleDetails?.model]
+        .filter(Boolean)
+        .join(' ') || 'Not specified';
+
+    await emailService.sendAdminServiceQuoteRequest({
+      kind: 'car-service',
+      serviceId: carService._id.toString(),
+      customerName,
+      customerEmail,
+      mobilePhone: validated.mobilePhone,
+      whatsAppPhone: validated.whatsAppPhone,
+      quoteRequestNotes: notes,
+      summaryEntries: [
+        { label: 'Service type', value: String(carService.serviceType) },
+        { label: 'Address', value: carService.address },
+        { label: 'Vehicle', value: vehicleStr },
+      ],
+    });
+
+    res.json({
+      message:
+        'Your quote request was sent. We will contact you on the numbers you provided to confirm your details before setting the price in MWK.',
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to submit quote request' });
   }
 };
 

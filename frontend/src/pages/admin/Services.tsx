@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Phone, Mail, DollarSign, Save, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Phone, Mail, Banknote, Save, ArrowLeft, ArrowRight } from 'lucide-react';
 import { ServiceStatus } from '@shared/types';
 
 export const AdminServices = () => {
@@ -21,6 +21,7 @@ export const AdminServices = () => {
   const [typeFilter, setTypeFilter] = useState<'towing' | 'car-service' | ''>('');
   const [selectedService, setSelectedService] = useState<any | null>(null);
   const [newStatus, setNewStatus] = useState<ServiceStatus | ''>('');
+  const [priceMwInput, setPriceMwInput] = useState('');
 
   const [updateTowingService, { isLoading: isUpdatingTowing }] = useUpdateTowingServiceMutation();
   const [updateCarService, { isLoading: isUpdatingCar }] = useUpdateCarServiceMutation();
@@ -37,6 +38,8 @@ export const AdminServices = () => {
   const handleServiceSelect = (service: any) => {
     setSelectedService(service);
     setNewStatus(service.status);
+    const p = service.price;
+    setPriceMwInput(p != null && p > 0 ? String(Math.round(Number(p))) : '');
   };
 
   const handleStatusUpdate = async () => {
@@ -67,6 +70,59 @@ export const AdminServices = () => {
         message: errorInfo.message, 
         type: 'error' 
       }));
+    }
+  };
+
+  const handleSavePriceMw = async () => {
+    if (!selectedService) return;
+    if (selectedService.status === 'cancelled') {
+      dispatch(
+        showNotification({
+          message: 'Cannot set a price on a cancelled service.',
+          type: 'error',
+        })
+      );
+      return;
+    }
+
+    const raw = priceMwInput.replace(/,/g, '').trim();
+    const n = Number(raw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+      dispatch(
+        showNotification({
+          message:
+            'Enter a whole number of Malawi Kwacha (MWK), at least 1. No decimals.',
+          type: 'error',
+        })
+      );
+      return;
+    }
+
+    try {
+      if (selectedService.type === 'towing') {
+        await updateTowingService({
+          id: selectedService._id,
+          price: n,
+        }).unwrap();
+      } else {
+        await updateCarService({
+          id: selectedService._id,
+          price: n,
+        }).unwrap();
+      }
+
+      dispatch(
+        showNotification({
+          message: `Price saved: MWK ${n.toLocaleString()}. The customer can pay from My Services.`,
+          type: 'success',
+        })
+      );
+      await refetch();
+      setSelectedService({ ...selectedService, price: n });
+      setPriceMwInput(String(n));
+    } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to save price');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
 
@@ -393,6 +449,104 @@ export const AdminServices = () => {
                 </div>
               </div>
 
+              {(selectedService.quoteMobilePhone ||
+                selectedService.quoteWhatsAppPhone ||
+                selectedService.quoteRequestSubmittedAt) && (
+                <div>
+                  <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Quote request (call to confirm before pricing)
+                  </Body>
+                  <div className="bg-teal-900/20 border border-teal-700/40 rounded-lg p-4 space-y-2">
+                    {selectedService.quoteRequestSubmittedAt && (
+                      <Body className="text-xs text-gray-400">
+                        Submitted:{' '}
+                        {new Date(selectedService.quoteRequestSubmittedAt).toLocaleString()}
+                      </Body>
+                    )}
+                    {selectedService.quoteMobilePhone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-teal-400 shrink-0" />
+                        <Body className="text-gray-200 text-sm">
+                          Mobile: {selectedService.quoteMobilePhone}
+                        </Body>
+                      </div>
+                    )}
+                    {selectedService.quoteWhatsAppPhone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-teal-400 shrink-0" />
+                        <Body className="text-gray-200 text-sm">
+                          WhatsApp: {selectedService.quoteWhatsAppPhone}
+                        </Body>
+                      </div>
+                    )}
+                    {selectedService.quoteRequestNotes && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Customer note</Body>
+                        <Body className="text-gray-300 text-sm">{selectedService.quoteRequestNotes}</Body>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Admin-set price (MWK) */}
+              {selectedService.status !== 'cancelled' && (
+                <div>
+                  <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <Banknote className="h-4 w-4" />
+                    Customer price (MWK)
+                  </Body>
+                  <div className="bg-slate-700/50 rounded-lg p-4 space-y-3">
+                    <Body className="text-xs text-gray-400">
+                      After you confirm details by phone or WhatsApp, enter the agreed quote. The customer will
+                      see this amount and can pay online in MWK from My Services.
+                    </Body>
+                    {selectedService.price != null && selectedService.price > 0 && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Current saved price</Body>
+                        <Body className="text-teal-400 font-semibold">
+                          MWK {Number(selectedService.price).toLocaleString()}
+                        </Body>
+                      </div>
+                    )}
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                      <div className="flex-1">
+                        <label htmlFor="admin-service-price-mwk" className="block text-xs text-gray-400 mb-1">
+                          Amount (MWK)
+                        </label>
+                        <Input
+                          dark
+                          id="admin-service-price-mwk"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g. 85000"
+                          value={priceMwInput}
+                          onChange={(e) => setPriceMwInput(e.target.value.replace(/[^\d]/g, ''))}
+                          disabled={isUpdatingTowing || isUpdatingCar}
+                        />
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="small"
+                        dark
+                        type="button"
+                        onClick={handleSavePriceMw}
+                        disabled={isUpdatingTowing || isUpdatingCar}
+                        className="gap-2 shrink-0"
+                      >
+                        {isUpdatingTowing || isUpdatingCar ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                        Save price
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Service Details */}
               <div>
                 <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
@@ -486,21 +640,22 @@ export const AdminServices = () => {
               </div>
 
               {/* Payment Information */}
-              {(selectedService.price || selectedService.paymentStatus) && (
-                <div>
-                  <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    Payment Information
-                  </Body>
-                  <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
-                    {selectedService.price && (
-                      <div>
-                        <Body className="text-xs text-gray-400 mb-1">Price</Body>
-                        <Body className="text-gray-50 font-medium">
-                          MWK {selectedService.price.toLocaleString()}
-                        </Body>
-                      </div>
+              <div>
+                <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                  <Banknote className="h-4 w-4" />
+                  Payment Information
+                </Body>
+                <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
+                  <div>
+                    <Body className="text-xs text-gray-400 mb-1">Quoted price (MWK)</Body>
+                    {selectedService.price != null && selectedService.price > 0 ? (
+                      <Body className="text-gray-50 font-medium">
+                        MWK {Number(selectedService.price).toLocaleString()}
+                      </Body>
+                    ) : (
+                      <Body className="text-gray-500 text-sm">Not set — use Customer price (MWK) above</Body>
                     )}
+                  </div>
                     {selectedService.paymentStatus && (
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Payment Status</Body>
@@ -519,7 +674,6 @@ export const AdminServices = () => {
                     )}
                   </div>
                 </div>
-              )}
 
               {/* Dates */}
               <div>

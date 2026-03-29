@@ -10,7 +10,6 @@ import {
   Truck,
   Calendar,
   MapPin,
-  DollarSign,
   CheckCircle,
   Clock,
   Shield,
@@ -330,10 +329,14 @@ export const Services = () => {
                   your preferred destination with professional drivers and proper equipment.
                 </Body>
                 <div className="flex items-center gap-3 mb-6 p-4 bg-teal-50 rounded-lg border border-teal-100">
-                  <DollarSign className="h-6 w-6 text-teal-600" />
+                  <span className="text-sm font-bold text-teal-700 bg-white border border-teal-200 rounded-lg px-3 py-2">
+                    MWK
+                  </span>
                   <div>
                     <Body className="font-semibold text-gray-900">Pricing</Body>
-                    <Body className="text-gray-600 text-sm">Contact for quote based on distance</Body>
+                    <Body className="text-gray-600 text-sm">
+                      Contact for quote in MWK based on distance
+                    </Body>
                   </div>
                 </div>
                 <ul className="space-y-3 mb-8">

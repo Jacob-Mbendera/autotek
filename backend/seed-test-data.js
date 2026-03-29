@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 
 // CRITICAL: Prevent running in production
 if (process.env.NODE_ENV === 'production') {
-  console.error('\n❌ ERROR: Cannot run seed scripts in production environment!');
+  console.error('\nERROR: Cannot run seed scripts in production environment!');
   console.error('This script creates test data and should only be used in development.\n');
   process.exit(1);
 }
@@ -78,8 +78,8 @@ const colors = {
 
 const log = {
   success: (msg) => console.log(`${colors.green}✓ ${msg}${colors.reset}`),
-  info: (msg) => console.log(`${colors.blue}ℹ ${msg}${colors.reset}`),
-  warning: (msg) => console.log(`${colors.yellow}⚠ ${msg}${colors.reset}`),
+  info: (msg) => console.log(`${colors.blue}i ${msg}${colors.reset}`),
+  warning: (msg) => console.log(`${colors.yellow}! ${msg}${colors.reset}`),
   error: (msg) => console.log(`${colors.red}✗ ${msg}${colors.reset}`),
   section: (msg) => console.log(`\n${colors.blue}${'='.repeat(50)}${colors.reset}\n${colors.blue}${msg}${colors.reset}\n${colors.blue}${'='.repeat(50)}${colors.reset}\n`),
 };
@@ -308,7 +308,7 @@ async function createCompletedOrders(user, products) {
     log.success(`Created ${createdPayments.length} payment records`);
 
     // Display order details
-    console.log('\n📦 Created Orders:');
+    console.log('\nCreated Orders:');
     for (let i = 0; i < createdOrders.length; i++) {
       const order = createdOrders[i];
       console.log(`\n  Order ${i + 1}:`);
@@ -332,9 +332,9 @@ function displaySummary(user, products, orders) {
   log.section('Seeding Summary');
 
   console.log(`${colors.green}✓ Test Data Ready${colors.reset}\n`);
-  console.log(`👤 Test User: ${user.name} (${user.email})`);
-  console.log(`📦 Products Available: ${products.length}`);
-  console.log(`🛍️  Completed Orders: ${orders.length}`);
+  console.log(`Test User: ${user.name} (${user.email})`);
+  console.log(`Products Available: ${products.length}`);
+  console.log(`Completed Orders: ${orders.length}`);
   console.log(`\n${colors.yellow}Next Steps:${colors.reset}`);
   console.log(`  1. Run backend tests: ./test-returns-refunds.sh`);
   console.log(`  2. Test return creation flow`);

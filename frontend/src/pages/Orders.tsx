@@ -9,7 +9,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { 
   Package, Loader2, Filter, ChevronRight, Search, Calendar, 
   Download, Grid3x3, List, X, ArrowUpDown, CheckSquare, Square,
-  TrendingUp, DollarSign, CheckCircle, Clock, XCircle, ShoppingBag,
+  TrendingUp, Banknote, CheckCircle, Clock, XCircle, ShoppingBag,
   BarChart3, FileText, Sparkles
 } from 'lucide-react';
 import type { OrderStatus } from '@shared/types';
@@ -267,7 +267,7 @@ export const Orders = () => {
                 </div>
               </div>
               <div className="h-16 w-16 bg-teal-500/20 rounded-full flex items-center justify-center">
-                <DollarSign className="h-8 w-8 text-teal-600" />
+                <Banknote className="h-8 w-8 text-teal-600" />
               </div>
             </div>
           </Card>
@@ -613,7 +613,7 @@ export const Orders = () => {
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-gray-600">
-                          <DollarSign className="h-4 w-4" />
+                          <Banknote className="h-4 w-4" />
                           <span>Total</span>
                         </div>
                         <span className="text-xl font-bold text-teal-600">

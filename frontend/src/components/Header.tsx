@@ -44,6 +44,7 @@ export const Header = () => {
     { name: 'Orders', href: '/orders', icon: Package },
     { name: 'Returns', href: '/returns', icon: RotateCcw },
     { name: 'Services', href: '/services', icon: Wrench },
+    { name: 'My Services', href: '/my-services', icon: Truck },
   ];
 
   return (

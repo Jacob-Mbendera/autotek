@@ -10,6 +10,14 @@ interface EmailOptions {
   text?: string;
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter | null = null;
 
@@ -35,14 +43,14 @@ class EmailService {
         },
       });
 
-      console.log(`✅ Email service initialized: ${process.env.EMAIL_HOST}`);
+      console.log(`Email service initialized: ${process.env.EMAIL_HOST}`);
     } else {
       // Warn in production if email not configured
       if (process.env.NODE_ENV === 'production') {
-        console.error('⚠️ WARNING: Email service not configured in production!');
+        console.error('WARNING: Email service not configured in production!');
         console.error('Please set EMAIL_HOST, EMAIL_USER, EMAIL_PASS environment variables');
       } else {
-        console.log('ℹ️ Email service not configured - emails will be logged to console');
+        console.log('INFO: Email service not configured - emails will be logged to console');
       }
     }
   }
@@ -60,7 +68,7 @@ class EmailService {
         console.log('===================================\n');
         return;
       } else {
-        console.error('❌ ERROR: Attempted to send email but no transporter configured!');
+        console.error('ERROR: Attempted to send email but no transporter configured!');
         console.error('Email details:', { to: options.to, subject: options.subject });
         // In production, we should log this but not crash
         return;
@@ -76,9 +84,9 @@ class EmailService {
         text: options.text || options.html.replace(/<[^>]*>/g, ''),
       });
 
-      console.log(`✅ Email sent successfully to ${options.to}: ${options.subject}`);
+      console.log(`Email sent successfully to ${options.to}: ${options.subject}`);
     } catch (error) {
-      console.error('❌ Error sending email:', error);
+      console.error('Error sending email:', error);
       console.error('Email details:', { to: options.to, subject: options.subject });
       // Don't throw - email failures shouldn't break the app
       // But in production, you might want to log this to an error tracking service
@@ -525,6 +533,79 @@ class EmailService {
     `;
 
     await this.sendEmail({ to: email, subject, html });
+  }
+
+  async sendAdminServiceQuoteRequest(params: {
+    kind: 'towing' | 'car-service';
+    serviceId: string;
+    customerName: string;
+    customerEmail: string;
+    mobilePhone: string;
+    whatsAppPhone: string;
+    quoteRequestNotes?: string;
+    summaryEntries: { label: string; value: string }[];
+  }): Promise<void> {
+    const adminEmail =
+      process.env.ADMIN_NOTIFICATION_EMAIL || process.env.SUPPORT_EMAIL;
+    if (!adminEmail) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error(
+          'ADMIN_NOTIFICATION_EMAIL or SUPPORT_EMAIL not set — admin quote email skipped'
+        );
+      } else {
+        console.log(
+          'INFO: ADMIN_NOTIFICATION_EMAIL / SUPPORT_EMAIL not set — quote request logged only'
+        );
+      }
+    }
+
+    const ref = params.serviceId.slice(-6).toUpperCase();
+    const subject = `[AutoTek] Quote request — ${params.kind} — #${ref}`;
+    const adminUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const linesHtml = params.summaryEntries
+      .map(
+        (e) =>
+          `<p style="margin: 4px 0;"><strong>${escapeHtml(e.label)}:</strong> ${escapeHtml(e.value)}</p>`
+      )
+      .join('');
+    const notesBlock = params.quoteRequestNotes
+      ? `<p style="margin: 8px 0;"><strong>Customer note:</strong> ${escapeHtml(params.quoteRequestNotes)}</p>`
+      : '';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #0d9488;">Service quote request</h2>
+        <p>A customer submitted contact numbers for pricing. Call to confirm details before setting the MWK price in admin.</p>
+        <div style="background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Type:</strong> ${escapeHtml(params.kind)}</p>
+          <p style="margin: 4px 0;"><strong>Service ref:</strong> #${escapeHtml(ref)}</p>
+          <p style="margin: 4px 0;"><strong>Customer:</strong> ${escapeHtml(params.customerName)} (${escapeHtml(params.customerEmail)})</p>
+          <p style="margin: 4px 0;"><strong>Mobile (calls):</strong> ${escapeHtml(params.mobilePhone)}</p>
+          <p style="margin: 4px 0;"><strong>WhatsApp:</strong> ${escapeHtml(params.whatsAppPhone)}</p>
+          ${notesBlock}
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">
+          <h3 style="margin-top: 0; color: #0d9488;">Request summary</h3>
+          ${linesHtml}
+        </div>
+        <p style="margin-top: 20px;">
+          <a href="${adminUrl}/admin/services" style="color: #0d9488;">Open admin services</a>
+        </p>
+      </body>
+      </html>
+    `;
+
+    if (adminEmail) {
+      await this.sendEmail({ to: adminEmail, subject, html });
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log('\n=== QUOTE REQUEST (no admin email configured) ===');
+      console.log(subject);
+      console.log(params);
+      console.log('================================================\n');
+    }
   }
 }
 

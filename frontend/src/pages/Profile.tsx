@@ -31,7 +31,7 @@ import {
   ArrowRight,
   Clock,
   TrendingUp,
-  DollarSign,
+  Banknote,
   ShoppingBag,
   Award,
   Shield,
@@ -345,7 +345,7 @@ export const Profile = () => {
                 </div>
               </div>
               <div className="h-16 w-16 bg-teal-500/20 rounded-full flex items-center justify-center">
-                <DollarSign className="h-8 w-8 text-teal-600" />
+                <Banknote className="h-8 w-8 text-teal-600" />
               </div>
             </div>
           </Card>

@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
+import {
+  useGetTowingServiceQuery,
+  useGetCarServiceQuery,
+} from '../store/api/serviceApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, H2, Body } from '../components/ui/Typography';
@@ -15,6 +20,29 @@ export const ServicePayment = () => {
   const { user } = useAppSelector((state) => state.auth);
   const [searchParams] = useSearchParams();
   const [initiatePayment, { isLoading }] = useInitiatePaymentMutation();
+
+  const towingServiceId = searchParams.get('towingServiceId');
+  const carServiceId = searchParams.get('carServiceId');
+
+  const towingQuery = useGetTowingServiceQuery(towingServiceId!, {
+    skip: !towingServiceId,
+  });
+  const carQuery = useGetCarServiceQuery(carServiceId!, {
+    skip: !carServiceId,
+  });
+
+  const service = towingServiceId
+    ? towingQuery.data?.service
+    : carQuery.data?.service;
+
+  const amountMwk = service?.estimatedCost ?? 0;
+  const canPay = amountMwk > 0;
+
+  const loadingService = towingServiceId
+    ? towingQuery.isLoading || towingQuery.isFetching
+    : carQuery.isLoading || carQuery.isFetching;
+
+  const loadError = towingServiceId ? towingQuery.isError : carQuery.isError;
 
   const getFrontendBaseUrl = () => {
     const configuredBaseUrl = import.meta.env.VITE_BASE_URL?.trim();
@@ -30,10 +58,6 @@ export const ServicePayment = () => {
     return currentOrigin;
   };
 
-  const towingServiceId = searchParams.get('towingServiceId');
-  const carServiceId = searchParams.get('carServiceId');
-  const amount = searchParams.get('amount');
-
   useEffect(() => {
     if (!towingServiceId && !carServiceId) {
       navigate('/my-services');
@@ -41,18 +65,39 @@ export const ServicePayment = () => {
     }
 
     if (user?.role === UserRole.ADMIN) {
-      dispatch(showNotification({
-        message: 'Admin accounts cannot make customer service payments',
-        type: 'error',
-      }));
+      dispatch(
+        showNotification({
+          message: 'Admin accounts cannot make customer service payments',
+          type: 'error',
+        })
+      );
       navigate('/admin/dashboard', { replace: true });
     }
   }, [towingServiceId, carServiceId, navigate, user, dispatch]);
 
+  useEffect(() => {
+    if (loadError) {
+      dispatch(
+        showNotification({
+          message: 'Could not load this service. It may have been removed.',
+          type: 'error',
+        })
+      );
+      navigate('/my-services', { replace: true });
+    }
+  }, [loadError, dispatch, navigate]);
+
   const handlePayment = async () => {
+    if (!canPay) return;
     try {
       const baseUrl = getFrontendBaseUrl();
-      const paymentData: any = {
+      const paymentData: {
+        paymentMethod: PaymentMethod;
+        returnUrl: string;
+        cancelUrl: string;
+        towingServiceId?: string;
+        carServiceId?: string;
+      } = {
         paymentMethod: PaymentMethod.PAYCHANGU,
         returnUrl: `${baseUrl}/payment/success`,
         cancelUrl: `${baseUrl}/payment/cancel`,
@@ -66,25 +111,32 @@ export const ServicePayment = () => {
 
       const result = await initiatePayment(paymentData).unwrap();
 
-      // Redirect to PayChangu checkout
       if (result.redirectUrl) {
         window.location.href = result.redirectUrl;
       } else {
-        console.error('No redirect URL received');
+        dispatch(
+          showNotification({
+            message: 'No payment redirect was returned. Please try again or contact support.',
+            type: 'error',
+          })
+        );
       }
-    } catch (error) {
-      console.error('Payment initiation failed:', error);
+    } catch (error: unknown) {
+      const errorInfo = getErrorInfo(error, 'Payment could not be started. Please try again.');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
+
+  const pageSubtitle = loadingService
+    ? 'Loading your service…'
+    : !canPay
+      ? 'Your quote in Malawi Kwacha (MWK) is not ready yet. Please check My Services later or contact support.'
+      : 'Complete your payment in MWK to confirm your service request.';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/my-services')}
-          className="mb-6"
-        >
+        <Button variant="ghost" onClick={() => navigate('/my-services')} className="mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to My Services
         </Button>
@@ -95,19 +147,32 @@ export const ServicePayment = () => {
               <CreditCard className="w-8 h-8 text-white" />
             </div>
             <H1 className="text-3xl font-bold text-gray-900 mb-2">Pay for Service</H1>
-            <Body className="text-gray-600">
-              Complete your payment to confirm your service request
-            </Body>
+            <Body className="text-gray-600">{pageSubtitle}</Body>
           </div>
 
-          {amount && (
+          {loadingService && (
+            <div className="flex justify-center py-8 mb-6">
+              <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+            </div>
+          )}
+
+          {!loadingService && canPay && (
             <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg p-6 mb-6">
               <div className="text-center">
-                <Body className="text-sm text-gray-600 mb-1">Total Amount</Body>
+                <Body className="text-sm text-gray-600 mb-1">Total (MWK)</Body>
                 <H2 className="text-4xl font-bold text-teal-700">
-                  MWK {parseInt(amount).toLocaleString()}
+                  MWK {amountMwk.toLocaleString()}
                 </H2>
               </div>
+            </div>
+          )}
+
+          {!loadingService && !canPay && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6 text-center">
+              <Body className="text-gray-700">
+                Online payment is only available after AutoTek sets your price in{' '}
+                <span className="font-semibold">Malawi Kwacha (MWK)</span>.
+              </Body>
             </div>
           )}
 
@@ -118,7 +183,7 @@ export const ServicePayment = () => {
                 <p className="text-sm font-medium text-blue-900 mb-1">Secure Payment</p>
                 <p className="text-sm text-blue-700">
                   Your payment is processed securely through PayChangu. We never store your card
-                  details.
+                  details. All amounts are in MWK.
                 </p>
               </div>
             </div>
@@ -127,7 +192,7 @@ export const ServicePayment = () => {
           <div className="space-y-4">
             <Button
               onClick={handlePayment}
-              disabled={isLoading}
+              disabled={isLoading || loadingService || !canPay}
               className="w-full"
               size="large"
             >

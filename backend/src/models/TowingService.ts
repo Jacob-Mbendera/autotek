@@ -4,7 +4,9 @@ import { ServiceStatus } from '../types/shared';
 export interface ITowingService extends Document {
   user: Types.ObjectId;
   pickupLocation: string;
+  pickupLocationDescription?: string;
   destination: string;
+  destinationDescription?: string;
   vehicleDetails: {
     make?: string;
     model?: string;
@@ -15,6 +17,11 @@ export interface ITowingService extends Document {
   status: ServiceStatus;
   assignedDriver?: Types.ObjectId;
   price?: number;
+  quoteMobilePhone?: string;
+  quoteWhatsAppPhone?: string;
+  quoteRequestNotes?: string;
+  quoteRequestSubmittedAt?: Date;
+  payment?: Types.ObjectId;
   paymentStatus: 'pending' | 'completed' | 'failed';
   createdAt: Date;
   updatedAt: Date;
@@ -31,9 +38,15 @@ const TowingServiceSchema = new Schema<ITowingService>(
       type: String,
       required: true,
     },
+    pickupLocationDescription: {
+      type: String,
+    },
     destination: {
       type: String,
       required: true,
+    },
+    destinationDescription: {
+      type: String,
     },
     vehicleDetails: {
       make: String,
@@ -54,6 +67,26 @@ const TowingServiceSchema = new Schema<ITowingService>(
     price: {
       type: Number,
       min: 0,
+    },
+    quoteMobilePhone: {
+      type: String,
+      trim: true,
+    },
+    quoteWhatsAppPhone: {
+      type: String,
+      trim: true,
+    },
+    quoteRequestNotes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    quoteRequestSubmittedAt: {
+      type: Date,
+    },
+    payment: {
+      type: Schema.Types.ObjectId,
+      ref: 'Payment',
     },
     paymentStatus: {
       type: String,

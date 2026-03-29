@@ -104,7 +104,11 @@ export const initiatePaymentRequest = async (
     }
 
     if (amount === 0) {
-      res.status(400).json({ message: 'Amount must be greater than 0' });
+      const message =
+        type === 'towing' || type === 'car-service'
+          ? 'Price not set yet. Online payment in Malawi Kwacha (MWK) is available after your quote is confirmed.'
+          : 'Amount must be greater than 0';
+      res.status(400).json({ message });
       return;
     }
 

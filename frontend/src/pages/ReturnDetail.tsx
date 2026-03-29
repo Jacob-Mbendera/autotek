@@ -27,7 +27,7 @@ import {
   Download,
   Image as ImageIcon,
   Calendar,
-  DollarSign,
+  Banknote,
   FileText,
   RotateCcw,
   ChevronRight,
@@ -513,7 +513,7 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
           <Card className="p-6 sm:p-6">
             <div className="flex items-center gap-2 mb-5">
               <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-teal-600" />
+                <Banknote className="h-5 w-5 text-teal-600" />
               </div>
               <H2 className="text-lg font-semibold text-gray-900">Refund Information</H2>
             </div>
@@ -521,7 +521,7 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
             <div className="space-y-5">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-teal-600" />
+                  <Banknote className="h-5 w-5 text-teal-600" />
                 </div>
                 <div className="min-w-0">
                   <Body className="text-sm text-gray-500">Refund Amount</Body>
@@ -558,7 +558,7 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
                     className="w-full"
                     onClick={() => setAdminActionType('refund')}
                   >
-                    <DollarSign className="h-4 w-4 mr-2" />
+                    <Banknote className="h-4 w-4 mr-2" />
                     Process Refund
                   </Button>
                 )}
