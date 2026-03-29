@@ -146,13 +146,14 @@
 
 **Expected Results:**
 - ✅ Towing booking form shows:
-  - Vehicle Type (input)
-  - Vehicle Model (input)
+  - **Vehicle Type** (text input, required) — e.g. Sedan, SUV, truck (there is **no** separate "Vehicle Make" field)
+  - **Vehicle Model (Optional)** (text input) — e.g. make/model/year in one line
   - Pickup Location (input with map icon)
-  - Pickup Description (input)
+  - Pickup Description (optional)
   - Destination Location (input with map icon)
-  - Destination Description (input)
+  - Destination Description (optional)
   - Additional Notes (textarea - optional)
+- ✅ Backend stores `vehicleType` as `vehicleDetails.make` and `vehicleModel` as `vehicleDetails.model`
 - ✅ Required fields enforce validation when empty
 - ✅ "Submit Service Request" button at bottom
 
@@ -167,14 +168,14 @@
 
 **Steps:**
 1. Fill in the towing service form:
-   - Vehicle Make: `Toyota`
-   - Vehicle Model: `Corolla`
+   - Vehicle Type: `Sedan`
+   - Vehicle Model: `Toyota Corolla`
    - Pickup Location: `Lilongwe City Centre`
    - Pickup Description: `Near Shoprite, next to the blue gate`
-   - Destination: `Area 18`
+   - Destination Location: `Area 18`
    - Destination Description: `Opposite the main market`
    - Notes: `Car won't start, need urgent assistance`
-2. Click "Request Service" button
+2. Click **Submit Service Request**
 3. Wait for response
 
 **Expected Results:**
@@ -202,10 +203,10 @@
 **Expected Results:**
 - ✅ Car service booking form shows:
   - Service Type dropdown (Oil Change, Brake Pads, Tire Rotation, etc.)
-  - Vehicle Type (input)
-  - Vehicle Model (input)
+  - **Vehicle Type** (text input, required)
+  - **Vehicle Model (Optional)** (text input)
   - Service Location (input with map icon)
-  - Location Description (input)
+  - Location Description (optional)
   - Preferred Date (date picker - optional)
   - Preferred Time (time picker - optional)
   - Additional Notes (textarea - optional)
@@ -224,13 +225,13 @@
 **Steps:**
 1. Fill in the car service form:
    - Service Type: `Oil Change`
-   - Vehicle Make: `Honda`
-   - Vehicle Model: `Civic`
-   - Location: `Blantyre`
+   - Vehicle Type: `Sedan`
+   - Vehicle Model: `Honda Civic`
+   - Service Location: `Blantyre`
    - Location Description: `Limbe area, near the industrial site`
    - Preferred Date: Select tomorrow's date
    - Notes: `Please use synthetic oil`
-2. Click "Request Service" button
+2. Click **Submit Service Request**
 3. Wait for response
 
 **Expected Results:**
@@ -298,7 +299,8 @@
   - Payment status badge
   - Vehicle information
   - Location details
-  - Date created
+  - Date requested (created)
+  - For **car services** with a preferred schedule: **Preferred** date and time (when provided at booking)
   - Action buttons (Pay Now, Cancel)
 
 **Test Result:** [ ] Pass [ ] Fail
@@ -371,7 +373,7 @@
 - ✅ Searching "Toyota" shows only towing service with Toyota
 - ✅ Searching "Lilongwe" shows services with Lilongwe in location
 - ✅ Search works on:
-  - Vehicle make/model
+  - Vehicle type and model (and related text on the card)
   - Service type
   - Location names
 - ✅ Search is case-insensitive
@@ -396,7 +398,7 @@ For **Towing Service** card:
 - ✅ Service type: "Towing Service" with truck icon
 - ✅ Status badge (Pending, Assigned, etc.)
 - ✅ Payment status badge (Unpaid/Paid)
-- ✅ Vehicle: Make & Model displayed
+- ✅ Vehicle type and model displayed (from the booking form fields)
 - ✅ Pickup Location displayed
 - ✅ Destination displayed
 - ✅ Estimated Cost shown
@@ -408,7 +410,7 @@ For **Car Service** card:
 - ✅ Status and payment badges
 - ✅ Vehicle info
 - ✅ Service Location
-- ✅ Preferred Date (if provided)
+- ✅ **Preferred** date and time shown when the customer chose a preferred date (and time) at booking
 - ✅ Estimated Cost
 - ✅ Action buttons
 

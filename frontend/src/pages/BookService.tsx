@@ -24,6 +24,16 @@ import {
 import { UserRole } from '@shared/types';
 import type { ServiceType } from '@shared/types';
 
+/** Combine date (YYYY-MM-DD) and optional time (HH:MM) into one ISO datetime for the API. */
+function buildPreferredDateISO(dateStr: string, timeStr: string): string | undefined {
+  const d = dateStr.trim();
+  if (!d) return undefined;
+  const t = timeStr.trim();
+  const timePart = t.length >= 5 ? (t.length === 5 ? `${t}:00` : t) : '12:00:00';
+  const parsed = new Date(`${d}T${timePart}`);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
 export const BookService = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -142,8 +152,7 @@ export const BookService = () => {
             address: location,
           },
           addressDescription: addressDescription || undefined,
-          preferredDate: preferredDate || undefined,
-          preferredTime: preferredTime || undefined,
+          preferredDate: buildPreferredDateISO(preferredDate, preferredTime),
           notes: notes || undefined,
         };
 
@@ -151,8 +160,7 @@ export const BookService = () => {
         dispatch(showNotification({ message: 'Car service request submitted successfully!', type: 'success' }));
       }
 
-      // Redirect to services page or orders
-      navigate('/services');
+      navigate('/my-services');
     } catch (error: any) {
       const errorInfo = getErrorInfo(error, 'Failed to submit service request. Please try again.');
       dispatch(showNotification({

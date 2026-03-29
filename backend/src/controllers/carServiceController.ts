@@ -99,6 +99,8 @@ export const createCarService = async (
     // Geocode address for coordinates
     const coords = await geocodeAddressWithFallback(carService.address);
 
+    const prefCreated = carService.preferredDate ? new Date(carService.preferredDate) : null;
+
     // Transform response to match frontend interface
     const transformed = {
       ...carService.toObject(),
@@ -111,7 +113,10 @@ export const createCarService = async (
       vehicleType: carService.vehicleDetails?.make || '',
       vehicleModel: carService.vehicleDetails?.model,
       estimatedCost: carService.price,
-      preferredTime: carService.preferredDate ? new Date(carService.preferredDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+      preferredDate: prefCreated ? prefCreated.toISOString() : undefined,
+      preferredTime: prefCreated
+        ? prefCreated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : undefined,
     };
 
     res.status(201).json({ service: transformed });
@@ -156,6 +161,7 @@ export const getCarServices = async (
       carServices.map(async (service: any) => {
         const coords = await geocodeAddressWithFallback(service.address);
 
+        const pref = service.preferredDate ? new Date(service.preferredDate) : null;
         return {
           ...service,
           location: {
@@ -167,8 +173,9 @@ export const getCarServices = async (
           vehicleType: service.vehicleDetails?.make || '',
           vehicleModel: service.vehicleDetails?.model,
           estimatedCost: service.price,
-          preferredTime: service.preferredDate
-            ? new Date(service.preferredDate).toLocaleTimeString('en-US', {
+          preferredDate: pref ? pref.toISOString() : undefined,
+          preferredTime: pref
+            ? pref.toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',
               })
@@ -212,6 +219,10 @@ export const getCarService = async (
     // Geocode address for coordinates
     const coords = await geocodeAddressWithFallback((carService as any).address);
 
+    const prefSingle = (carService as any).preferredDate
+      ? new Date((carService as any).preferredDate)
+      : null;
+
     // Transform to match frontend interface
     const transformed = {
       ...carService,
@@ -224,8 +235,9 @@ export const getCarService = async (
       vehicleType: (carService as any).vehicleDetails?.make || '',
       vehicleModel: (carService as any).vehicleDetails?.model,
       estimatedCost: (carService as any).price,
-      preferredTime: (carService as any).preferredDate
-        ? new Date((carService as any).preferredDate).toLocaleTimeString('en-US', {
+      preferredDate: prefSingle ? prefSingle.toISOString() : undefined,
+      preferredTime: prefSingle
+        ? prefSingle.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
           })

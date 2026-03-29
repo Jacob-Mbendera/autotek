@@ -10,14 +10,18 @@ export interface TowingService {
     latitude: number;
     longitude: number;
     address: string;
+    description?: string;
   };
   destination?: {
     latitude: number;
     longitude: number;
     address: string;
+    description?: string;
   };
   status: ServiceStatus;
   estimatedCost?: number;
+  payment?: string;
+  paymentStatus: 'pending' | 'completed' | 'failed';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -33,11 +37,14 @@ export interface CarService {
     latitude: number;
     longitude: number;
     address: string;
+    description?: string;
   };
   preferredDate?: string;
   preferredTime?: string;
   status: ServiceStatus;
   estimatedCost?: number;
+  payment?: string;
+  paymentStatus: 'pending' | 'completed' | 'failed';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -51,11 +58,13 @@ interface CreateTowingServiceRequest {
     longitude: number;
     address: string;
   };
+  pickupDescription?: string;
   destination?: {
     latitude: number;
     longitude: number;
     address: string;
   };
+  destinationDescription?: string;
   notes?: string;
 }
 
@@ -68,8 +77,8 @@ interface CreateCarServiceRequest {
     longitude: number;
     address: string;
   };
+  addressDescription?: string;
   preferredDate?: string;
-  preferredTime?: string;
   notes?: string;
 }
 
@@ -181,6 +190,26 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['CarService', 'Admin'],
     }),
+    cancelTowingService: builder.mutation<
+      { message: string; service: TowingService; refund: any },
+      string
+    >({
+      query: (id) => ({
+        url: `/towing/${id}/cancel`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['TowingService'],
+    }),
+    cancelCarService: builder.mutation<
+      { message: string; service: CarService; refund: any },
+      string
+    >({
+      query: (id) => ({
+        url: `/car-services/${id}/cancel`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['CarService'],
+    }),
   }),
 });
 
@@ -193,4 +222,6 @@ export const {
   useGetCarServiceQuery,
   useUpdateTowingServiceMutation,
   useUpdateCarServiceMutation,
+  useCancelTowingServiceMutation,
+  useCancelCarServiceMutation,
 } = serviceApi;
