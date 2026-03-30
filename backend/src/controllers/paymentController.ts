@@ -29,6 +29,87 @@ const normalizeRedirectUrl = (url: string | undefined, fallbackUrl: string): str
   }
 };
 
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Resolve payment from PayChangu tx_ref without broad regex (e.g. matching only "TOWING"),
+ * which could mark the wrong payment complete and leave the customer's service unpaid.
+ */
+async function findPaymentByTxRef(txRefRaw: string) {
+  const trimmed = String(txRefRaw).trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  let payment = await Payment.findOne({ transactionId: trimmed });
+  if (payment) {
+    return payment;
+  }
+
+  payment = await Payment.findOne({
+    transactionId: new RegExp(`^${escapeRegex(trimmed)}$`, 'i'),
+  });
+  if (payment) {
+    return payment;
+  }
+
+  const oidMatch = trimmed.match(/([a-f0-9]{24})/i);
+  if (!oidMatch) {
+    return null;
+  }
+
+  const entityId = oidMatch[1];
+
+  payment = await Payment.findOne({
+    $or: [{ order: entityId }, { towingService: entityId }, { carService: entityId }],
+    status: PaymentStatus.PENDING,
+  }).sort({ createdAt: -1 });
+
+  if (payment) {
+    return payment;
+  }
+
+  return Payment.findOne({
+    $or: [{ order: entityId }, { towingService: entityId }, { carService: entityId }],
+    status: PaymentStatus.COMPLETED,
+  }).sort({ createdAt: -1 });
+}
+
+/** Keep order / service paymentStatus in sync when payment is already completed (idempotent). */
+async function syncCompletedPaymentToRelatedEntities(payment: {
+  _id: unknown;
+  type: string;
+  order?: unknown;
+  towingService?: unknown;
+  carService?: unknown;
+}): Promise<void> {
+  if (payment.type === 'order' && payment.order) {
+    const order = await Order.findById(payment.order);
+    if (order && order.paymentStatus !== PaymentStatus.COMPLETED) {
+      order.paymentStatus = PaymentStatus.COMPLETED;
+      await order.save();
+    }
+  } else if (payment.type === 'towing' && payment.towingService) {
+    const towingService = await TowingService.findById(payment.towingService);
+    if (towingService && towingService.paymentStatus !== 'completed') {
+      towingService.paymentStatus = 'completed';
+      if (!towingService.payment) {
+        towingService.payment = payment._id as any;
+      }
+      await towingService.save();
+    }
+  } else if (payment.type === 'car-service' && payment.carService) {
+    const carService = await CarService.findById(payment.carService);
+    if (carService && carService.paymentStatus !== 'completed') {
+      carService.paymentStatus = 'completed';
+      if (!carService.payment) {
+        carService.payment = payment._id as any;
+      }
+      await carService.save();
+    }
+  }
+}
+
 export const initiatePaymentRequest = async (
   req: AuthRequest,
   res: Response
@@ -488,16 +569,17 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
         payment = await Payment.findOne({ order: order._id });
       }
     } else if (tx_ref) {
-      payment = await Payment.findOne({
-        $or: [
-          { transactionId: tx_ref },
-          { transactionId: { $regex: String(tx_ref).split('_')[0] } }
-        ]
-      });
+      payment = await findPaymentByTxRef(tx_ref);
     }
 
     if (!payment) {
       res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    if (payment.status === PaymentStatus.COMPLETED) {
+      await syncCompletedPaymentToRelatedEntities(payment);
+      res.json({ verified: true, payment });
       return;
     }
 
@@ -533,33 +615,7 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
 
     // Update payment status to completed (user reached success page from PayChangu)
     payment.status = PaymentStatus.COMPLETED;
-
-    // Update related entity
-    if (payment.type === 'order' && payment.order) {
-      const order = await Order.findById(payment.order);
-      if (order) {
-        order.paymentStatus = PaymentStatus.COMPLETED;
-        await order.save();
-      }
-    } else if (payment.type === 'towing' && payment.towingService) {
-      const towingService = await TowingService.findById(payment.towingService);
-      if (towingService) {
-        towingService.paymentStatus = 'completed';
-        if (!towingService.payment) {
-          towingService.payment = payment._id;
-        }
-        await towingService.save();
-      }
-    } else if (payment.type === 'car-service' && payment.carService) {
-      const carService = await CarService.findById(payment.carService);
-      if (carService) {
-        carService.paymentStatus = 'completed';
-        if (!carService.payment) {
-          carService.payment = payment._id;
-        }
-        await carService.save();
-      }
-    }
+    await syncCompletedPaymentToRelatedEntities(payment);
 
     await payment.save();
 

@@ -5,9 +5,11 @@ import {
   useGetTowingServiceQuery,
   useGetCarServiceQuery,
 } from '../store/api/serviceApi';
+import { baseApi } from '../store/api/baseApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+import { getResolvedFrontendBaseUrl } from '../utils/frontendBaseUrl';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, H2, Body } from '../components/ui/Typography';
@@ -44,20 +46,6 @@ export const ServicePayment = () => {
 
   const loadError = towingServiceId ? towingQuery.isError : carQuery.isError;
 
-  const getFrontendBaseUrl = () => {
-    const configuredBaseUrl = import.meta.env.VITE_BASE_URL?.trim();
-    if (configuredBaseUrl) {
-      return configuredBaseUrl.replace(/\/$/, '');
-    }
-
-    const currentOrigin = window.location.origin;
-    if (import.meta.env.DEV && /^http:\/\/localhost(?::\d+)?$/.test(currentOrigin)) {
-      return 'http://localhost:5173';
-    }
-
-    return currentOrigin;
-  };
-
   useEffect(() => {
     if (!towingServiceId && !carServiceId) {
       navigate('/my-services');
@@ -90,7 +78,7 @@ export const ServicePayment = () => {
   const handlePayment = async () => {
     if (!canPay) return;
     try {
-      const baseUrl = getFrontendBaseUrl();
+      const baseUrl = getResolvedFrontendBaseUrl();
       const paymentData: {
         paymentMethod: PaymentMethod;
         returnUrl: string;
@@ -123,6 +111,24 @@ export const ServicePayment = () => {
       }
     } catch (error: unknown) {
       const errorInfo = getErrorInfo(error, 'Payment could not be started. Please try again.');
+      const lower = errorInfo.message.toLowerCase();
+      if (lower.includes('already initiated')) {
+        const refetchResult = towingServiceId
+          ? await towingQuery.refetch()
+          : await carQuery.refetch();
+        const svc = refetchResult.data?.service;
+        if (svc?.paymentStatus === 'completed') {
+          dispatch(baseApi.util.invalidateTags(['TowingService', 'CarService', 'Admin']));
+          dispatch(
+            showNotification({
+              message: 'This booking is already paid. Returning to My Services.',
+              type: 'success',
+            })
+          );
+          navigate('/my-services', { replace: true });
+          return;
+        }
+      }
       dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
@@ -143,8 +149,16 @@ export const ServicePayment = () => {
 
         <Card className="p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-blue-600 rounded-full mb-4">
-              <CreditCard className="w-8 h-8 text-white" />
+            <div className="flex justify-center mb-4">
+              <img
+                src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771506/autotek/payment%20methods/tag2-C4qnl2U7_znxdld.png"
+                alt="Accepted payment methods"
+                className="max-w-full h-auto max-h-28 sm:max-h-32 object-contain mx-auto"
+                width={320}
+                height={120}
+                loading="eager"
+                decoding="async"
+              />
             </div>
             <H1 className="text-3xl font-bold text-gray-900 mb-2">Pay for Service</H1>
             <Body className="text-gray-600">{pageSubtitle}</Body>
@@ -209,18 +223,23 @@ export const ServicePayment = () => {
               )}
             </Button>
 
-            <div className="text-center">
-              <Body className="text-sm text-gray-500">
-                Powered by{' '}
-                <a
-                  href="https://paychangu.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-teal-600 hover:text-teal-700 font-medium"
-                >
-                  PayChangu
-                </a>
-              </Body>
+            <div className="flex justify-center pt-1">
+              <a
+                href="https://paychangu.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 rounded"
+              >
+                <img
+                  src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771506/autotek/payment%20methods/tag1-i7EnK4XQ_qpo7qy.png"
+                  alt="PayChangu — secure payments"
+                  className="max-w-full h-auto max-h-14 sm:max-h-16 object-contain"
+                  width={280}
+                  height={64}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </a>
             </div>
           </div>
         </Card>

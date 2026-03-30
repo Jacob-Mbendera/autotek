@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGetAllServicesQuery, useGetProvidersForAssignmentQuery } from '../../store/api/adminApi';
 import { useUpdateTowingServiceMutation, useUpdateCarServiceMutation } from '../../store/api/serviceApi';
 import { useAppDispatch } from '../../store/types';
@@ -47,13 +47,26 @@ export const AdminServices = () => {
   const [updateTowingService, { isLoading: isUpdatingTowing }] = useUpdateTowingServiceMutation();
   const [updateCarService, { isLoading: isUpdatingCar }] = useUpdateCarServiceMutation();
 
-  const { data, isLoading, refetch } = useGetAllServicesQuery({
-    page,
-    limit,
-    status: statusFilter || undefined,
-    type: typeFilter || undefined,
-    search: searchTerm || undefined,
-  });
+  const { data, isLoading, refetch } = useGetAllServicesQuery(
+    {
+      page,
+      limit,
+      status: statusFilter || undefined,
+      type: typeFilter || undefined,
+      search: searchTerm || undefined,
+    },
+    { refetchOnFocus: true, refetchOnReconnect: true }
+  );
+
+  useEffect(() => {
+    if (!data?.services?.length) return;
+    setSelectedService((prev) => {
+      if (!prev?._id) return prev;
+      const fresh = (data.services as { _id: string }[]).find((s) => s._id === prev._id);
+      if (!fresh) return prev;
+      return { ...prev, ...fresh };
+    });
+  }, [data?.services]);
 
   // Set newStatus when service is selected
   const handleServiceSelect = (service: any) => {
@@ -156,16 +169,17 @@ export const AdminServices = () => {
     }
 
     try {
+      let updated: Record<string, unknown>;
       if (selectedService.type === 'towing') {
-        await updateTowingService({
+        updated = (await updateTowingService({
           id: selectedService._id,
           price: n,
-        }).unwrap();
+        }).unwrap()) as Record<string, unknown>;
       } else {
-        await updateCarService({
+        updated = (await updateCarService({
           id: selectedService._id,
           price: n,
-        }).unwrap();
+        }).unwrap()) as Record<string, unknown>;
       }
 
       dispatch(
@@ -175,7 +189,12 @@ export const AdminServices = () => {
         })
       );
       await refetch();
-      setSelectedService({ ...selectedService, price: n });
+      setSelectedService({
+        ...selectedService,
+        price: n,
+        paymentStatus: (updated.paymentStatus as string) ?? selectedService.paymentStatus,
+        updatedAt: (updated.updatedAt as string) ?? selectedService.updatedAt,
+      });
       setPriceMwInput(String(n));
     } catch (error: any) {
       const errorInfo = getErrorInfo(error, 'Failed to save price');

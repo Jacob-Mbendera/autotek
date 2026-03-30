@@ -16,7 +16,8 @@
 7. [Part 6: Edge Cases & Error Handling](#part-6-edge-cases--error-handling)
 8. [Part 7: Admin Guardrails](#part-7-admin-guardrails-3-tests)
 9. [Part 8: Admin Service Pricing & Quote Requests](#part-8-admin-service-pricing--quote-requests)
-10. [Test Results Summary](#test-results-summary)
+10. [Part 9: Admin Providers, Assignment, ETA, Ratings & Payouts](#part-9-admin-providers-assignment-eta-ratings--payouts)
+11. [Test Results Summary](#test-results-summary)
 
 ---
 
@@ -437,7 +438,9 @@ For **Towing Service** card:
 - ✅ When pin was used, card can show pickup/destination pin coordinates and location source method
 - ✅ **Requested** and **Last updated** with date and time
 - ✅ **MWK** badge and numeric price only when `estimatedCost` is set; otherwise **Price not set yet** (no MWK badge)
-- ✅ **Assigned driver** name (and phone if API provides it) when populated
+- ✅ **Assigned driver** name and phone when populated; **Garage:** line when API includes nested `garage.name`
+- ✅ **Estimated arrival** line when admin set `estimatedArrivalAt` (ETA)
+- ✅ **Rate provider:** buttons (1–5) when status is **Completed** and a driver was assigned (one submission per service)
 - ✅ Action buttons visible when rules allow (Pay Now, Cancel)
 
 For **Car Service** card:
@@ -448,7 +451,8 @@ For **Car Service** card:
 - ✅ **Requested** / **Last updated** date-time
 - ✅ **Preferred** date and time when provided at booking
 - ✅ **Price not set yet** or **MWK** + amount when quoted
-- ✅ **Assigned mechanic** when populated
+- ✅ **Assigned mechanic** with name/phone; **Garage:** when provided; **Estimated arrival** when set
+- ✅ **Rate provider** when **Completed** and mechanic assigned
 - ✅ Action buttons
 
 **Test Result:** [ ] Pass [ ] Fail
@@ -474,7 +478,8 @@ For **Car Service** card:
 **Expected Results:**
 - ✅ Login succeeds and a Bearer token is printed as OK
 - ✅ Authenticated **GET /api/towing** returns `services` array (your user only); each item includes `vehicleType`, `vehicleModel`, `location` (with lat/lng/address), `destination` when applicable, `status`, `paymentStatus`, `updatedAt`, `estimatedCost` (or `price` in raw docs — UI uses `estimatedCost` after transform)
-- ✅ When admin has assigned someone, `assignedDriver` is an object with `name` (and optionally `phone`), not only an id string
+- ✅ When admin has assigned a **ServiceProvider**, `assignedDriver` / `assignedMechanic` is an object with `name`, optional `phone`, optional nested `garage` (`name`, `town`), not only an id string
+- ✅ When ETA was set, list items may include `estimatedArrivalAt` (ISO) on towing/car responses
 - ✅ Authenticated **GET /api/car-services** includes `vehicleType`, `vehicleModel`, `location`, `preferredDate` / `preferredTime` when set, `assignedMechanic` when populated, `updatedAt`, `estimatedCost`
 - ✅ Unauthenticated **GET /api/towing** returns `services: []` (privacy)
 - ✅ Optional: authenticated list responses may include `quoteMobilePhone`, `quoteWhatsAppPhone`, `quoteRequestSubmittedAt`, `quoteRequestNotes` after a quote request (Test 3.7)
@@ -611,12 +616,12 @@ Run **Test 4.0 (curl)** before browser tests when validating backend changes. Al
 - ✅ Page title: "Pay for Service" (or current equivalent)
 - ✅ When priced: total shown in **MWK**; **Proceed to Payment** enabled
 - ✅ When not priced: clear state (e.g. gray panel) that quote is required; **Proceed** disabled — user cannot start PayChangu without an amount
-- ✅ PayChangu logo/branding visible when flow is available
+- ✅ **Payment branding:** header area shows the **payment methods** graphic (Cloudinary asset); card footer shows the **PayChangu** tag image (linked to paychangu.com). Secure-payment blurb still names PayChangu in text
 - ✅ Security assurance message when paying:
-  - "Secure Payment"
+  - "Secure Payment" with a **generic** shield-style icon (lucide), not a PayChangu logo
   - "Your payment is processed securely through PayChangu..."
 - ✅ "Back to My Services" link
-- ✅ Payment method indicator (card, mobile money, bank)
+- ✅ Primary CTA: **Proceed to Payment** (PayChangu checkout opens after redirect; method choice happens on PayChangu, not as separate card/Mobile Money/Bank toggles on this page)
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -647,6 +652,7 @@ Run **Test 4.0 (curl)** before browser tests when validating backend changes. Al
 - ✅ Service payment status updates to "Paid"
 - ✅ Can view updated service in /my-services
 - ✅ Email confirmation sent (check console logs if in dev)
+- ✅ If a **provider was assigned** before payment, **Part 9.7** (Admin → Providers → Payouts) should show a **pending** MWK payout row for reconciliation
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -1005,6 +1011,146 @@ Use **Admin**: `admintest@autotek.com` / `Admin123456`. Customer quote requests 
 
 ---
 
+## Part 9: Admin Providers, Assignment, ETA, Ratings & Payouts (7 Tests)
+
+**Prerequisites:** Admin `admintest@autotek.com` / `Admin123456`; customer `testuser@autotek.com` / `Test123456`. Backend **5000**, frontend **5173**. Complete **Part 2** (or have existing services) before assignment tests.
+
+**Order suggestion:** Run **9.1 → 9.2** first (data setup), then **9.3** with a real service, then **9.4** as customer, **9.5–9.6** (curl) anytime, **9.7** after a successful **Part 4** payment with a provider already assigned.
+
+### Test 9.1: Admin – create a garage (Providers page)
+
+**Purpose:** Register a partner garage used for drivers/mechanics.
+
+**Steps:**
+1. Login as admin; open **Admin → Providers** (`/admin/providers`).
+2. Open the **Garages** tab; click **Add garage**.
+3. Enter **Name**, **Contact phone**, **Town**; optional email; set verification if needed; save.
+
+**Expected Results:**
+- ✅ Success notification; garage appears in the table
+- ✅ Backend: `POST /api/admin/garages` returns **201** with `_id`, `name`, `town`, `verificationStatus`
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 9.2: Admin – add and vet drivers / mechanics
+
+**Purpose:** Only **vetted** providers appear in the assignment dropdown.
+
+**Steps:**
+1. On **Providers**, **Drivers** tab → **Add driver**; select the garage from 9.1; fill name and phone.
+2. If created as **Pending review**, click **Mark vetted** (or create with vetting **Vetted** in the form).
+3. Repeat on **Mechanics** tab for at least one mechanic.
+
+**Expected Results:**
+- ✅ Driver and mechanic rows show **vetted** (or become vetted after action)
+- ✅ `GET /api/admin/service-providers/for-assignment?providerType=driver` (and `mechanic`) lists them with **activeAssignmentCount**
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 9.3: Admin – assign provider and ETA (Services modal)
+
+**Purpose:** Link a service to a vetted provider and optional customer-visible ETA.
+
+**Steps:**
+1. **Admin → Services**; open a **pending** towing or car service (customer-owned).
+2. In **Assign provider & ETA**, choose a driver (towing) or mechanic (car); set optional **Estimated arrival** (datetime); click **Save assignment & ETA**.
+3. Use **Status** → **Assigned** (or **In progress**) and **Update Status** if the workflow requires it (save is separate from assignment in the UI).
+
+**Expected Results:**
+- ✅ Success toast; modal reflects populated assignee after refetch
+- ✅ Wrong-type assignment blocked by API (mechanic id on towing → **400**; driver id on car → **400**) if tested via API
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 9.4: Customer – garage, ETA, and rate provider (My Services)
+
+**Purpose:** Customer sees structured assignee data and can rate after completion.
+
+**Steps:**
+1. As **customer**, open **My Services** for the service from 9.3.
+2. Confirm **Assigned driver/mechanic**, phone, **Garage:** line, and **Estimated arrival** when set.
+3. As **admin**, set the same service status to **Completed** (Services modal).
+4. As **customer**, refresh **My Services**; use **Rate provider:** (1–5). Try a second rating.
+
+**Expected Results:**
+- ✅ First rating succeeds (toast / message)
+- ✅ Second rating shows error (already rated)
+- ✅ Rating before **Completed** is rejected if you test that edge case
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 9.5: Backend – assignment guardrails (curl)
+
+**Purpose:** Confirm type checks on `PUT` assignment.
+
+**Steps:**
+1. Admin JWT; IDs for a **mechanic** `ServiceProvider` and a **towing** service.
+2. Call `PUT /api/towing/<TOWING_ID>` with **`assignedDriver`** set to the **mechanic** id (wrong type for towing):
+   ```bash
+   ATOKEN="<admin JWT>"
+   BASE="http://localhost:5000/api"
+   curl -s -w "\nHTTP:%{http_code}\n" -X PUT "$BASE/towing/<TOWING_ID>" \
+     -H "Authorization: Bearer $ATOKEN" -H "Content-Type: application/json" \
+     -d '{"assignedDriver":"<MECHANIC_PROVIDER_ID>"}'
+   ```
+3. Expect **400** and message about driver vs mechanic.
+
+**Expected Results:**
+- ✅ **400** for wrong provider type
+- ✅ **200** when `assignedDriver` is a vetted **driver** `ServiceProvider` id
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 9.6: Backend – provider rating (curl)
+
+**Purpose:** Validate rating rules independent of the UI.
+
+**Steps:**
+1. Customer JWT; towing id **not** completed → `POST /api/towing/<id>/provider-rating` with `{"rating":5}` → expect **400**.
+2. Admin sets service **completed**; same `POST` → **200** and `message` thanks.
+3. Repeat `POST` → **400** duplicate.
+
+**Expected Results:**
+- ✅ Matches lifecycle: complete → rate once → duplicate blocked
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
+### Test 9.7: Admin – service payouts (MWK) after paid job
+
+**Purpose:** After payment completes, a **pending** payout row exists when a provider was assigned.
+
+**Steps:**
+1. Ensure a service has **assigned** provider, **price** set, customer **pays** successfully (**Part 4** / Test 4.4).
+2. **Admin → Providers → Payouts** tab: confirm a row with **Amount (MWK)**, garage, **pending** status.
+3. Optional: **Mark paid** and confirm status updates.
+
+**Expected Results:**
+- ✅ At least one payout record when payment completed + provider on file (if no provider, list may stay empty — document in notes)
+- ✅ `GET /api/admin/service-payouts` returns `payouts` array for admin
+
+**Test Result:** [ ] Pass [ ] Fail
+**Notes:**
+
+---
+
 ### Roadmap Note: Live towing tracking (Post-deployment expansion)
 
 **Current scope (now):**
@@ -1023,9 +1169,9 @@ Use **Admin**: `admintest@autotek.com` / `Admin123456`. Customer quote requests 
 
 **Testing Date:** _________________
 **Tester Name:** _________________
-**Total Tests:** 36
-**Tests Passed:** _____ / 36
-**Tests Failed:** _____ / 36
+**Total Tests:** 43
+**Tests Passed:** _____ / 43
+**Tests Failed:** _____ / 43
 **Pass Rate:** _____ %
 
 ### Results by Category
@@ -1040,6 +1186,7 @@ Use **Admin**: `admintest@autotek.com` / `Admin123456`. Customer quote requests 
 | Part 6: Edge Cases | 5 | ___ | ___ | ___ % |
 | Part 7: Admin Guardrails | 3 | ___ | ___ | ___ % |
 | Part 8: Admin Pricing & Quotes | 3 | ___ | ___ | ___ % |
+| Part 9: Providers, Assignment, ETA, Ratings, Payouts | 7 | ___ | ___ | ___ % |
 
 ### Critical Issues Found
 

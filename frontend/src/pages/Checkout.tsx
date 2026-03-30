@@ -8,6 +8,7 @@ import { clearCart, removeCoupon } from '../store/slices/cartSlice';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+import { getResolvedFrontendBaseUrl } from '../utils/frontendBaseUrl';
 import { UserRole } from '@shared/types';
 import type { PaymentMethod } from '../../../shared/types';
 import { Button } from '../components/ui/Button';
@@ -42,20 +43,6 @@ export const Checkout = () => {
   const [currentStep, setCurrentStep] = useState(1);
   
   const isLoading = isCreatingOrder || isInitiatingPayment;
-
-  const getFrontendBaseUrl = () => {
-    const configuredBaseUrl = import.meta.env.VITE_BASE_URL?.trim();
-    if (configuredBaseUrl) {
-      return configuredBaseUrl.replace(/\/$/, '');
-    }
-
-    const currentOrigin = window.location.origin;
-    if (import.meta.env.DEV && /^http:\/\/localhost(?::\d+)?$/.test(currentOrigin)) {
-      return 'http://localhost:5173';
-    }
-
-    return currentOrigin;
-  };
 
   useEffect(() => {
     if (user?.role === UserRole.ADMIN) {
@@ -241,7 +228,7 @@ export const Checkout = () => {
       if (paymentMethod === PAYMENT_METHOD_PAYCHANGU) {
         // Use authenticated user email if account was created, otherwise use guest email
         const emailForUrl = orderResult.user?.email || guestEmail.trim();
-        const frontendBaseUrl = getFrontendBaseUrl();
+        const frontendBaseUrl = getResolvedFrontendBaseUrl();
         const returnUrl = `${frontendBaseUrl}/payment/success?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
         const cancelUrl = `${frontendBaseUrl}/payment/cancel?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
         

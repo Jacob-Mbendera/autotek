@@ -3,12 +3,22 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '../store/types';
 import { useGetOrderQuery } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/api/paymentApi';
+import { baseApi } from '../store/api/baseApi';
 import { clearCart } from '../store/slices/cartSlice';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
-import { CheckCircle, Package, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle, Package, Loader2, Truck, Wrench } from 'lucide-react';
 import { PaymentStatus } from '@shared/types';
+
+type ServiceVerifyState = 'idle' | 'loading' | 'success' | 'error';
+
+interface ServicePaymentSummary {
+  amount: number;
+  type: string;
+  status: string;
+  transactionId?: string;
+}
 
 export const PaymentSuccess = () => {
   const navigate = useNavigate();
@@ -16,23 +26,30 @@ export const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const email = searchParams.get('email');
+  const txRef = searchParams.get('tx_ref');
+
+  const isOrderPayment = Boolean(orderId);
+  const isServicePaymentReturn = Boolean(txRef) && !orderId;
+
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const maxVerificationAttempts = 5;
   const hasClearedCartRef = useRef(false);
+
+  const [serviceVerifyState, setServiceVerifyState] = useState<ServiceVerifyState>('idle');
+  const [servicePaymentSummary, setServicePaymentSummary] = useState<ServicePaymentSummary | null>(
+    null
+  );
 
   const { data: orderData, isLoading: isLoadingOrder, error: orderError } = useGetOrderQuery(
     { id: orderId || '', email: email || undefined },
     { skip: !orderId }
   );
 
-  // Get payment associated with order - refetch every 3 seconds if pending
-  const { data: paymentData, isLoading: isLoadingPayment, refetch: refetchPayment } = useGetPaymentByOrderQuery(
-    orderId || '',
-    { skip: !orderId }
-  );
+  const { data: paymentData, isLoading: isLoadingPayment, refetch: refetchPayment } =
+    useGetPaymentByOrderQuery(orderId || '', { skip: !orderId });
 
-  const [verifyPayment, { isLoading: isVerifying }] = useVerifyPaymentMutation();
+  const [verifyPayment] = useVerifyPaymentMutation();
 
   const clearCartOnce = () => {
     if (!hasClearedCartRef.current) {
@@ -42,43 +59,87 @@ export const PaymentSuccess = () => {
   };
 
   useEffect(() => {
-    if (!orderId) {
+    if (!isOrderPayment && !isServicePaymentReturn) {
       navigate('/');
+    }
+  }, [isOrderPayment, isServicePaymentReturn, navigate]);
+
+  useEffect(() => {
+    if (!isServicePaymentReturn || !txRef) {
       return;
     }
 
-    // For PayChangu payments, automatically verify when user lands on success page
-    const txRef = searchParams.get('tx_ref');
+    setServiceVerifyState('loading');
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const url = `${apiBase}/payments/verify-txref?tx_ref=${encodeURIComponent(txRef)}`;
+
+    fetch(url)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || 'Verification failed');
+        }
+        if (data?.verified || data?.payment?.status === PaymentStatus.COMPLETED) {
+          const p = data.payment;
+          setServicePaymentSummary({
+            amount: p?.amount ?? 0,
+            type: p?.type ?? 'service',
+            status: p?.status ?? PaymentStatus.COMPLETED,
+            transactionId: p?.transactionId,
+          });
+          setServiceVerifyState('success');
+          dispatch(
+            baseApi.util.invalidateTags(['TowingService', 'CarService', 'Payment', 'Admin'])
+          );
+        } else {
+          setServiceVerifyState('error');
+        }
+      })
+      .catch((err) => {
+        if (import.meta.env.DEV) {
+          console.error('Service payment verify error:', err);
+        }
+        setServiceVerifyState('error');
+      });
+  }, [isServicePaymentReturn, txRef, dispatch]);
+
+  useEffect(() => {
+    if (!isOrderPayment || !orderId) {
+      return;
+    }
+
     if (txRef || orderId) {
-      // Call verify endpoint to mark payment as complete
-      fetch(`${import.meta.env.VITE_API_URL}/payments/verify-txref?orderId=${orderId}${txRef ? `&tx_ref=${txRef}` : ''}`)
-        .then(res => res.json())
+      fetch(
+        `${import.meta.env.VITE_API_URL}/payments/verify-txref?orderId=${orderId}${
+          txRef ? `&tx_ref=${encodeURIComponent(txRef)}` : ''
+        }`
+      )
+        .then((res) => res.json())
         .then((data) => {
           if (data?.verified || data?.payment?.status === PaymentStatus.COMPLETED) {
             setPaymentVerified(true);
             clearCartOnce();
           }
-          // Refetch payment after verification
           setTimeout(() => refetchPayment(), 1000);
         })
-        .catch(err => {
-          if (process.env.NODE_ENV === 'development') {
+        .catch((err) => {
+          if (import.meta.env.DEV) {
             console.error('Auto-verification error:', err);
           }
         });
     }
 
-    // Verify payment status
     if (paymentData?.payment) {
       const payment = paymentData.payment;
       if (payment.status === PaymentStatus.COMPLETED) {
         setPaymentVerified(true);
         clearCartOnce();
       } else if (payment.status === PaymentStatus.FAILED) {
-        // Payment failed, redirect to cancel page
         navigate(`/payment/cancel?orderId=${orderId}`);
-      } else if (payment.status === PaymentStatus.PENDING && verificationAttempts < maxVerificationAttempts) {
-        // For PayChangu, payment might be pending - try to verify
+      } else if (
+        payment.status === PaymentStatus.PENDING &&
+        verificationAttempts < maxVerificationAttempts
+      ) {
         const verifyTimer = setTimeout(async () => {
           try {
             const verifyResult = await verifyPayment(payment._id).unwrap();
@@ -86,24 +147,33 @@ export const PaymentSuccess = () => {
               setPaymentVerified(true);
               clearCartOnce();
             }
-            setVerificationAttempts(prev => prev + 1);
+            setVerificationAttempts((prev) => prev + 1);
             refetchPayment();
           } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-            console.error('Payment verification error:', error);
+            if (import.meta.env.DEV) {
+              console.error('Payment verification error:', error);
             }
-            setVerificationAttempts(prev => prev + 1);
+            setVerificationAttempts((prev) => prev + 1);
           }
         }, 2000);
 
         return () => clearTimeout(verifyTimer);
       }
     }
-  }, [orderId, paymentData, dispatch, navigate, verifyPayment, refetchPayment, verificationAttempts]);
+  }, [
+    isOrderPayment,
+    orderId,
+    txRef,
+    paymentData,
+    dispatch,
+    navigate,
+    verifyPayment,
+    refetchPayment,
+    verificationAttempts,
+  ]);
 
-  // Poll for payment status if still pending
   useEffect(() => {
-    if (!paymentData?.payment || paymentData.payment.status !== PaymentStatus.PENDING) {
+    if (!orderId || !paymentData?.payment || paymentData.payment.status !== PaymentStatus.PENDING) {
       return;
     }
 
@@ -116,10 +186,100 @@ export const PaymentSuccess = () => {
     }, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [paymentData, refetchPayment, verificationAttempts]);
+  }, [orderId, paymentData, refetchPayment, verificationAttempts]);
 
-  if (!orderId) {
+  if (!isOrderPayment && !isServicePaymentReturn) {
     return null;
+  }
+
+  if (isServicePaymentReturn) {
+    if (serviceVerifyState === 'loading' || serviceVerifyState === 'idle') {
+      return (
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <Card variant="md" className="text-center">
+            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
+            <Body className="text-gray-600">Confirming your service payment...</Body>
+          </Card>
+        </div>
+      );
+    }
+
+    if (serviceVerifyState === 'error') {
+      return (
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <Card variant="md" className="text-center">
+            <H1 className="text-2xl mb-4 text-amber-800">Could not confirm payment</H1>
+            <Body className="text-gray-600 mb-6">
+              If you completed payment, your booking may still update in a moment. Check My Services or
+              contact support with your transaction reference.
+            </Body>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button variant="primary" onClick={() => navigate('/my-services')}>
+                My Services
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/')}>
+                Home
+              </Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    const serviceLabel =
+      servicePaymentSummary?.type === 'towing'
+        ? 'Towing'
+        : servicePaymentSummary?.type === 'car-service'
+          ? 'Garage / workshop'
+          : 'Service';
+
+    const ServiceIcon = servicePaymentSummary?.type === 'towing' ? Truck : Wrench;
+
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Card variant="md" className="text-center">
+          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+          <H1 className="text-3xl font-bold text-gray-900 mb-2">Payment successful</H1>
+          <Body className="text-gray-600 mb-6">
+            Thank you. Your service payment in Malawi Kwacha (MWK) was received.
+          </Body>
+
+          {servicePaymentSummary && (
+            <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
+              <div className="flex items-center gap-2 mb-4">
+                <ServiceIcon className="h-5 w-5 text-teal-600" />
+                <H1 className="text-xl font-semibold">{serviceLabel}</H1>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount paid</span>
+                  <span className="font-medium text-gray-900">
+                    MWK {Number(servicePaymentSummary.amount).toLocaleString()}
+                  </span>
+                </div>
+                {servicePaymentSummary.transactionId && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Reference</span>
+                    <span className="font-medium text-gray-900 font-mono text-xs break-all text-right max-w-[65%]">
+                      {servicePaymentSummary.transactionId}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button variant="primary" onClick={() => navigate('/my-services')}>
+              View My Services
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/services')}>
+              Browse services
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   if (isLoadingOrder || isLoadingPayment) {
@@ -201,7 +361,11 @@ export const PaymentSuccess = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
                 <span className="font-medium text-green-600 capitalize">
-                  {paymentVerified ? 'Paid' : payment?.status === PaymentStatus.PENDING ? 'Verifying...' : 'Processing'}
+                  {paymentVerified
+                    ? 'Paid'
+                    : payment?.status === PaymentStatus.PENDING
+                      ? 'Verifying...'
+                      : 'Processing'}
                 </span>
               </div>
               {payment?.transactionId && (

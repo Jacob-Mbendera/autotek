@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useGetTowingServicesQuery,
@@ -165,9 +165,38 @@ export const MyServices = () => {
     whatsApp?: string;
   }>({});
 
-  // Fetch services
-  const { data: towingData, isLoading: isLoadingTowing } = useGetTowingServicesQuery();
-  const { data: carData, isLoading: isLoadingCar } = useGetCarServicesQuery();
+  const [servicesPollMs, setServicesPollMs] = useState(0);
+  const servicesListQueryOpts = useMemo(
+    () => ({
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      pollingInterval: servicesPollMs,
+    }),
+    [servicesPollMs]
+  );
+
+  const { data: towingData, isLoading: isLoadingTowing } =
+    useGetTowingServicesQuery(undefined, servicesListQueryOpts);
+  const { data: carData, isLoading: isLoadingCar } =
+    useGetCarServicesQuery(undefined, servicesListQueryOpts);
+
+  const pollTargetRef = useRef(0);
+  useEffect(() => {
+    const awaitingPrice = (s: TowingService | CarService) =>
+      s.paymentStatus === 'pending' &&
+      s.status !== 'cancelled' &&
+      s.status !== 'completed' &&
+      (s.estimatedCost == null || s.estimatedCost <= 0);
+
+    const needPoll =
+      (towingData?.services ?? []).some(awaitingPrice) ||
+      (carData?.services ?? []).some(awaitingPrice);
+    const next = needPoll ? 25000 : 0;
+    if (pollTargetRef.current !== next) {
+      pollTargetRef.current = next;
+      setServicesPollMs(next);
+    }
+  }, [towingData, carData]);
 
   // Cancel mutations
   const [cancelTowing, { isLoading: isCancellingTowing }] = useCancelTowingServiceMutation();
@@ -308,6 +337,9 @@ export const MyServices = () => {
       (service.estimatedCost == null || service.estimatedCost <= 0)
     );
   };
+
+  const hasSubmittedQuoteRequest = (service: TowingService | CarService): boolean =>
+    Boolean(service.quoteRequestSubmittedAt);
 
   const openQuoteModal = (service: TowingService | CarService, type: 'towing' | 'car') => {
     setQuoteModal({ type, service });
@@ -565,6 +597,15 @@ export const MyServices = () => {
                               ? 'Unpaid'
                               : 'Payment Failed'}
                           </span>
+                          {canRequestQuote(service) && hasSubmittedQuoteRequest(service) && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-900 border border-teal-300"
+                              title="We have your quote request and will contact you"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                              Quote requested
+                            </span>
+                          )}
                         </div>
 
                         {service.paymentStatus === 'pending' &&
@@ -582,22 +623,37 @@ export const MyServices = () => {
                           service.status !== 'completed' &&
                           (!service.estimatedCost || service.estimatedCost <= 0) && (
                             <div className="space-y-2 mb-2">
-                              <p className="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
-                                <span className="font-semibold">Price not set yet.</span>{' '}
-                                Use <span className="font-medium">Contact for quote</span> so we can review your
-                                request and send you an amount in Malawi Kwacha (MWK).
-                              </p>
+                              {hasSubmittedQuoteRequest(service) ? (
+                                <div className="text-sm text-teal-950 bg-teal-50 border border-teal-200 rounded-md px-3 py-2.5">
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle
+                                      className="w-5 h-5 text-teal-600 shrink-0 mt-0.5"
+                                      aria-hidden
+                                    />
+                                    <div>
+                                      <p className="font-semibold text-teal-900">Quote request received</p>
+                                      <p className="text-xs text-teal-800 mt-1">
+                                        We will call or WhatsApp you on the numbers you provided, then set your
+                                        price in MWK. You can use <span className="font-medium">Update quote request</span>{' '}
+                                        if your contact details change.
+                                      </p>
+                                      <p className="text-xs text-teal-700 mt-2 font-medium">
+                                        Submitted: {formatDateTime(service.quoteRequestSubmittedAt!)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                                  <span className="font-semibold">Price not set yet.</span>{' '}
+                                  Use <span className="font-medium">Contact for quote</span> so we can review your
+                                  request and send you an amount in Malawi Kwacha (MWK).
+                                </p>
+                              )}
                               <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                                 Final pricing may change if vehicle, location, or other details are not accurate.
                                 We will call or message you to confirm before setting your quote.
                               </p>
-                              {service.quoteRequestSubmittedAt && (
-                                <p className="text-xs text-gray-600">
-                                  Quote request last sent:{' '}
-                                  {formatDateTime(service.quoteRequestSubmittedAt)}. You can send again to update
-                                  your numbers.
-                                </p>
-                              )}
                             </div>
                           )}
 
@@ -837,12 +893,21 @@ export const MyServices = () => {
                       {canRequestQuote(service) && (
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant={hasSubmittedQuoteRequest(service) ? 'primary' : 'outline'}
                           className="w-full justify-center sm:w-auto"
                           onClick={() => openQuoteModal(service, type)}
                         >
-                          <MessageCircle className="w-4 h-4 mr-2" />
-                          Contact for quote
+                          {hasSubmittedQuoteRequest(service) ? (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Update quote request
+                            </>
+                          ) : (
+                            <>
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Contact for quote
+                            </>
+                          )}
                         </Button>
                       )}
 
@@ -876,7 +941,11 @@ export const MyServices = () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <Card className="max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">Contact for quote</h3>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {hasSubmittedQuoteRequest(quoteModal.service)
+                    ? 'Update quote request'
+                    : 'Contact for quote'}
+                </h3>
                 <button
                   type="button"
                   onClick={() => setQuoteModal(null)}
@@ -990,8 +1059,10 @@ export const MyServices = () => {
                   {isSubmittingTowingQuote || isSubmittingCarQuote ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending...
+                      {hasSubmittedQuoteRequest(quoteModal.service) ? 'Updating...' : 'Sending...'}
                     </>
+                  ) : hasSubmittedQuoteRequest(quoteModal.service) ? (
+                    'Update quote request'
                   ) : (
                     'Send quote request'
                   )}
