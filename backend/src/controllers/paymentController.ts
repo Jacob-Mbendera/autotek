@@ -201,12 +201,7 @@ export const initiatePaymentRequest = async (
       status: PaymentStatus.PENDING,
     });
 
-    if (existingPayment) {
-      res.status(400).json({ message: 'Payment already initiated' });
-      return;
-    }
-
-    // Initiate payment with gateway
+    // Fresh tx_ref for each PayChangu session (abandoned checkouts get a new session below)
     const reference = `${type.toUpperCase()}_${entityId}_${Date.now()}`;
 
     // For PayChangu, construct return and cancel URLs if not provided
@@ -264,36 +259,51 @@ export const initiatePaymentRequest = async (
       return;
     }
 
-    // Create payment record
-    const paymentData: any = {
-      type,
-      amount,
-      method: paymentMethod,
-      transactionId: paymentResponse.transactionId,
-      status: PaymentStatus.PENDING,
-    };
+    let payment: InstanceType<typeof Payment>;
 
-    if (type === 'order') paymentData.order = entityId;
-    if (type === 'towing') paymentData.towingService = entityId;
-    if (type === 'car-service') paymentData.carService = entityId;
+    if (existingPayment) {
+      // User returned without paying — reuse the same Payment row with a new PayChangu session
+      existingPayment.amount = amount;
+      existingPayment.method = paymentMethod;
+      existingPayment.transactionId = paymentResponse.transactionId;
+      existingPayment.set('chargeId', undefined);
+      await existingPayment.save();
+      payment = existingPayment;
+      log.info('Payment checkout re-initiated (pending session replaced)', {
+        paymentId: payment._id,
+        type,
+        entityId,
+      });
+    } else {
+      const paymentData: any = {
+        type,
+        amount,
+        method: paymentMethod,
+        transactionId: paymentResponse.transactionId,
+        status: PaymentStatus.PENDING,
+      };
 
-    const payment = new Payment(paymentData);
-    await payment.save();
+      if (type === 'order') paymentData.order = entityId;
+      if (type === 'towing') paymentData.towingService = entityId;
+      if (type === 'car-service') paymentData.carService = entityId;
 
-    // Link payment back to the entity
-    if (type === 'towing' && entity) {
-      entity.payment = payment._id;
-      await entity.save();
-    } else if (type === 'car-service' && entity) {
-      entity.payment = payment._id;
-      await entity.save();
+      payment = new Payment(paymentData);
+      await payment.save();
+
+      if (type === 'towing' && entity) {
+        entity.payment = payment._id;
+        await entity.save();
+      } else if (type === 'car-service' && entity) {
+        entity.payment = payment._id;
+        await entity.save();
+      }
     }
 
     res.status(201).json({
       payment,
       paymentInstructions: paymentResponse.paymentInstructions,
       transactionId: paymentResponse.transactionId,
-      redirectUrl: paymentResponse.redirectUrl, // For PayChangu Standard Checkout
+      redirectUrl: paymentResponse.redirectUrl,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to initiate payment' });
