@@ -2,11 +2,41 @@ import { useGetDeliveryLocationsQuery } from '../store/api/deliveryLocationApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
 
+export type ServiceLocationVariant =
+  | 'delivery'
+  | 'service_pickup'
+  | 'service_destination'
+  | 'service_car';
+
+const VARIANT_COPY: Record<
+  ServiceLocationVariant,
+  { landmarkHint: string; previewPrefix: string }
+> = {
+  delivery: {
+    landmarkHint: 'Choose the landmark closest to your delivery location',
+    previewPrefix: 'Delivery to:',
+  },
+  service_pickup: {
+    landmarkHint: 'Choose the landmark closest to where the vehicle is now (pickup)',
+    previewPrefix: 'Pickup:',
+  },
+  service_destination: {
+    landmarkHint: 'Choose the landmark closest to the drop-off location',
+    previewPrefix: 'Drop-off:',
+  },
+  service_car: {
+    landmarkHint: 'Choose the landmark closest to where the mechanic should meet you',
+    previewPrefix: 'Service at:',
+  },
+};
+
 interface DeliveryLocationSelectorProps {
   value: ShippingAddress | null;
   onChange: (value: ShippingAddress) => void;
   error?: string;
   required?: boolean;
+  /** Defaults to checkout-style delivery copy */
+  variant?: ServiceLocationVariant;
 }
 
 export const DeliveryLocationSelector = ({
@@ -14,8 +44,10 @@ export const DeliveryLocationSelector = ({
   onChange,
   error,
   required = false,
+  variant = 'delivery',
 }: DeliveryLocationSelectorProps) => {
   const { data, isLoading, isError } = useGetDeliveryLocationsQuery();
+  const copy = VARIANT_COPY[variant];
 
   // Use value prop directly (controlled component)
   const selectedTown = value?.town || '';
@@ -135,9 +167,7 @@ export const DeliveryLocationSelector = ({
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-500">
-            Choose the landmark closest to your delivery location
-          </p>
+          <p className="mt-1 text-xs text-gray-500">{copy.landmarkHint}</p>
         </div>
       )}
 
@@ -175,7 +205,7 @@ export const DeliveryLocationSelector = ({
       {selectedTown && selectedLandmark && !showCustomInput && (
         <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
           <p className="text-sm text-teal-800">
-            <strong>Delivery to:</strong> {selectedTown}, {selectedLandmark}
+            <strong>{copy.previewPrefix}</strong> {selectedTown}, {selectedLandmark}
           </p>
         </div>
       )}
@@ -183,7 +213,7 @@ export const DeliveryLocationSelector = ({
       {selectedTown && selectedLandmark && showCustomInput && customAddress.trim() && (
         <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
           <p className="text-sm text-teal-800">
-            <strong>Delivery to:</strong> {selectedTown} - {customAddress}
+            <strong>{copy.previewPrefix}</strong> {selectedTown} - {customAddress}
           </p>
         </div>
       )}

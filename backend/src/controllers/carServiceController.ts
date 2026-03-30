@@ -4,7 +4,7 @@ import CarService from '../models/CarService';
 import User from '../models/User';
 import { ServiceStatus, ServiceType, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
-import { geocodeAddressWithFallback } from '../utils/geocoding';
+import { resolveCoordsForAddress } from '../utils/geocoding';
 import { validateQuoteContactPhones } from '../utils/phoneValidation';
 
 export const createCarService = async (
@@ -84,6 +84,20 @@ export const createCarService = async (
       price: req.body.price,
     });
 
+    const locBody = req.body.location;
+    if (
+      locBody &&
+      typeof locBody.latitude === 'number' &&
+      typeof locBody.longitude === 'number' &&
+      (locBody.latitude !== 0 || locBody.longitude !== 0)
+    ) {
+      carService.serviceLatitude = locBody.latitude;
+      carService.serviceLongitude = locBody.longitude;
+      carService.serviceLocationMethod = 'pin';
+    } else {
+      carService.serviceLocationMethod = 'structured';
+    }
+
     await carService.save();
 
     // Send service confirmation email
@@ -97,8 +111,10 @@ export const createCarService = async (
       // Don't fail the service creation if email fails
     }
 
-    // Geocode address for coordinates
-    const coords = await geocodeAddressWithFallback(carService.address);
+    const coords = await resolveCoordsForAddress(carService.address, {
+      latitude: carService.serviceLatitude,
+      longitude: carService.serviceLongitude,
+    });
 
     const prefCreated = carService.preferredDate ? new Date(carService.preferredDate) : null;
 
@@ -160,7 +176,10 @@ export const getCarServices = async (
     // Transform to match frontend interface with geocoded coordinates
     const transformedServices = await Promise.all(
       carServices.map(async (service: any) => {
-        const coords = await geocodeAddressWithFallback(service.address);
+        const coords = await resolveCoordsForAddress(service.address, {
+          latitude: service.serviceLatitude,
+          longitude: service.serviceLongitude,
+        });
 
         const pref = service.preferredDate ? new Date(service.preferredDate) : null;
         return {
@@ -217,8 +236,11 @@ export const getCarService = async (
       return;
     }
 
-    // Geocode address for coordinates
-    const coords = await geocodeAddressWithFallback((carService as any).address);
+    const cs = carService as any;
+    const coords = await resolveCoordsForAddress(cs.address, {
+      latitude: cs.serviceLatitude,
+      longitude: cs.serviceLongitude,
+    });
 
     const prefSingle = (carService as any).preferredDate
       ? new Date((carService as any).preferredDate)

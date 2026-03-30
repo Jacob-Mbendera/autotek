@@ -1,0 +1,60 @@
+# Render Blueprint — single web service (Express serves Vite build in production)
+# Docs: https://render.com/docs/blueprint-spec
+# After first deploy, set FRONTEND_URL and VITE_BASE_URL to your service URL (same value).
+
+services:
+  - type: web
+    name: autotek
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm run render-build
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: PAYCHANGU_API_KEY
+        sync: false
+      - key: PAYCHANGU_API_SECRET
+        sync: false
+      - key: PAYCHANGU_BASE_URL
+        value: https://api.paychangu.com
+      - key: PAYCHANGU_WEBHOOK_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: VITE_API_URL
+        value: /api
+      - key: VITE_BASE_URL
+        sync: false
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: AIRTEL_API_URL
+        value: https://openapiuat.airtel.africa
+      - key: AIRTEL_CLIENT_ID
+        sync: false
+      - key: AIRTEL_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false

@@ -1,0 +1,13 @@
+{
+  "name": "autotek",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AutoTek monorepo (frontend + backend) — Render builds from repo root",
+  "scripts": {
+    "render-build": "cd frontend && npm install --include=dev && npx vite build && cd ../backend && npm install --include=dev && npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

@@ -5,8 +5,14 @@ export interface ITowingService extends Document {
   user: Types.ObjectId;
   pickupLocation: string;
   pickupLocationDescription?: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  pickupLocationMethod?: 'pin' | 'structured';
   destination: string;
   destinationDescription?: string;
+  destinationLatitude?: number;
+  destinationLongitude?: number;
+  destinationLocationMethod?: 'pin' | 'structured';
   vehicleDetails: {
     make?: string;
     model?: string;
@@ -47,6 +53,28 @@ const TowingServiceSchema = new Schema<ITowingService>(
     },
     destinationDescription: {
       type: String,
+    },
+    pickupLatitude: {
+      type: Number,
+    },
+    pickupLongitude: {
+      type: Number,
+    },
+    pickupLocationMethod: {
+      type: String,
+      enum: ['pin', 'structured'],
+      default: 'structured',
+    },
+    destinationLatitude: {
+      type: Number,
+    },
+    destinationLongitude: {
+      type: Number,
+    },
+    destinationLocationMethod: {
+      type: String,
+      enum: ['pin', 'structured'],
+      default: 'structured',
     },
     vehicleDetails: {
       make: String,

@@ -34,6 +34,8 @@ export interface TowingService {
   quoteWhatsAppPhone?: string;
   quoteRequestNotes?: string;
   quoteRequestSubmittedAt?: string;
+  pickupLocationMethod?: 'pin' | 'structured';
+  destinationLocationMethod?: 'pin' | 'structured';
   createdAt: string;
   updatedAt: string;
   assignedDriver?: ServiceAssignee | string;
@@ -62,6 +64,7 @@ export interface CarService {
   quoteWhatsAppPhone?: string;
   quoteRequestNotes?: string;
   quoteRequestSubmittedAt?: string;
+  serviceLocationMethod?: 'pin' | 'structured';
   createdAt: string;
   updatedAt: string;
   assignedMechanic?: ServiceAssignee | string;

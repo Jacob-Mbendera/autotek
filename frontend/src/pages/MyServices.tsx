@@ -472,11 +472,23 @@ export const MyServices = () => {
               const carService = !isTowing ? (service as CarService) : null;
               const assignedDriver = isTowing ? assigneeFromApi(towingService?.assignedDriver) : null;
               const assignedMechanic = !isTowing ? assigneeFromApi(carService?.assignedMechanic) : null;
+              const pickupSource =
+                towingService?.pickupLocationMethod === 'pin'
+                  ? 'Map pin (town matched)'
+                  : 'Selected town and landmark';
+              const destinationSource =
+                towingService?.destinationLocationMethod === 'pin'
+                  ? 'Map pin (town matched)'
+                  : 'Selected town and landmark';
+              const serviceSource =
+                carService?.serviceLocationMethod === 'pin'
+                  ? 'Map pin (town matched)'
+                  : 'Selected town and landmark';
 
               return (
-                <Card key={service._id} className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
+                <Card key={service._id} className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 w-full items-start gap-3 sm:gap-4 sm:flex-1">
                       {/* Icon */}
                       <div
                         className={`p-3 rounded-lg ${
@@ -633,6 +645,37 @@ export const MyServices = () => {
                                     </a>
                                   )}
                               </div>
+                              <div className="mt-2 text-xs text-gray-500">
+                                {isTowing ? (
+                                  <>
+                                    <div>Pickup source: {pickupSource}</div>
+                                    <div>Destination source: {destinationSource}</div>
+                                    {towingService?.pickupLocationMethod === 'pin' && (
+                                      <div>
+                                        Pickup pin: {towingService.location.latitude.toFixed(6)},{' '}
+                                        {towingService.location.longitude.toFixed(6)}
+                                      </div>
+                                    )}
+                                    {towingService?.destinationLocationMethod === 'pin' &&
+                                      towingService.destination && (
+                                        <div>
+                                          Destination pin: {towingService.destination.latitude.toFixed(6)},{' '}
+                                          {towingService.destination.longitude.toFixed(6)}
+                                        </div>
+                                      )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>Location source: {serviceSource}</div>
+                                    {carService?.serviceLocationMethod === 'pin' && (
+                                      <div>
+                                        Service pin: {carService.location.latitude.toFixed(6)},{' '}
+                                        {carService.location.longitude.toFixed(6)}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -709,12 +752,13 @@ export const MyServices = () => {
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col gap-2 ml-4 shrink-0">
+                    {/* Actions: full-width stack on mobile so title/body keep the row width */}
+                    <div className="flex w-full shrink-0 flex-col gap-2 border-t border-gray-100 pt-4 sm:w-auto sm:border-t-0 sm:pt-0 sm:pl-2">
                       {canPayOnline(service) && (
                         <Button
                           size="sm"
                           variant="primary"
+                          className="w-full justify-center sm:w-auto"
                           onClick={() => handlePayForService(service, type)}
                         >
                           <CreditCard className="w-4 h-4 mr-2" />
@@ -726,6 +770,7 @@ export const MyServices = () => {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full justify-center sm:w-auto"
                           onClick={() => openQuoteModal(service, type)}
                         >
                           <MessageCircle className="w-4 h-4 mr-2" />
@@ -737,6 +782,7 @@ export const MyServices = () => {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full justify-center sm:w-auto"
                           onClick={() =>
                             setShowCancelModal({
                               show: true,

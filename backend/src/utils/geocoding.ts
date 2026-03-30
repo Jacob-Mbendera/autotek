@@ -109,6 +109,74 @@ async function geocodeWithOpenStreetMap(address: string): Promise<GeocodingResul
 }
 
 /**
+ * Reverse geocode coordinates to a display address (OpenStreetMap Nominatim).
+ */
+export async function reverseGeocodeLatLng(
+  latitude: number,
+  longitude: number
+): Promise<GeocodingResult | null> {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(
+    String(latitude)
+  )}&lon=${encodeURIComponent(String(longitude))}&format=json`;
+
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'AutoTek/1.0 (https://autotek.mw)',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenStreetMap reverse error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as {
+    lat?: string;
+    lon?: string;
+    display_name?: string;
+  };
+
+  if (data.lat != null && data.lon != null && data.display_name) {
+    return {
+      latitude: parseFloat(data.lat),
+      longitude: parseFloat(data.lon),
+      formattedAddress: data.display_name,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Use saved map pin when present; otherwise forward-geocode the address string.
+ */
+export async function resolveCoordsForAddress(
+  address: string,
+  pin?: { latitude?: number; longitude?: number } | null,
+  fallbackCoords?: { latitude: number; longitude: number }
+): Promise<GeocodingResult> {
+  const lat = pin?.latitude;
+  const lng = pin?.longitude;
+  if (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    !(lat === 0 && lng === 0)
+  ) {
+    return {
+      latitude: lat,
+      longitude: lng,
+      formattedAddress: address,
+    };
+  }
+  return geocodeAddressWithFallback(address, fallbackCoords);
+}
+
+/**
  * Geocode address with fallback to default Malawi coordinates if geocoding fails
  * Useful for service bookings where we don't want to fail if geocoding doesn't work
  */

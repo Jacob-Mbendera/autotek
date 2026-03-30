@@ -171,9 +171,13 @@
 1. Fill in the towing service form:
    - Vehicle Type: `Sedan`
    - Vehicle Model: `Toyota Corolla`
-   - Pickup Location: `Lilongwe City Centre`
+   - **Pickup town/city**: `Lilongwe`
+   - **Pickup landmark/area**: choose an existing landmark (or `Other/Custom` + custom directions)
+   - Optional: click **Use my location (map pin)** in pickup
    - Pickup Description: `Near Shoprite, next to the blue gate`
-   - Destination Location: `Area 18`
+   - **Destination town/city**: `Lilongwe`
+   - **Destination landmark/area**: choose an existing landmark (or `Other/Custom` + custom directions)
+   - Optional: click **Use my location (map pin)** in destination
    - Destination Description: `Opposite the main market`
    - Notes: `Car won't start, need urgent assistance`
 2. Click **Submit Service Request**
@@ -186,7 +190,8 @@
 - ✅ New towing service appears in the list
 - ✅ Service status shows "Pending"
 - ✅ Payment status shows "Unpaid" or "Pending Payment"
-- ✅ Service displays all entered information correctly
+- ✅ Service displays structured pickup/destination information correctly
+- ✅ If a map pin was provided, **Open pickup in Maps** / **Open destination in Maps** opens close to the pinned area
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -206,7 +211,11 @@
   - Service Type dropdown (Oil Change, Brake Pads, Tire Rotation, etc.)
   - **Vehicle Type** (text input, required)
   - **Vehicle Model (Optional)** (text input)
-  - Service Location (input with map icon)
+  - **Service location selector**:
+    - Town / City dropdown
+    - Landmark / Area dropdown
+    - Custom location textarea when `Other/Custom` is selected
+  - Optional **Use my location (map pin)** button
   - Location Description (optional)
   - Preferred Date (date picker - optional)
   - Preferred Time (time picker - optional)
@@ -228,7 +237,9 @@
    - Service Type: `Oil Change`
    - Vehicle Type: `Sedan`
    - Vehicle Model: `Honda Civic`
-   - Service Location: `Blantyre`
+   - **Service town/city**: `Blantyre`
+   - **Service landmark/area**: choose an existing landmark (or `Other/Custom` + custom directions)
+   - Optional: click **Use my location (map pin)**
    - Location Description: `Limbe area, near the industrial site`
    - Preferred Date: Select tomorrow's date
    - Notes: `Please use synthetic oil`
@@ -244,6 +255,7 @@
 - ✅ Service status shows "Pending"
 - ✅ Payment status shows "Unpaid"
 - ✅ Preferred date displayed correctly
+- ✅ If a map pin was provided, **Open location in Maps** opens near the pinned area
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -264,8 +276,10 @@
 - ✅ Cannot submit empty form
 - ✅ Error messages appear for required fields:
   - "Vehicle type is required"
-  - "Location is required"
-  - "Destination is required"
+  - Structured location errors such as:
+    - "Select a town for pickup / destination / service location"
+    - "Select a landmark or area for pickup / destination / service location"
+    - "Describe your location ..." when `Other/Custom` is selected but empty
 - ✅ Optional fields (notes, descriptions) don't show errors
 - ✅ Form highlights invalid fields in red
 - ✅ Submit button remains enabled but blocked by validation until required fields are filled
@@ -977,6 +991,18 @@ Use **Admin**: `admintest@autotek.com` / `Admin123456`. Customer quote requests 
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
+
+---
+
+### Roadmap Note: Live towing tracking (Post-deployment expansion)
+
+**Current scope (now):**
+- ✅ Structured location capture (town + landmark/custom description) for service booking
+- ✅ Optional map pin capture (`Use my location`) to improve map precision
+
+**Deferred scope (later):**
+- ⏳ Real-time towing tracking (live truck movement on map) is planned **after deployment**.
+- This needs dedicated driver location updates + realtime infrastructure, so it is intentionally out of MVP scope.
 
 ---
 

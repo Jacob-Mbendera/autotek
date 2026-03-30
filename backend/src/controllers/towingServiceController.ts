@@ -4,7 +4,7 @@ import TowingService from '../models/TowingService';
 import User from '../models/User';
 import { ServiceStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
-import { geocodeAddressWithFallback } from '../utils/geocoding';
+import { resolveCoordsForAddress } from '../utils/geocoding';
 import { validateQuoteContactPhones } from '../utils/phoneValidation';
 
 export const createTowingService = async (
@@ -69,6 +69,33 @@ export const createTowingService = async (
       price: req.body.price,
     });
 
+    const locObj = req.body.location;
+    const destObj = req.body.destination;
+    if (
+      locObj &&
+      typeof locObj.latitude === 'number' &&
+      typeof locObj.longitude === 'number' &&
+      (locObj.latitude !== 0 || locObj.longitude !== 0)
+    ) {
+      towingService.pickupLatitude = locObj.latitude;
+      towingService.pickupLongitude = locObj.longitude;
+      towingService.pickupLocationMethod = 'pin';
+    } else {
+      towingService.pickupLocationMethod = 'structured';
+    }
+    if (
+      destObj &&
+      typeof destObj.latitude === 'number' &&
+      typeof destObj.longitude === 'number' &&
+      (destObj.latitude !== 0 || destObj.longitude !== 0)
+    ) {
+      towingService.destinationLatitude = destObj.latitude;
+      towingService.destinationLongitude = destObj.longitude;
+      towingService.destinationLocationMethod = 'pin';
+    } else {
+      towingService.destinationLocationMethod = 'structured';
+    }
+
     await towingService.save();
 
     // Send service confirmation email
@@ -82,9 +109,14 @@ export const createTowingService = async (
       // Don't fail the service creation if email fails
     }
 
-    // Geocode addresses for coordinates
-    const pickupCoords = await geocodeAddressWithFallback(towingService.pickupLocation);
-    const destCoords = await geocodeAddressWithFallback(towingService.destination);
+    const pickupCoords = await resolveCoordsForAddress(towingService.pickupLocation, {
+      latitude: towingService.pickupLatitude,
+      longitude: towingService.pickupLongitude,
+    });
+    const destCoords = await resolveCoordsForAddress(towingService.destination, {
+      latitude: towingService.destinationLatitude,
+      longitude: towingService.destinationLongitude,
+    });
 
     // Transform response to match frontend interface
     const transformed = {
@@ -142,9 +174,15 @@ export const getTowingServices = async (
     // Transform to match frontend interface with geocoded coordinates
     const transformedServices = await Promise.all(
       towingServices.map(async (service: any) => {
-        const pickupCoords = await geocodeAddressWithFallback(service.pickupLocation);
+        const pickupCoords = await resolveCoordsForAddress(service.pickupLocation, {
+          latitude: service.pickupLatitude,
+          longitude: service.pickupLongitude,
+        });
         const destCoords = service.destination
-          ? await geocodeAddressWithFallback(service.destination)
+          ? await resolveCoordsForAddress(service.destination, {
+              latitude: service.destinationLatitude,
+              longitude: service.destinationLongitude,
+            })
           : null;
 
         return {
@@ -202,10 +240,16 @@ export const getTowingService = async (
       return;
     }
 
-    // Geocode addresses for coordinates
-    const pickupCoords = await geocodeAddressWithFallback((towingService as any).pickupLocation);
-    const destCoords = (towingService as any).destination
-      ? await geocodeAddressWithFallback((towingService as any).destination)
+    const ts = towingService as any;
+    const pickupCoords = await resolveCoordsForAddress(ts.pickupLocation, {
+      latitude: ts.pickupLatitude,
+      longitude: ts.pickupLongitude,
+    });
+    const destCoords = ts.destination
+      ? await resolveCoordsForAddress(ts.destination, {
+          latitude: ts.destinationLatitude,
+          longitude: ts.destinationLongitude,
+        })
       : null;
 
     // Transform to match frontend interface

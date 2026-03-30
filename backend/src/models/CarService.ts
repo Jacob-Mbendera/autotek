@@ -12,6 +12,9 @@ export interface ICarService extends Document {
   };
   address: string;
   addressDescription?: string;
+  serviceLatitude?: number;
+  serviceLongitude?: number;
+  serviceLocationMethod?: 'pin' | 'structured';
   preferredDate?: Date;
   status: ServiceStatus;
   assignedMechanic?: Types.ObjectId;
@@ -51,6 +54,17 @@ const CarServiceSchema = new Schema<ICarService>(
     },
     addressDescription: {
       type: String,
+    },
+    serviceLatitude: {
+      type: Number,
+    },
+    serviceLongitude: {
+      type: Number,
+    },
+    serviceLocationMethod: {
+      type: String,
+      enum: ['pin', 'structured'],
+      default: 'structured',
     },
     preferredDate: {
       type: Date,

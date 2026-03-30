@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateTowingServiceMutation, useCreateCarServiceMutation } from '../store/api/serviceApi';
+import { useReverseGeocodeMutation } from '../store/api/geocodingApi';
+import { useGetDeliveryLocationsQuery } from '../store/api/deliveryLocationApi';
+import type { ShippingAddress } from '../store/api/orderApi';
+import { DeliveryLocationSelector } from '../components/DeliveryLocationSelector';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+import { formatServiceAddressLine, validateStructuredServiceLocation } from '../utils/serviceAddress';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -20,6 +25,7 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  Crosshair,
 } from 'lucide-react';
 import { UserRole } from '@shared/types';
 import type { ServiceType } from '@shared/types';
@@ -45,15 +51,28 @@ export const BookService = () => {
 
   const [createTowingService, { isLoading: isCreatingTowing }] = useCreateTowingServiceMutation();
   const [createCarService, { isLoading: isCreatingCar }] = useCreateCarServiceMutation();
+  const [reverseGeocode, { isLoading: isReverseGeocoding }] = useReverseGeocodeMutation();
+  const { data: deliveryData } = useGetDeliveryLocationsQuery();
 
   // Common fields
   const [vehicleType, setVehicleType] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
-  const [location, setLocation] = useState(user?.address || '');
   const [notes, setNotes] = useState('');
 
+  const [pickupShipping, setPickupShipping] = useState<ShippingAddress | null>(null);
+  const [destinationShipping, setDestinationShipping] = useState<ShippingAddress | null>(null);
+  const [carServiceShipping, setCarServiceShipping] = useState<ShippingAddress | null>(null);
+
+  const [pickupPin, setPickupPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [destinationPin, setDestinationPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [carServicePin, setCarServicePin] = useState<{ lat: number; lng: number } | null>(null);
+  const [pickupPinAddress, setPickupPinAddress] = useState<string>('');
+  const [destinationPinAddress, setDestinationPinAddress] = useState<string>('');
+  const [carServicePinAddress, setCarServicePinAddress] = useState<string>('');
+
+  const [gpsBusy, setGpsBusy] = useState<'pickup' | 'destination' | 'car' | null>(null);
+
   // Towing-specific fields
-  const [destination, setDestination] = useState('');
   const [pickupDescription, setPickupDescription] = useState('');
   const [destinationDescription, setDestinationDescription] = useState('');
 
@@ -65,6 +84,40 @@ export const BookService = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isLoading = isCreatingTowing || isCreatingCar;
+  const locating = gpsBusy !== null || isReverseGeocoding;
+
+  const normalizeLocationText = (v: string): string =>
+    v.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const townMatchesPin = (town: string | undefined, pinAddress: string): boolean => {
+    const t = normalizeLocationText(town || '');
+    const a = normalizeLocationText(pinAddress || '');
+    if (!t || !a) return true;
+    return a.includes(t) || t.includes(a);
+  };
+  const inferTownFromPinAddress = (pinAddress: string): string | null => {
+    const towns = deliveryData?.deliveryLocations?.map((loc) => loc.town) || [];
+    const addr = normalizeLocationText(pinAddress);
+    for (const town of towns) {
+      const t = normalizeLocationText(town);
+      if (t && (addr.includes(t) || t.includes(addr))) return town;
+    }
+    return null;
+  };
+  const pickupPinTownMismatch =
+    !!pickupPin &&
+    !!pickupShipping?.town &&
+    !!pickupPinAddress &&
+    !townMatchesPin(pickupShipping.town, pickupPinAddress);
+  const destinationPinTownMismatch =
+    !!destinationPin &&
+    !!destinationShipping?.town &&
+    !!destinationPinAddress &&
+    !townMatchesPin(destinationShipping.town, destinationPinAddress);
+  const carPinTownMismatch =
+    !!carServicePin &&
+    !!carServiceShipping?.town &&
+    !!carServicePinAddress &&
+    !townMatchesPin(carServiceShipping.town, carServicePinAddress);
 
   useEffect(() => {
     // If user is not authenticated, redirect to login
@@ -89,15 +142,20 @@ export const BookService = () => {
       newErrors.vehicleType = 'Vehicle type is required';
     }
 
-    if (!location.trim()) {
-      newErrors.location = 'Location is required';
-    }
-
     if (serviceType === 'towing') {
-      if (!destination.trim()) {
-        newErrors.destination = 'Destination is required';
-      }
+      const pickupErr = pickupPin
+        ? null
+        : validateStructuredServiceLocation(pickupShipping, 'pickup');
+      if (pickupErr) newErrors.pickupLocation = pickupErr;
+      const destErr = destinationPin
+        ? null
+        : validateStructuredServiceLocation(destinationShipping, 'destination');
+      if (destErr) newErrors.destination = destErr;
     } else {
+      const locErr = carServicePin
+        ? null
+        : validateStructuredServiceLocation(carServiceShipping, 'service location');
+      if (locErr) newErrors.location = locErr;
       if (!carServiceType) {
         newErrors.carServiceType = 'Service type is required';
       }
@@ -105,6 +163,122 @@ export const BookService = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const requestMapPin = (which: 'pickup' | 'destination' | 'car') => {
+    if (!navigator.geolocation) {
+      dispatch(
+        showNotification({
+          message: 'Your browser does not support location. Use town and landmark only.',
+          type: 'error',
+        })
+      );
+      return;
+    }
+    setGpsBusy(which);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+        if (which === 'pickup') setPickupPin({ lat: latitude, lng: longitude });
+        if (which === 'destination') setDestinationPin({ lat: latitude, lng: longitude });
+        if (which === 'car') setCarServicePin({ lat: latitude, lng: longitude });
+
+        try {
+          const r = await reverseGeocode({ latitude, longitude }).unwrap();
+          if (which === 'pickup') setPickupPinAddress(r.formattedAddress);
+          if (which === 'destination') setDestinationPinAddress(r.formattedAddress);
+          if (which === 'car') setCarServicePinAddress(r.formattedAddress);
+
+          const inferredTown = inferTownFromPinAddress(r.formattedAddress);
+          if (inferredTown) {
+            if (which === 'pickup' && !pickupShipping?.town) {
+              setPickupShipping({
+                town: inferredTown,
+                landmark: 'Other/Custom',
+                customAddress: r.formattedAddress,
+              });
+              dispatch(
+                showNotification({
+                  message: `Pickup town auto-selected from pin: ${inferredTown}.`,
+                  type: 'success',
+                })
+              );
+            }
+            if (which === 'destination' && !destinationShipping?.town) {
+              setDestinationShipping({
+                town: inferredTown,
+                landmark: 'Other/Custom',
+                customAddress: r.formattedAddress,
+              });
+              dispatch(
+                showNotification({
+                  message: `Destination town auto-selected from pin: ${inferredTown}.`,
+                  type: 'success',
+                })
+              );
+            }
+            if (which === 'car' && !carServiceShipping?.town) {
+              setCarServiceShipping({
+                town: inferredTown,
+                landmark: 'Other/Custom',
+                customAddress: r.formattedAddress,
+              });
+              dispatch(
+                showNotification({
+                  message: `Service town auto-selected from pin: ${inferredTown}.`,
+                  type: 'success',
+                })
+              );
+            }
+          }
+
+          const selectedTown =
+            which === 'pickup'
+              ? pickupShipping?.town
+              : which === 'destination'
+                ? destinationShipping?.town
+                : carServiceShipping?.town;
+          if (selectedTown && !townMatchesPin(selectedTown, r.formattedAddress)) {
+            dispatch(
+              showNotification({
+                message: `Town mismatch: selected "${selectedTown}" but map pin looks like a different area. Please confirm town or update pin.`,
+                type: 'error',
+              })
+            );
+          }
+
+          const short = r.formattedAddress.length > 120
+            ? `${r.formattedAddress.slice(0, 120)}…`
+            : r.formattedAddress;
+          dispatch(
+            showNotification({
+              message: `Map pin saved. Near: ${short}`,
+              type: 'success',
+            })
+          );
+        } catch {
+          dispatch(
+            showNotification({
+              message: 'Map pin saved. Complete town and landmark below.',
+              type: 'success',
+            })
+          );
+        } finally {
+          setGpsBusy(null);
+        }
+      },
+      () => {
+        setGpsBusy(null);
+        dispatch(
+          showNotification({
+            message: 'Could not read your location. Allow location access or use town and landmark only.',
+            type: 'error',
+          })
+        );
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,23 +291,39 @@ export const BookService = () => {
 
     try {
       if (serviceType === 'towing') {
-        // Transform data to match backend API format
-        // Backend expects: pickupLocation (string), destination (string), vehicleDetails (object)
-        // Frontend API interface expects: vehicleType, vehicleModel, location (object), destination (object)
-        // We'll use the frontend interface format and let the API handle transformation if needed
+        const pickupLine = formatServiceAddressLine(pickupShipping) || pickupPinAddress || 'Pinned pickup location';
+        const destinationLine =
+          formatServiceAddressLine(destinationShipping) ||
+          destinationPinAddress ||
+          'Pinned destination location';
+        const usePickupPin = !!pickupPin && !pickupPinTownMismatch;
+        const useDestinationPin = !!destinationPin && !destinationPinTownMismatch;
+        if (pickupPinTownMismatch || destinationPinTownMismatch) {
+          const parts: string[] = [];
+          if (pickupPinTownMismatch) parts.push('pickup');
+          if (destinationPinTownMismatch) parts.push('destination');
+          dispatch(
+            showNotification({
+              message: `Town and map pin mismatch for ${parts.join(
+                ' and '
+              )}. We will use your selected town and landmark as the saved location.`,
+              type: 'error',
+            })
+          );
+        }
         const towingData = {
           vehicleType,
           vehicleModel: vehicleModel || undefined,
           location: {
-            latitude: 0, // TODO: Get from geocoding
-            longitude: 0, // TODO: Get from geocoding
-            address: location,
+            latitude: usePickupPin ? pickupPin!.lat : 0,
+            longitude: usePickupPin ? pickupPin!.lng : 0,
+            address: pickupLine,
           },
           pickupDescription: pickupDescription || undefined,
           destination: {
-            latitude: 0, // TODO: Get from geocoding
-            longitude: 0, // TODO: Get from geocoding
-            address: destination,
+            latitude: useDestinationPin ? destinationPin!.lat : 0,
+            longitude: useDestinationPin ? destinationPin!.lng : 0,
+            address: destinationLine,
           },
           destinationDescription: destinationDescription || undefined,
           notes: notes || undefined,
@@ -142,14 +332,26 @@ export const BookService = () => {
         await createTowingService(towingData).unwrap();
         dispatch(showNotification({ message: 'Towing service request submitted successfully!', type: 'success' }));
       } else {
+        const serviceLine =
+          formatServiceAddressLine(carServiceShipping) || carServicePinAddress || 'Pinned service location';
+        const useCarPin = !!carServicePin && !carPinTownMismatch;
+        if (carPinTownMismatch) {
+          dispatch(
+            showNotification({
+              message:
+                'Town and map pin mismatch for service location. We will use your selected town and landmark as the saved location.',
+              type: 'error',
+            })
+          );
+        }
         const carServiceData = {
           serviceType: carServiceType as ServiceType,
           vehicleType,
           vehicleModel: vehicleModel || undefined,
           location: {
-            latitude: 0, // TODO: Get from geocoding
-            longitude: 0, // TODO: Get from geocoding
-            address: location,
+            latitude: useCarPin ? carServicePin!.lat : 0,
+            longitude: useCarPin ? carServicePin!.lng : 0,
+            address: serviceLine,
           },
           addressDescription: addressDescription || undefined,
           preferredDate: buildPreferredDateISO(preferredDate, preferredTime),
@@ -269,58 +471,222 @@ export const BookService = () => {
               </div>
             )}
 
-            {/* Location Information */}
+            {/* Location Information — same town / landmark pattern as checkout shipping */}
             <div>
               <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-teal-600" />
                 Location Information
               </H2>
-              <div className="space-y-4">
-                <div>
-                  <Input
-                    label={serviceType === 'towing' ? 'Pickup Location' : 'Service Location'}
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Enter full address"
-                    required
-                    error={errors.location}
-                  />
-                  <div className="mt-2">
-                    <Input
-                      label={serviceType === 'towing' ? 'Pickup Description (Optional)' : 'Location Description (Optional)'}
-                      value={serviceType === 'towing' ? pickupDescription : addressDescription}
-                      onChange={(e) => serviceType === 'towing' ? setPickupDescription(e.target.value) : setAddressDescription(e.target.value)}
-                      placeholder="e.g., near the blue gate, opposite the church"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Help us find you: Describe nearby landmarks or features
-                    </p>
-                  </div>
-                </div>
-                {serviceType === 'towing' && (
+              <p className="text-sm text-gray-600 mb-4">
+                Select your town and nearest landmark (or Other/Custom with directions), same as when you order
+                parts for delivery. Optionally use your phone&apos;s map pin so &quot;Open in Maps&quot; is more
+                accurate.
+              </p>
+              <div className="space-y-8">
+                {serviceType === 'towing' ? (
                   <>
                     <div>
-                      <Input
-                        label="Destination"
-                        value={destination}
-                        onChange={(e) => setDestination(e.target.value)}
-                        placeholder="Enter destination address"
+                      <H2 className="text-base font-semibold text-gray-800 mb-3">Pickup (where the vehicle is)</H2>
+                      <DeliveryLocationSelector
+                        variant="service_pickup"
+                        value={pickupShipping}
+                        onChange={setPickupShipping}
+                        required
+                        error={errors.pickupLocation}
+                      />
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          disabled={locating}
+                          onClick={() => requestMapPin('pickup')}
+                        >
+                          {gpsBusy === 'pickup' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Crosshair className="h-4 w-4" />
+                          )}
+                          Use my location (map pin)
+                        </Button>
+                        {pickupPin && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setPickupPin(null);
+                              setPickupPinAddress('');
+                            }}
+                          >
+                            Clear pickup pin
+                          </Button>
+                        )}
+                      </div>
+                      {pickupPin && (
+                        <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                          <p className="text-sm font-medium text-teal-900">Pickup map pin saved</p>
+                          <p className="text-xs text-teal-800 mt-1">
+                            Lat/Lng: {pickupPin.lat.toFixed(6)}, {pickupPin.lng.toFixed(6)}
+                          </p>
+                          {pickupPinAddress && (
+                            <p className="text-xs text-teal-800 mt-1">Near: {pickupPinAddress}</p>
+                          )}
+                          {pickupPinTownMismatch && (
+                              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                                Alert: Town and pin do not match. We will save your selected town and landmark for pickup.
+                              </p>
+                            )}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        If town is empty and we can detect it from pin address, it will be auto-filled.
+                      </p>
+                      <div className="mt-4">
+                        <Input
+                          label="Pickup description (optional)"
+                          value={pickupDescription}
+                          onChange={(e) => setPickupDescription(e.target.value)}
+                          placeholder="e.g., near the blue gate, opposite the church"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <H2 className="text-base font-semibold text-gray-800 mb-3">Destination (drop-off)</H2>
+                      <DeliveryLocationSelector
+                        variant="service_destination"
+                        value={destinationShipping}
+                        onChange={setDestinationShipping}
                         required
                         error={errors.destination}
                       />
-                      <div className="mt-2">
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          disabled={locating}
+                          onClick={() => requestMapPin('destination')}
+                        >
+                          {gpsBusy === 'destination' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Crosshair className="h-4 w-4" />
+                          )}
+                          Use my location (map pin)
+                        </Button>
+                        {destinationPin && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setDestinationPin(null);
+                              setDestinationPinAddress('');
+                            }}
+                          >
+                            Clear destination pin
+                          </Button>
+                        )}
+                      </div>
+                      {destinationPin && (
+                        <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                          <p className="text-sm font-medium text-teal-900">Destination map pin saved</p>
+                          <p className="text-xs text-teal-800 mt-1">
+                            Lat/Lng: {destinationPin.lat.toFixed(6)}, {destinationPin.lng.toFixed(6)}
+                          </p>
+                          {destinationPinAddress && (
+                            <p className="text-xs text-teal-800 mt-1">Near: {destinationPinAddress}</p>
+                          )}
+                          {destinationPinTownMismatch && (
+                              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                                Alert: Town and pin do not match. We will save your selected town and landmark for destination.
+                              </p>
+                            )}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        If town is empty and we can detect it from pin address, it will be auto-filled.
+                      </p>
+                      <div className="mt-4">
                         <Input
-                          label="Destination Description (Optional)"
+                          label="Destination description (optional)"
                           value={destinationDescription}
                           onChange={(e) => setDestinationDescription(e.target.value)}
                           placeholder="e.g., next to the market, behind the gas station"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Help the driver find your destination
-                        </p>
                       </div>
                     </div>
                   </>
+                ) : (
+                  <div>
+                    <DeliveryLocationSelector
+                      variant="service_car"
+                      value={carServiceShipping}
+                      onChange={setCarServiceShipping}
+                      required
+                      error={errors.location}
+                    />
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        disabled={locating}
+                        onClick={() => requestMapPin('car')}
+                      >
+                        {gpsBusy === 'car' ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Crosshair className="h-4 w-4" />
+                        )}
+                        Use my location (map pin)
+                      </Button>
+                      {carServicePin && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setCarServicePin(null);
+                            setCarServicePinAddress('');
+                          }}
+                        >
+                          Clear pin
+                        </Button>
+                      )}
+                    </div>
+                    {carServicePin && (
+                      <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                        <p className="text-sm font-medium text-teal-900">Service map pin saved</p>
+                        <p className="text-xs text-teal-800 mt-1">
+                          Lat/Lng: {carServicePin.lat.toFixed(6)}, {carServicePin.lng.toFixed(6)}
+                        </p>
+                        {carServicePinAddress && (
+                          <p className="text-xs text-teal-800 mt-1">Near: {carServicePinAddress}</p>
+                        )}
+                        {carPinTownMismatch && (
+                            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                              Alert: Town and pin do not match. We will save your selected town and landmark for service location.
+                            </p>
+                          )}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      If town is empty and we can detect it from pin address, it will be auto-filled.
+                    </p>
+                    <div className="mt-4">
+                      <Input
+                        label="Location description (optional)"
+                        value={addressDescription}
+                        onChange={(e) => setAddressDescription(e.target.value)}
+                        placeholder="e.g., car park behind the building"
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
