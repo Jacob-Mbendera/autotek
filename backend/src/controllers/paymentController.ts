@@ -8,6 +8,7 @@ import CarService from '../models/CarService';
 import { PaymentMethod, PaymentStatus, UserRole } from '../types/shared';
 import { initiatePayment } from '../utils/paymentGateways';
 import { log } from '../utils/logger';
+import { createPayoutAfterPaymentSave } from '../utils/servicePayout';
 
 const normalizeRedirectUrl = (url: string | undefined, fallbackUrl: string): string => {
   const candidateUrl = (url || fallbackUrl).trim();
@@ -452,6 +453,10 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
 
     await payment.save();
 
+    if (payment.status === PaymentStatus.COMPLETED && (payment.type === 'towing' || payment.type === 'car-service')) {
+      await createPayoutAfterPaymentSave(payment._id.toString());
+    }
+
     log.payment.webhook('PayChangu', 'Payment updated', {
       paymentId: payment._id,
       status: payment.status,
@@ -557,6 +562,11 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
     }
 
     await payment.save();
+
+    if (payment.status === PaymentStatus.COMPLETED && (payment.type === 'towing' || payment.type === 'car-service')) {
+      await createPayoutAfterPaymentSave(payment._id.toString());
+    }
+
     res.json({ verified: true, payment });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to verify payment' });

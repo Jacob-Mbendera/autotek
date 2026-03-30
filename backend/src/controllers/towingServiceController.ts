@@ -2,7 +2,9 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import TowingService from '../models/TowingService';
 import User from '../models/User';
-import { ServiceStatus, UserRole } from '../types/shared';
+import { ProviderType, ServiceStatus, UserRole } from '../types/shared';
+import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
+import { populateAssignedDriver } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
 import { resolveCoordsForAddress } from '../utils/geocoding';
 import { validateQuoteContactPhones } from '../utils/phoneValidation';
@@ -167,7 +169,7 @@ export const getTowingServices = async (
 
     const towingServices = await TowingService.find(query)
       .populate('user', 'name email phone')
-      .populate('assignedDriver', 'name phone')
+      .populate(populateAssignedDriver)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -232,7 +234,7 @@ export const getTowingService = async (
 
     const towingService = await TowingService.findOne(query)
       .populate('user', 'name email phone address')
-      .populate('assignedDriver', 'name phone')
+      .populate(populateAssignedDriver)
       .lean();
 
     if (!towingService) {
@@ -435,7 +437,7 @@ export const updateTowingService = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { status, assignedDriver, price } = req.body;
+    const { status, assignedDriver, price, estimatedArrivalAt } = req.body;
 
     const towingService = await TowingService.findById(req.params.id);
     if (!towingService) {
@@ -451,8 +453,33 @@ export const updateTowingService = async (
       }
 
       if (status) towingService.status = status;
-      if (assignedDriver) towingService.assignedDriver = assignedDriver;
+      if (assignedDriver !== undefined) {
+        if (assignedDriver === null || assignedDriver === '') {
+          towingService.set('assignedDriver', undefined);
+        } else {
+          const check = await assertProviderAssignable(String(assignedDriver), ProviderType.DRIVER);
+          if (!check.ok) {
+            res.status(400).json({ message: check.message });
+            return;
+          }
+          towingService.assignedDriver = assignedDriver;
+        }
+      }
       if (price !== undefined) towingService.price = price;
+      if (estimatedArrivalAt !== undefined) {
+        if (estimatedArrivalAt === null || estimatedArrivalAt === '') {
+          towingService.set('estimatedArrivalAt', undefined);
+          towingService.set('etaUpdatedAt', undefined);
+        } else {
+          const d = new Date(estimatedArrivalAt);
+          if (Number.isNaN(d.getTime())) {
+            res.status(400).json({ message: 'Invalid estimatedArrivalAt' });
+            return;
+          }
+          towingService.estimatedArrivalAt = d;
+          towingService.etaUpdatedAt = new Date();
+        }
+      }
     } else {
       // Users should use /cancel endpoint instead
       res.status(403).json({ message: 'Use /cancel endpoint to cancel services' });
@@ -460,7 +487,8 @@ export const updateTowingService = async (
     }
 
     await towingService.save();
-    res.json(towingService);
+    const updated = await TowingService.findById(towingService._id).populate(populateAssignedDriver).lean();
+    res.json(updated);
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to update towing service' });
   }

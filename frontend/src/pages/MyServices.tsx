@@ -7,6 +7,8 @@ import {
   useCancelCarServiceMutation,
   useRequestTowingQuoteMutation,
   useRequestCarServiceQuoteMutation,
+  useRateTowingProviderMutation,
+  useRateCarServiceProviderMutation,
   type TowingService,
   type CarService,
   type ServiceAssignee,
@@ -111,9 +113,15 @@ function mapsHref(lat: number, lng: number, address: string): string {
 
 function assigneeFromApi(
   a: ServiceAssignee | string | undefined
-): { name: string; phone?: string } | null {
+): { name: string; phone?: string; garageName?: string } | null {
   if (!a || typeof a === 'string') return null;
-  if (a.name) return { name: a.name, phone: a.phone };
+  if (a.name) {
+    const garageName =
+      typeof a.garage === 'object' && a.garage && 'name' in a.garage
+        ? String((a.garage as { name?: string }).name || '')
+        : undefined;
+    return { name: a.name, phone: a.phone, garageName: garageName || undefined };
+  }
   return null;
 }
 
@@ -168,6 +176,26 @@ export const MyServices = () => {
     useRequestTowingQuoteMutation();
   const [requestCarQuote, { isLoading: isSubmittingCarQuote }] =
     useRequestCarServiceQuoteMutation();
+  const [rateTowingProvider] = useRateTowingProviderMutation();
+  const [rateCarServiceProvider] = useRateCarServiceProviderMutation();
+
+  const submitProviderRating = async (serviceId: string, kind: 'towing' | 'car', rating: number) => {
+    try {
+      if (kind === 'towing') {
+        await rateTowingProvider({ id: serviceId, rating }).unwrap();
+      } else {
+        await rateCarServiceProvider({ id: serviceId, rating }).unwrap();
+      }
+      dispatch(showNotification({ message: 'Thanks for your feedback', type: 'success' }));
+    } catch (e: unknown) {
+      dispatch(
+        showNotification({
+          message: getErrorInfo(e, 'Could not submit rating').message,
+          type: 'error',
+        })
+      );
+    }
+  };
 
   useEffect(() => {
     if (!quoteModal) return;
@@ -726,6 +754,11 @@ export const MyServices = () => {
                                 {assignedDriver.phone && (
                                   <span className="text-gray-600"> · {assignedDriver.phone}</span>
                                 )}
+                                {assignedDriver.garageName && (
+                                  <span className="text-gray-600 text-sm block mt-0.5">
+                                    Garage: {assignedDriver.garageName}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           )}
@@ -739,7 +772,42 @@ export const MyServices = () => {
                                 {assignedMechanic.phone && (
                                   <span className="text-gray-600"> · {assignedMechanic.phone}</span>
                                 )}
+                                {assignedMechanic.garageName && (
+                                  <span className="text-gray-600 text-sm block mt-0.5">
+                                    Garage: {assignedMechanic.garageName}
+                                  </span>
+                                )}
                               </div>
+                            </div>
+                          )}
+
+                          {(isTowing ? towingService?.estimatedArrivalAt : carService?.estimatedArrivalAt) && (
+                            <div className="flex items-start gap-2">
+                              <Clock className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                              <div className="text-sm text-gray-700">
+                                <span className="font-medium text-gray-800">Estimated arrival: </span>
+                                {formatDateTime(
+                                  (isTowing ? towingService!.estimatedArrivalAt : carService!.estimatedArrivalAt)!
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {service.status === 'completed' && (assignedDriver || assignedMechanic) && (
+                            <div className="flex flex-wrap items-center gap-1 mt-2">
+                              <span className="text-sm text-gray-600 mr-1">Rate provider:</span>
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  className="min-w-[2rem] px-2 py-1 text-sm rounded border border-gray-300 text-gray-800 hover:bg-teal-50 hover:border-teal-400"
+                                  onClick={() =>
+                                    submitProviderRating(service._id, isTowing ? 'towing' : 'car', n)
+                                  }
+                                >
+                                  {n}
+                                </button>
+                              ))}
                             </div>
                           )}
 

@@ -289,7 +289,11 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
         ? Promise.all([
             TowingService.find(towingQuery)
               .populate('user', 'name email phone')
-              .populate('assignedDriver', 'name phone')
+              .populate({
+                path: 'assignedDriver',
+                select: 'name phone whatsAppPhone providerType garage averageRating ratingCount',
+                populate: { path: 'garage', select: 'name town verificationStatus' },
+              })
               .sort({ createdAt: -1 })
               .lean(),
             TowingService.countDocuments(towingQuery),
@@ -299,7 +303,11 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
         ? Promise.all([
             CarService.find(carServiceQuery)
               .populate('user', 'name email phone')
-              .populate('assignedMechanic', 'name phone')
+              .populate({
+                path: 'assignedMechanic',
+                select: 'name phone whatsAppPhone providerType garage averageRating ratingCount',
+                populate: { path: 'garage', select: 'name town verificationStatus' },
+              })
               .sort({ createdAt: -1 })
               .lean(),
             CarService.countDocuments(carServiceQuery),

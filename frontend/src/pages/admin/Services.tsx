@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGetAllServicesQuery } from '../../store/api/adminApi';
+import { useGetAllServicesQuery, useGetProvidersForAssignmentQuery } from '../../store/api/adminApi';
 import { useUpdateTowingServiceMutation, useUpdateCarServiceMutation } from '../../store/api/serviceApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
@@ -9,8 +9,27 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Phone, Mail, Banknote, Save, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Users, Phone, Mail, Banknote, Save, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { ServiceStatus } from '@shared/types';
+
+function assigneeIdFromSelectedService(s: { type?: string; assignedDriver?: unknown; assignedMechanic?: unknown }) {
+  if (s.type === 'towing') {
+    const a = s.assignedDriver;
+    if (!a) return '';
+    return typeof a === 'object' && a !== null && '_id' in a ? String((a as { _id: string })._id) : String(a);
+  }
+  const a = s.assignedMechanic;
+  if (!a) return '';
+  return typeof a === 'object' && a !== null && '_id' in a ? String((a as { _id: string })._id) : String(a);
+}
+
+function toDatetimeLocalValue(iso: string | undefined) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export const AdminServices = () => {
   const dispatch = useAppDispatch();
@@ -22,6 +41,8 @@ export const AdminServices = () => {
   const [selectedService, setSelectedService] = useState<any | null>(null);
   const [newStatus, setNewStatus] = useState<ServiceStatus | ''>('');
   const [priceMwInput, setPriceMwInput] = useState('');
+  const [providerPickId, setProviderPickId] = useState('');
+  const [etaInput, setEtaInput] = useState('');
 
   const [updateTowingService, { isLoading: isUpdatingTowing }] = useUpdateTowingServiceMutation();
   const [updateCarService, { isLoading: isUpdatingCar }] = useUpdateCarServiceMutation();
@@ -40,6 +61,42 @@ export const AdminServices = () => {
     setNewStatus(service.status);
     const p = service.price;
     setPriceMwInput(p != null && p > 0 ? String(Math.round(Number(p))) : '');
+    setProviderPickId(assigneeIdFromSelectedService(service));
+    setEtaInput(toDatetimeLocalValue(service.estimatedArrivalAt));
+  };
+
+  const providerTypeForAssign =
+    selectedService?.type === 'towing' ? 'driver' : selectedService?.type === 'car-service' ? 'mechanic' : 'driver';
+  const { data: assignData } = useGetProvidersForAssignmentQuery(
+    { providerType: providerTypeForAssign },
+    { skip: !selectedService }
+  );
+
+  const handleSaveAssignmentEta = async () => {
+    if (!selectedService) return;
+    try {
+      const etaIso = etaInput ? new Date(etaInput).toISOString() : null;
+      if (selectedService.type === 'towing') {
+        const updated = await updateTowingService({
+          id: selectedService._id,
+          assignedDriver: providerPickId || null,
+          estimatedArrivalAt: etaIso,
+        }).unwrap();
+        setSelectedService({ ...selectedService, ...updated, type: 'towing' });
+      } else {
+        const updated = await updateCarService({
+          id: selectedService._id,
+          assignedMechanic: providerPickId || null,
+          estimatedArrivalAt: etaIso,
+        }).unwrap();
+        setSelectedService({ ...selectedService, ...updated, type: 'car-service' });
+      }
+      dispatch(showNotification({ message: 'Assignment and ETA saved', type: 'success' }));
+      await refetch();
+    } catch (error: unknown) {
+      const errorInfo = getErrorInfo(error, 'Failed to save assignment');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
   };
 
   const handleStatusUpdate = async () => {
@@ -446,6 +503,66 @@ export const AdminServices = () => {
                       <Body className="text-gray-300 text-sm">{selectedService.user.phone}</Body>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div>
+                <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Assign provider & ETA
+                </Body>
+                <Body className="text-xs text-gray-500 mb-3">
+                  Only vetted providers appear here. Active jobs count helps avoid overload.
+                </Body>
+                <div className="bg-slate-700/50 rounded-lg p-4 space-y-3">
+                  <div>
+                    <label htmlFor="admin-assign-provider" className="block text-xs text-gray-400 mb-1">
+                      {selectedService.type === 'towing' ? 'Driver' : 'Mechanic'}
+                    </label>
+                    <select
+                      id="admin-assign-provider"
+                      value={providerPickId}
+                      onChange={(e) => setProviderPickId(e.target.value)}
+                      className="w-full px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                    >
+                      <option value="">Not assigned</option>
+                      {(assignData?.providers ?? []).map((p) => (
+                        <option key={p._id} value={p._id}>
+                          {p.name} — {typeof p.garage === 'object' && p.garage ? p.garage.name : 'Garage'} (
+                          {p.activeAssignmentCount ?? 0} active)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="admin-service-eta" className="block text-xs text-gray-400 mb-1 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Estimated arrival (optional)
+                    </label>
+                    <input
+                      id="admin-service-eta"
+                      type="datetime-local"
+                      value={etaInput}
+                      onChange={(e) => setEtaInput(e.target.value)}
+                      className="w-full px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="small"
+                    dark
+                    type="button"
+                    onClick={handleSaveAssignmentEta}
+                    disabled={isUpdatingTowing || isUpdatingCar}
+                    className="gap-2"
+                  >
+                    {isUpdatingTowing || isUpdatingCar ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    Save assignment & ETA
+                  </Button>
                 </div>
               </div>
 

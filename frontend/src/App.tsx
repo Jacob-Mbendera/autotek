@@ -22,7 +22,7 @@ import { ReturnDetail } from './pages/ReturnDetail';
 import { RequestReturn } from './pages/RequestReturn';
 import { PaymentSuccess } from './pages/PaymentSuccess';
 import { PaymentCancel } from './pages/PaymentCancel';
-import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport, AdminReturns, DeliveryLocations } from './pages/admin';
+import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminProviders, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport, AdminReturns, DeliveryLocations } from './pages/admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
@@ -234,6 +234,16 @@ function App() {
             <ProtectedRoute adminOnly>
               <AdminLayout>
                 <AdminServices />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/providers"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminProviders />
               </AdminLayout>
             </ProtectedRoute>
           }

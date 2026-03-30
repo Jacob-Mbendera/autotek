@@ -71,6 +71,42 @@ export interface User {
   updatedAt: string;
 }
 
+export interface AdminGarage {
+  _id: string;
+  name: string;
+  contactPhone: string;
+  email?: string;
+  town: string;
+  addressLine?: string;
+  verificationStatus: string;
+  notes?: string;
+}
+export interface AdminServiceProvider {
+  _id: string;
+  garage: AdminGarage | string;
+  name: string;
+  phone: string;
+  whatsAppPhone?: string;
+  providerType: 'driver' | 'mechanic';
+  vettingStatus: string;
+  active: boolean;
+  certificationNote?: string;
+  averageRating?: number;
+  ratingCount?: number;
+  activeAssignmentCount?: number;
+}
+export interface ServicePayoutRow {
+  _id: string;
+  amountMwk: number;
+  status: string;
+  serviceKind: string;
+  service: string;
+  garage: AdminGarage | string;
+  provider?: AdminServiceProvider | string;
+  paidAt?: string;
+  createdAt: string;
+}
+
 export const adminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getStats: builder.query<AdminStats, void>({
@@ -204,6 +240,99 @@ export const adminApi = baseApi.injectEndpoints({
         { type: 'Admin', id: `user-${userId}` },
       ],
     }),
+    getGarages: builder.query<
+      { garages: AdminGarage[]; pagination: unknown },
+      { page?: number; limit?: number; search?: string } | void
+    >({
+      query: (params) => {
+        const sp = new URLSearchParams();
+        if (params?.page) sp.append('page', String(params.page));
+        if (params?.limit) sp.append('limit', String(params.limit));
+        if (params?.search) sp.append('search', params.search);
+        const q = sp.toString();
+        return `/admin/garages${q ? `?${q}` : ''}`;
+      },
+      providesTags: ['Garage'],
+    }),
+    createGarage: builder.mutation<AdminGarage, Partial<AdminGarage> & { name: string; contactPhone: string; town: string }>({
+      query: (body) => ({ url: '/admin/garages', method: 'POST', body }),
+      invalidatesTags: ['Garage', 'Admin'],
+    }),
+    updateGarage: builder.mutation<AdminGarage, { id: string; body: Partial<AdminGarage> }>({
+      query: ({ id, body }) => ({ url: `/admin/garages/${id}`, method: 'PATCH', body }),
+      invalidatesTags: ['Garage', 'Admin'],
+    }),
+    getServiceProviders: builder.query<
+      { providers: AdminServiceProvider[]; pagination: unknown },
+      {
+        page?: number;
+        limit?: number;
+        search?: string;
+        providerType?: 'driver' | 'mechanic';
+        vettingStatus?: string;
+        garageId?: string;
+        includeWorkload?: boolean;
+      } | void
+    >({
+      query: (params) => {
+        const sp = new URLSearchParams();
+        if (params?.page) sp.append('page', String(params.page));
+        if (params?.limit) sp.append('limit', String(params.limit));
+        if (params?.search) sp.append('search', params.search);
+        if (params?.providerType) sp.append('providerType', params.providerType);
+        if (params?.vettingStatus) sp.append('vettingStatus', params.vettingStatus);
+        if (params?.garageId) sp.append('garageId', params.garageId);
+        if (params?.includeWorkload) sp.append('includeWorkload', 'true');
+        const q = sp.toString();
+        return `/admin/service-providers${q ? `?${q}` : ''}`;
+      },
+      providesTags: ['ServiceProvider'],
+    }),
+    getProvidersForAssignment: builder.query<
+      { providers: AdminServiceProvider[] },
+      { providerType: 'driver' | 'mechanic' }
+    >({
+      query: ({ providerType }) => `/admin/service-providers/for-assignment?providerType=${providerType}`,
+      providesTags: ['ServiceProvider'],
+    }),
+    createServiceProvider: builder.mutation<
+      AdminServiceProvider,
+      {
+        garage: string;
+        name: string;
+        phone: string;
+        providerType: 'driver' | 'mechanic';
+        whatsAppPhone?: string;
+        vettingStatus?: string;
+        active?: boolean;
+        certificationNote?: string;
+      }
+    >({
+      query: (body) => ({ url: '/admin/service-providers', method: 'POST', body }),
+      invalidatesTags: ['ServiceProvider', 'Admin'],
+    }),
+    updateServiceProvider: builder.mutation<AdminServiceProvider, { id: string; body: Record<string, unknown> }>({
+      query: ({ id, body }) => ({ url: `/admin/service-providers/${id}`, method: 'PATCH', body }),
+      invalidatesTags: ['ServiceProvider', 'Admin'],
+    }),
+    getServicePayouts: builder.query<
+      { payouts: ServicePayoutRow[]; pagination: unknown },
+      { page?: number; limit?: number; status?: string } | void
+    >({
+      query: (params) => {
+        const sp = new URLSearchParams();
+        if (params?.page) sp.append('page', String(params.page));
+        if (params?.limit) sp.append('limit', String(params.limit));
+        if (params?.status) sp.append('status', params.status);
+        const q = sp.toString();
+        return `/admin/service-payouts${q ? `?${q}` : ''}`;
+      },
+      providesTags: ['ServicePayout'],
+    }),
+    markServicePayoutPaid: builder.mutation<unknown, string>({
+      query: (id) => ({ url: `/admin/service-payouts/${id}/mark-paid`, method: 'PATCH' }),
+      invalidatesTags: ['ServicePayout', 'Admin'],
+    }),
   }),
 });
 
@@ -218,4 +347,13 @@ export const {
   useGetAllUsersQuery,
   useGetUserQuery,
   useUpdateUserRoleMutation,
+  useGetGaragesQuery,
+  useCreateGarageMutation,
+  useUpdateGarageMutation,
+  useGetServiceProvidersQuery,
+  useGetProvidersForAssignmentQuery,
+  useCreateServiceProviderMutation,
+  useUpdateServiceProviderMutation,
+  useGetServicePayoutsQuery,
+  useMarkServicePayoutPaidMutation,
 } = adminApi;

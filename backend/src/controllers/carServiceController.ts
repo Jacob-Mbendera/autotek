@@ -2,7 +2,9 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import CarService from '../models/CarService';
 import User from '../models/User';
-import { ServiceStatus, ServiceType, UserRole } from '../types/shared';
+import { ProviderType, ServiceStatus, ServiceType, UserRole } from '../types/shared';
+import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
+import { populateAssignedMechanic } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
 import { resolveCoordsForAddress } from '../utils/geocoding';
 import { validateQuoteContactPhones } from '../utils/phoneValidation';
@@ -169,7 +171,7 @@ export const getCarServices = async (
 
     const carServices = await CarService.find(query)
       .populate('user', 'name email phone address')
-      .populate('assignedMechanic', 'name phone')
+      .populate(populateAssignedMechanic)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -228,7 +230,7 @@ export const getCarService = async (
 
     const carService = await CarService.findOne(query)
       .populate('user', 'name email phone address')
-      .populate('assignedMechanic', 'name phone')
+      .populate(populateAssignedMechanic)
       .lean();
 
     if (!carService) {
@@ -428,7 +430,7 @@ export const updateCarService = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { status, assignedMechanic, price, notes } = req.body;
+    const { status, assignedMechanic, price, notes, estimatedArrivalAt } = req.body;
 
     const carService = await CarService.findById(req.params.id);
     if (!carService) {
@@ -444,9 +446,37 @@ export const updateCarService = async (
       }
 
       if (status) carService.status = status;
-      if (assignedMechanic) carService.assignedMechanic = assignedMechanic;
+      if (assignedMechanic !== undefined) {
+        if (assignedMechanic === null || assignedMechanic === '') {
+          carService.set('assignedMechanic', undefined);
+        } else {
+          const check = await assertProviderAssignable(
+            String(assignedMechanic),
+            ProviderType.MECHANIC
+          );
+          if (!check.ok) {
+            res.status(400).json({ message: check.message });
+            return;
+          }
+          carService.assignedMechanic = assignedMechanic;
+        }
+      }
       if (price !== undefined) carService.price = price;
       if (notes !== undefined) carService.notes = notes;
+      if (estimatedArrivalAt !== undefined) {
+        if (estimatedArrivalAt === null || estimatedArrivalAt === '') {
+          carService.set('estimatedArrivalAt', undefined);
+          carService.set('etaUpdatedAt', undefined);
+        } else {
+          const d = new Date(estimatedArrivalAt);
+          if (Number.isNaN(d.getTime())) {
+            res.status(400).json({ message: 'Invalid estimatedArrivalAt' });
+            return;
+          }
+          carService.estimatedArrivalAt = d;
+          carService.etaUpdatedAt = new Date();
+        }
+      }
     } else {
       // Users should use /cancel endpoint instead
       res.status(403).json({ message: 'Use /cancel endpoint to cancel services' });
@@ -454,7 +484,8 @@ export const updateCarService = async (
     }
 
     await carService.save();
-    res.json(carService);
+    const updated = await CarService.findById(carService._id).populate(populateAssignedMechanic).lean();
+    res.json(updated);
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to update car service' });
   }

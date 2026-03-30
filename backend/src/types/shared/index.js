@@ -1,7 +1,7 @@
 "use strict";
 // Shared types between frontend and backend
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RefundStatus = exports.RefundMethod = exports.ReturnReason = exports.ReturnStatus = exports.ServiceType = exports.PaymentStatus = exports.PaymentMethod = exports.ServiceStatus = exports.CustomOrderStatus = exports.OrderStatus = exports.UserRole = void 0;
+exports.ServicePayoutStatus = exports.ProviderVettingStatus = exports.ProviderType = exports.GarageVerificationStatus = exports.RefundStatus = exports.RefundMethod = exports.ReturnReason = exports.ReturnStatus = exports.ServiceType = exports.PaymentStatus = exports.PaymentMethod = exports.ServiceStatus = exports.CustomOrderStatus = exports.OrderStatus = exports.UserRole = void 0;
 var UserRole;
 (function (UserRole) {
     UserRole["CUSTOMER"] = "customer";
@@ -81,3 +81,25 @@ var RefundStatus;
     RefundStatus["COMPLETED"] = "completed";
     RefundStatus["FAILED"] = "failed";
 })(RefundStatus || (exports.RefundStatus = RefundStatus = {}));
+var GarageVerificationStatus;
+(function (GarageVerificationStatus) {
+    GarageVerificationStatus["PENDING"] = "pending";
+    GarageVerificationStatus["VERIFIED"] = "verified";
+    GarageVerificationStatus["SUSPENDED"] = "suspended";
+})(GarageVerificationStatus || (exports.GarageVerificationStatus = GarageVerificationStatus = {}));
+var ProviderType;
+(function (ProviderType) {
+    ProviderType["DRIVER"] = "driver";
+    ProviderType["MECHANIC"] = "mechanic";
+})(ProviderType || (exports.ProviderType = ProviderType = {}));
+var ProviderVettingStatus;
+(function (ProviderVettingStatus) {
+    ProviderVettingStatus["PENDING_REVIEW"] = "pending_review";
+    ProviderVettingStatus["VETTED"] = "vetted";
+    ProviderVettingStatus["SUSPENDED"] = "suspended";
+})(ProviderVettingStatus || (exports.ProviderVettingStatus = ProviderVettingStatus = {}));
+var ServicePayoutStatus;
+(function (ServicePayoutStatus) {
+    ServicePayoutStatus["PENDING"] = "pending";
+    ServicePayoutStatus["PAID"] = "paid";
+})(ServicePayoutStatus || (exports.ServicePayoutStatus = ServicePayoutStatus = {}));

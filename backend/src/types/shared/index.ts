@@ -77,3 +77,25 @@ export enum RefundStatus {
   COMPLETED = 'completed',
   FAILED = 'failed',
 }
+
+export enum GarageVerificationStatus {
+  PENDING = 'pending',
+  VERIFIED = 'verified',
+  SUSPENDED = 'suspended',
+}
+
+export enum ProviderType {
+  DRIVER = 'driver',
+  MECHANIC = 'mechanic',
+}
+
+export enum ProviderVettingStatus {
+  PENDING_REVIEW = 'pending_review',
+  VETTED = 'vetted',
+  SUSPENDED = 'suspended',
+}
+
+export enum ServicePayoutStatus {
+  PENDING = 'pending',
+  PAID = 'paid',
+}

@@ -6,6 +6,7 @@ export interface ServiceAssignee {
   _id: string;
   name?: string;
   phone?: string;
+  garage?: { _id?: string; name?: string; town?: string; verificationStatus?: string };
 }
 
 export interface TowingService {
@@ -39,6 +40,8 @@ export interface TowingService {
   createdAt: string;
   updatedAt: string;
   assignedDriver?: ServiceAssignee | string;
+  estimatedArrivalAt?: string;
+  etaUpdatedAt?: string;
 }
 
 export interface CarService {
@@ -68,6 +71,8 @@ export interface CarService {
   createdAt: string;
   updatedAt: string;
   assignedMechanic?: ServiceAssignee | string;
+  estimatedArrivalAt?: string;
+  etaUpdatedAt?: string;
 }
 
 interface CreateTowingServiceRequest {
@@ -196,7 +201,13 @@ export const serviceApi = baseApi.injectEndpoints({
     }),
     updateTowingService: builder.mutation<
       TowingService,
-      { id: string; status?: ServiceStatus; assignedDriver?: string; price?: number }
+      {
+        id: string;
+        status?: ServiceStatus;
+        assignedDriver?: string | null;
+        price?: number;
+        estimatedArrivalAt?: string | null;
+      }
     >({
       query: ({ id, ...body }) => ({
         url: `/towing/${id}`,
@@ -207,7 +218,14 @@ export const serviceApi = baseApi.injectEndpoints({
     }),
     updateCarService: builder.mutation<
       CarService,
-      { id: string; status?: ServiceStatus; assignedMechanic?: string; price?: number; notes?: string }
+      {
+        id: string;
+        status?: ServiceStatus;
+        assignedMechanic?: string | null;
+        price?: number;
+        notes?: string;
+        estimatedArrivalAt?: string | null;
+      }
     >({
       query: ({ id, ...body }) => ({
         url: `/car-services/${id}`,
@@ -252,6 +270,22 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['CarService', 'Admin'],
     }),
+    rateTowingProvider: builder.mutation<{ message: string }, { id: string; rating: number; comment?: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/towing/${id}/provider-rating`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['TowingService', 'Admin'],
+    }),
+    rateCarServiceProvider: builder.mutation<{ message: string }, { id: string; rating: number; comment?: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/car-services/${id}/provider-rating`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['CarService', 'Admin'],
+    }),
   }),
 });
 
@@ -268,4 +302,6 @@ export const {
   useCancelCarServiceMutation,
   useRequestTowingQuoteMutation,
   useRequestCarServiceQuoteMutation,
+  useRateTowingProviderMutation,
+  useRateCarServiceProviderMutation,
 } = serviceApi;

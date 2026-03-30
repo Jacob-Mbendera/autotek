@@ -149,11 +149,14 @@
 - ✅ Towing booking form shows:
   - **Vehicle Type** (text input, required) — e.g. Sedan, SUV, truck (there is **no** separate "Vehicle Make" field)
   - **Vehicle Model (Optional)** (text input) — e.g. make/model/year in one line
-  - Pickup Location (input with map icon)
+  - Pickup location selector (town/city + landmark/area + optional custom directions)
+  - Optional **Use my location (map pin)** for pickup
   - Pickup Description (optional)
-  - Destination Location (input with map icon)
+  - Destination location selector (town/city + landmark/area + optional custom directions)
+  - Optional **Use my location (map pin)** for destination
   - Destination Description (optional)
   - Additional Notes (textarea - optional)
+- ✅ After selecting a pin, a visible pin block appears in the form (coordinates + approximate address), not just a toast
 - ✅ Backend stores `vehicleType` as `vehicleDetails.make` and `vehicleModel` as `vehicleDetails.model`
 - ✅ Required fields enforce validation when empty
 - ✅ "Submit Service Request" button at bottom
@@ -192,6 +195,8 @@
 - ✅ Payment status shows "Unpaid" or "Pending Payment"
 - ✅ Service displays structured pickup/destination information correctly
 - ✅ If a map pin was provided, **Open pickup in Maps** / **Open destination in Maps** opens close to the pinned area
+- ✅ If selected town and pin town do **not** match, user sees an alert and booking uses selected town/landmark as source of truth
+- ✅ If no town is selected and pin is used, town can be auto-filled from reverse geocoded pin address (when matched)
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -216,6 +221,7 @@
     - Landmark / Area dropdown
     - Custom location textarea when `Other/Custom` is selected
   - Optional **Use my location (map pin)** button
+  - Visible pin block after choosing map pin (coordinates + approximate address)
   - Location Description (optional)
   - Preferred Date (date picker - optional)
   - Preferred Time (time picker - optional)
@@ -256,6 +262,8 @@
 - ✅ Payment status shows "Unpaid"
 - ✅ Preferred date displayed correctly
 - ✅ If a map pin was provided, **Open location in Maps** opens near the pinned area
+- ✅ If selected town and pin town do **not** match, user sees an alert and booking uses selected town/landmark
+- ✅ If town is blank and pin is used, town may auto-fill from pin address when a known town is detected
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**
@@ -281,6 +289,7 @@
     - "Select a landmark or area for pickup / destination / service location"
     - "Describe your location ..." when `Other/Custom` is selected but empty
 - ✅ Optional fields (notes, descriptions) don't show errors
+- ✅ Town/pin mismatch warning appears only when both exist and do not match
 - ✅ Form highlights invalid fields in red
 - ✅ Submit button remains enabled but blocked by validation until required fields are filled
 
@@ -425,6 +434,7 @@ For **Towing Service** card:
 - ✅ Status guidance text when applicable (e.g. pending: assign provider soon)
 - ✅ **Vehicle:** type and optional model
 - ✅ Pickup and destination summary; optional **Open pickup in Maps** / **Open destination in Maps** (external links)
+- ✅ When pin was used, card can show pickup/destination pin coordinates and location source method
 - ✅ **Requested** and **Last updated** with date and time
 - ✅ **MWK** badge and numeric price only when `estimatedCost` is set; otherwise **Price not set yet** (no MWK badge)
 - ✅ **Assigned driver** name (and phone if API provides it) when populated
@@ -434,6 +444,7 @@ For **Car Service** card:
 - ✅ Service name from type (e.g. Oil Change) with wrench icon
 - ✅ Same reference, badges, payment reminder, and status guidance pattern as towing where applicable
 - ✅ **Vehicle** line; **Service Location**; **Open location in Maps**
+- ✅ When pin was used, card can show service pin coordinates and location source method
 - ✅ **Requested** / **Last updated** date-time
 - ✅ **Preferred** date and time when provided at booking
 - ✅ **Price not set yet** or **MWK** + amount when quoted
@@ -470,7 +481,7 @@ For **Car Service** card:
 
 **Frontend quick check (same session as Part 3):**
 1. Open **My Services** after booking (Tests 2.3 / 2.5) or with seeded data.
-2. Confirm cards show **Ref**, vehicle line, maps links open Google Maps in a new tab, **Price not set yet** / **Contact for quote** when no price, payment reminder when unpaid and priced, and **Last updated** changes after admin sets price (Part 8).
+2. Confirm cards show **Ref**, vehicle line, maps links open Google Maps in a new tab, **Price not set yet** / **Contact for quote** when no price, payment reminder when unpaid and priced, **location source** details for pin/structured inputs, and **Last updated** changes after admin sets price (Part 8).
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**

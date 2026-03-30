@@ -8,3 +8,4 @@ export { AdminSettings } from './Settings';
 export { AdminSupport } from './Support';
 export { AdminReturns } from './Returns';
 export { DeliveryLocations } from './DeliveryLocations';
+export { AdminProviders } from './Providers';

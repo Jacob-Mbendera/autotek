@@ -22,6 +22,8 @@ export interface ITowingService extends Document {
   };
   status: ServiceStatus;
   assignedDriver?: Types.ObjectId;
+  estimatedArrivalAt?: Date;
+  etaUpdatedAt?: Date;
   price?: number;
   quoteMobilePhone?: string;
   quoteWhatsAppPhone?: string;
@@ -90,7 +92,13 @@ const TowingServiceSchema = new Schema<ITowingService>(
     },
     assignedDriver: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'ServiceProvider',
+    },
+    estimatedArrivalAt: {
+      type: Date,
+    },
+    etaUpdatedAt: {
+      type: Date,
     },
     price: {
       type: Number,

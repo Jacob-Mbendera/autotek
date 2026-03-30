@@ -17,6 +17,7 @@ import {
   Users,
   RotateCcw,
   MapPin,
+  Building2,
 } from 'lucide-react';
 
 export const AdminSidebar = () => {
@@ -30,6 +31,7 @@ export const AdminSidebar = () => {
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Returns', href: '/admin/returns', icon: RotateCcw },
     { name: 'Services', href: '/admin/services', icon: Wrench },
+    { name: 'Providers', href: '/admin/providers', icon: Building2 },
     { name: 'Custom Orders', href: '/admin/custom-orders', icon: FileText },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Delivery Locations', href: '/admin/delivery-locations', icon: MapPin },
