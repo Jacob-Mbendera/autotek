@@ -5,6 +5,8 @@ import { useGetOrderQuery } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/api/paymentApi';
 import { baseApi } from '../store/api/baseApi';
 import { clearCart } from '../store/slices/cartSlice';
+import { clearPendingPaychanguOrder } from '../utils/pendingPaychanguOrder';
+import { clearPendingPaychanguService } from '../utils/pendingPaychanguService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
@@ -54,6 +56,7 @@ export const PaymentSuccess = () => {
   const clearCartOnce = () => {
     if (!hasClearedCartRef.current) {
       dispatch(clearCart());
+      clearPendingPaychanguOrder();
       hasClearedCartRef.current = true;
     }
   };
@@ -88,8 +91,15 @@ export const PaymentSuccess = () => {
             transactionId: p?.transactionId,
           });
           setServiceVerifyState('success');
+          clearPendingPaychanguService();
           dispatch(
-            baseApi.util.invalidateTags(['TowingService', 'CarService', 'Payment', 'Admin'])
+            baseApi.util.invalidateTags([
+              'Order',
+              'TowingService',
+              'CarService',
+              'Payment',
+              'Admin',
+            ])
           );
         } else {
           setServiceVerifyState('error');
@@ -119,6 +129,7 @@ export const PaymentSuccess = () => {
           if (data?.verified || data?.payment?.status === PaymentStatus.COMPLETED) {
             setPaymentVerified(true);
             clearCartOnce();
+            dispatch(baseApi.util.invalidateTags(['Order', 'Payment', 'Admin']));
           }
           setTimeout(() => refetchPayment(), 1000);
         })

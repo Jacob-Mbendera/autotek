@@ -10,6 +10,8 @@ import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getResolvedFrontendBaseUrl } from '../utils/frontendBaseUrl';
+import { setPendingPaychanguService } from '../utils/pendingPaychanguService';
+import { useReconcilePendingPaychanguService } from '../hooks/useReconcilePendingPaychanguService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, H2, Body } from '../components/ui/Typography';
@@ -100,6 +102,11 @@ export const ServicePayment = () => {
       const result = await initiatePayment(paymentData).unwrap();
 
       if (result.redirectUrl) {
+        if (towingServiceId) {
+          setPendingPaychanguService({ towingServiceId });
+        } else if (carServiceId) {
+          setPendingPaychanguService({ carServiceId });
+        }
         window.location.href = result.redirectUrl;
       } else {
         dispatch(
@@ -138,6 +145,26 @@ export const ServicePayment = () => {
     : !canPay
       ? 'Your quote in Malawi Kwacha (MWK) is not ready yet. Please check My Services later or contact support.'
       : 'Complete your payment in MWK to confirm your service request.';
+
+  if (isConfirmingServicePayment && pendingMatchesThisPage) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
+          <Button variant="ghost" onClick={() => navigate('/my-services')} className="mb-6">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to My Services
+          </Button>
+          <Card className="p-8 text-center">
+            <Loader2 className="w-12 h-12 text-teal-600 animate-spin mx-auto mb-6" aria-hidden />
+            <H1 className="text-xl font-bold text-gray-900 mb-2">Confirming your payment</H1>
+            <Body className="text-gray-600">
+              Checking your booking with PayChangu. This usually takes a few seconds.
+            </Body>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8">

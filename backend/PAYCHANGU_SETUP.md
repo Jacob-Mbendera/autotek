@@ -40,6 +40,9 @@ PAYCHANGU_WEBHOOK_SECRET=your_paychangu_webhook_secret
 
 # Frontend URL (for payment redirects)
 FRONTEND_URL=http://localhost:5173
+
+# Optional: public backend base URL (e.g. for scripts or reverse-proxy docs)
+BACKEND_URL=http://localhost:5000
 ```
 
 ### Environment Variables Explained
@@ -48,7 +51,8 @@ FRONTEND_URL=http://localhost:5173
 - **PAYCHANGU_API_SECRET**: Your PayChangu API secret (private, keep secure)
 - **PAYCHANGU_BASE_URL**: PayChangu API base URL (usually `https://api.paychangu.com`)
 - **PAYCHANGU_WEBHOOK_SECRET**: Secret for verifying webhook signatures
-- **FRONTEND_URL**: Your frontend application URL (used for return/cancel URLs)
+- **FRONTEND_URL**: Your frontend application URL (used for PayChangu **browser** success/cancel redirects when the client does not send custom URLs)
+- **BACKEND_URL**: Optional; not used for checkout redirects. Configure the webhook URL separately in the PayChangu dashboard (see Step 3).
 
 ## Step 3: Configure Webhook Endpoint
 
@@ -86,9 +90,12 @@ https://your-ngrok-url.ngrok.io/api/payments/webhook/paychangu
 
 ### Return URLs
 
-The system automatically generates return URLs:
-- **Success URL**: `${FRONTEND_URL}/payment/success?orderId={ORDER_ID}`
-- **Cancel URL**: `${FRONTEND_URL}/payment/cancel?orderId={ORDER_ID}`
+PayChangu’s hosted checkout sends the **customer’s browser** to `callback_url` after payment (often appending `tx_ref`). That must be a **frontend** URL, not the API webhook.
+
+- **`callback_url` (success redirect)**: Frontend success page, e.g. `${FRONTEND_URL}/payment/success?...` (checkout sends concrete `returnUrl` / `cancelUrl` from the client)
+- **`return_url` (cancel redirect)**: Frontend cancel page, e.g. `${FRONTEND_URL}/payment/cancel?...`
+
+**Server webhooks** are only the URL you set in the PayChangu dashboard: `https://your-domain.com/api/payments/webhook/paychangu` (or ngrok in local dev). Do not use that URL as `callback_url` in checkout init.
 
 ## Step 5: Testing
 

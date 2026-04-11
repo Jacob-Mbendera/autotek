@@ -21,10 +21,12 @@ export interface PaymentResponse {
 }
 
 // PayChangu Standard Checkout integration
+// PayChangu sends the customer's browser to callback_url after payment (often with tx_ref).
+// return_url is used for cancel / alternate exit. Server webhooks are configured in the PayChangu dashboard.
 export const initiatePayChanguPayment = async (
   request: PaymentRequest,
-  returnUrl: string,
-  cancelUrl: string,
+  successRedirectUrl: string,
+  cancelRedirectUrl: string,
   customerInfo?: { email?: string; firstName?: string; lastName?: string }
 ): Promise<PaymentResponse> => {
   try {
@@ -48,8 +50,8 @@ export const initiatePayChanguPayment = async (
       amount: Math.round(request.amount), // PayChangu expects integer amount
       currency: 'MWK',
       tx_ref: transactionId,
-      callback_url: returnUrl,
-      return_url: cancelUrl,
+      callback_url: successRedirectUrl,
+      return_url: cancelRedirectUrl,
     };
 
     // Add optional customer information
@@ -134,8 +136,8 @@ export const initiatePayChanguPayment = async (
 export const initiatePayment = async (
   method: PaymentMethod,
   request: PaymentRequest,
-  returnUrl?: string,
-  cancelUrl?: string,
+  successRedirectUrl?: string,
+  cancelRedirectUrl?: string,
   customerInfo?: { email?: string; firstName?: string; lastName?: string }
 ): Promise<PaymentResponse> => {
   if (method !== PaymentMethod.PAYCHANGU) {
@@ -145,12 +147,12 @@ export const initiatePayment = async (
     };
   }
 
-  if (!returnUrl || !cancelUrl) {
+  if (!successRedirectUrl || !cancelRedirectUrl) {
     return {
       success: false,
-      message: 'Return URL and Cancel URL are required for PayChangu',
+      message: 'Success and cancel redirect URLs are required for PayChangu',
     };
   }
 
-  return initiatePayChanguPayment(request, returnUrl, cancelUrl, customerInfo);
+  return initiatePayChanguPayment(request, successRedirectUrl, cancelRedirectUrl, customerInfo);
 };

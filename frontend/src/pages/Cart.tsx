@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
-import { removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved, applyCoupon, removeCoupon } from '../store/slices/cartSlice';
+import { removeItem, updateQuantity, saveForLater, moveToCart, updateItemNote, removeFromSaved, applyCoupon, removeCoupon } from '../store/slices/cartSlice';
 import { useValidateCouponMutation } from '../store/api/couponApi';
+import { useReconcilePendingPaychanguOrder } from '../hooks/useReconcilePendingPaychanguOrder';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { Card } from '../components/ui/Card';
@@ -13,8 +14,8 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { 
   ShoppingCart, Plus, Minus, Trash2, ArrowRight, Package, X, AlertCircle, 
   Bookmark, BookmarkCheck, Edit2, Check, Calendar, Tag, AlertTriangle, 
-  CheckCircle, ChevronDown, ChevronUp, Sparkles, Banknote, TrendingUp,
-  ShoppingBag, Truck, Shield, Gift, Percent, BarChart3
+  CheckCircle, ChevronDown, ChevronUp, Banknote, TrendingUp,
+  ShoppingBag, Shield, Percent, BarChart3, Loader2
 } from 'lucide-react';
 
 export const Cart = () => {
@@ -36,6 +37,7 @@ export const Cart = () => {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   
   const [validateCoupon] = useValidateCouponMutation();
+  const { isConfirmingRecentCheckout } = useReconcilePendingPaychanguOrder();
 
   const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -232,6 +234,23 @@ export const Cart = () => {
                 </Button>
               </Link>
             </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (isConfirmingRecentCheckout && cart.items.length > 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Breadcrumb items={breadcrumbItems} />
+          <Card variant="md" className="text-center py-16 mt-8 shadow-lg max-w-lg mx-auto">
+            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-6" aria-hidden />
+            <H1 className="text-xl font-bold text-gray-900 mb-2">Confirming your payment</H1>
+            <Body className="text-gray-600">
+              Checking your order with PayChangu. This usually takes a few seconds.
+            </Body>
           </Card>
         </div>
       </div>

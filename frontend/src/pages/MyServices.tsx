@@ -17,6 +17,7 @@ import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { validateMalawiPhoneField } from '../utils/phoneValidation';
+import { useReconcilePendingPaychanguService } from '../hooks/useReconcilePendingPaychanguService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -143,6 +144,7 @@ function statusGuidance(status: ServiceStatus): string | null {
 export const MyServices = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { isConfirmingServicePayment } = useReconcilePendingPaychanguService();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'towing' | 'car'>('all');
@@ -406,6 +408,15 @@ export const MyServices = () => {
             { label: 'My Services' },
           ]}
         />
+
+        {isConfirmingServicePayment && (
+          <Card className="mt-4 p-4 border-teal-200 bg-teal-50/90 flex items-center gap-3">
+            <Loader2 className="w-6 h-6 text-teal-600 shrink-0 animate-spin" aria-hidden />
+            <Body className="text-sm text-teal-900">
+              Confirming your PayChangu payment and refreshing your bookings…
+            </Body>
+          </Card>
+        )}
 
         {/* Header */}
         <div className="mb-8 mt-6">

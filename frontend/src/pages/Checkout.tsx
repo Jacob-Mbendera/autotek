@@ -9,6 +9,8 @@ import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getResolvedFrontendBaseUrl } from '../utils/frontendBaseUrl';
+import { setPendingPaychanguOrder } from '../utils/pendingPaychanguOrder';
+import { useReconcilePendingPaychanguOrder } from '../hooks/useReconcilePendingPaychanguOrder';
 import { UserRole } from '@shared/types';
 import type { PaymentMethod } from '../../../shared/types';
 import { Button } from '../components/ui/Button';
@@ -23,6 +25,8 @@ export const Checkout = () => {
   const dispatch = useAppDispatch();
   const cart = useAppSelector((state) => state.cart);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+
+  useReconcilePendingPaychanguOrder();
   
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
   const [initiatePayment, { isLoading: isInitiatingPayment }] = useInitiatePaymentMutation();
@@ -242,6 +246,10 @@ export const Checkout = () => {
 
         // If we get a redirect URL, redirect to PayChangu
         if (paymentResult.redirectUrl) {
+          setPendingPaychanguOrder(
+            orderResult.order._id,
+            !orderResult.user && !isAuthenticated ? guestEmail.trim() : undefined
+          );
           window.location.href = paymentResult.redirectUrl;
           return; // Don't clear cart yet, wait for payment confirmation
         }
