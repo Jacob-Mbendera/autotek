@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useGetTowingServicesQuery,
@@ -18,6 +18,12 @@ import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { validateMalawiPhoneField } from '../utils/phoneValidation';
 import { useReconcilePendingPaychanguService } from '../hooks/useReconcilePendingPaychanguService';
+import {
+  subscribeServicePaychanguLocks,
+  getServicePaychanguLockSnapshot,
+  getServerServicePaychanguLockSnapshot,
+  normalizeServiceId,
+} from '../utils/pendingPaychanguService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -144,7 +150,28 @@ function statusGuidance(status: ServiceStatus): string | null {
 export const MyServices = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { isConfirmingServicePayment } = useReconcilePendingPaychanguService();
+  useReconcilePendingPaychanguService();
+
+  const paychanguLockSnapshot = useSyncExternalStore(
+    subscribeServicePaychanguLocks,
+    getServicePaychanguLockSnapshot,
+    getServerServicePaychanguLockSnapshot
+  );
+  let pendingTowSnap = '';
+  let pendingCarSnap = '';
+  let holdPayNowServiceIdSnap = '';
+  try {
+    const j = JSON.parse(paychanguLockSnapshot) as { t?: string; c?: string; h?: string };
+    pendingTowSnap = j.t ?? '';
+    pendingCarSnap = j.c ?? '';
+    holdPayNowServiceIdSnap = j.h ?? '';
+  } catch {
+    /* ignore */
+  }
+  const showPaychanguReconcileBanner = Boolean(
+    pendingTowSnap || pendingCarSnap || holdPayNowServiceIdSnap
+  );
+
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<ServiceStatus | 'all'>('all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'towing' | 'car'>('all');
@@ -318,6 +345,7 @@ export const MyServices = () => {
 
   const handlePayForService = (service: TowingService | CarService, type: 'towing' | 'car') => {
     if (!service.estimatedCost || service.estimatedCost <= 0) return;
+    if (shouldHoldPayNowForPaychangu(service, type)) return;
     const params = new URLSearchParams({ [`${type}ServiceId`]: service._id });
     navigate(`/service-payment?${params.toString()}`);
   };
@@ -329,6 +357,27 @@ export const MyServices = () => {
       service.estimatedCost != null &&
       service.estimatedCost > 0
     );
+  };
+
+  /**
+   * Lock Pay Now using the subscribed snapshot + post-success hold so we do not flash enabled:
+   * (1) same-tab localStorage updates notify via useSyncExternalStore, (2) after verify clears pending,
+   * UI hold covers RTK refetch delay, (3) while lists load, pending id still locks matching row.
+   */
+  const shouldHoldPayNowForPaychangu = (
+    service: TowingService | CarService,
+    kind: 'towing' | 'car'
+  ): boolean => {
+    if (!canPayOnline(service)) return false;
+    const sid = normalizeServiceId(service._id);
+    if (holdPayNowServiceIdSnap && normalizeServiceId(holdPayNowServiceIdSnap) === sid) {
+      return true;
+    }
+    const tow = normalizeServiceId(pendingTowSnap);
+    const car = normalizeServiceId(pendingCarSnap);
+    const pendingMatches =
+      (kind === 'towing' && tow !== '' && tow === sid) || (kind === 'car' && car !== '' && car === sid);
+    return pendingMatches;
   };
 
   const canRequestQuote = (service: TowingService | CarService): boolean => {
@@ -409,7 +458,7 @@ export const MyServices = () => {
           ]}
         />
 
-        {isConfirmingServicePayment && (
+        {showPaychanguReconcileBanner && (
           <Card className="mt-4 p-4 border-teal-200 bg-teal-50/90 flex items-center gap-3">
             <Loader2 className="w-6 h-6 text-teal-600 shrink-0 animate-spin" aria-hidden />
             <Body className="text-sm text-teal-900">
@@ -894,10 +943,20 @@ export const MyServices = () => {
                           size="sm"
                           variant="primary"
                           className="w-full justify-center sm:w-auto"
+                          disabled={shouldHoldPayNowForPaychangu(service, type)}
                           onClick={() => handlePayForService(service, type)}
                         >
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Pay Now (MWK)
+                          {shouldHoldPayNowForPaychangu(service, type) ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 shrink-0 animate-spin" aria-hidden />
+                              Confirming payment…
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Pay Now (MWK)
+                            </>
+                          )}
                         </Button>
                       )}
 

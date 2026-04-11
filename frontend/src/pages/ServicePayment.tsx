@@ -48,6 +48,12 @@ export const ServicePayment = () => {
 
   const loadError = towingServiceId ? towingQuery.isError : carQuery.isError;
 
+  const { isConfirmingServicePayment, pendingMatchesThisPage } =
+    useReconcilePendingPaychanguService({
+      towingServiceId: towingServiceId ?? undefined,
+      carServiceId: carServiceId ?? undefined,
+    });
+
   useEffect(() => {
     if (!towingServiceId && !carServiceId) {
       navigate('/my-services');

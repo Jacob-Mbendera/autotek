@@ -5,6 +5,7 @@ import { PaymentStatus } from '@shared/types';
 import {
   getPendingPaychanguService,
   clearPendingPaychanguService,
+  setServicePayNowUiHold,
 } from '../utils/pendingPaychanguService';
 import { baseApi } from '../store/api/baseApi';
 
@@ -21,6 +22,9 @@ export type ReconcilePendingPaychanguServiceResult = {
   isConfirmingServicePayment: boolean;
   /** True when opts reference the same service as pending storage (for ServicePayment overlay). */
   pendingMatchesThisPage: boolean;
+  /** Present while a PayChangu return is being reconciled (e.g. disable Pay Now for this booking). */
+  pendingTowingServiceId: string;
+  pendingCarServiceId: string;
 };
 
 /**
@@ -65,6 +69,11 @@ export function useReconcilePendingPaychanguService(
     reconciledRef.current = true;
     gaveUpPollingRef.current = false;
     setIsConfirmingServicePayment(false);
+    const snap = getPendingPaychanguService();
+    const holdId = snap.towingServiceId || snap.carServiceId;
+    if (holdId) {
+      setServicePayNowUiHold(holdId, 8000);
+    }
     clearPendingPaychanguService();
     dispatch(
       baseApi.util.invalidateTags(['TowingService', 'CarService', 'Payment', 'Order', 'Admin'])
@@ -126,6 +135,8 @@ export function useReconcilePendingPaychanguService(
       attempts += 1;
       if (attempts > VERIFY_MAX_ATTEMPTS) {
         gaveUpPollingRef.current = true;
+        clearPendingPaychanguService();
+        dispatch(baseApi.util.invalidateTags(['TowingService', 'CarService', 'Payment']));
         setIsConfirmingServicePayment(false);
         stopPolling();
         return;
@@ -147,6 +158,8 @@ export function useReconcilePendingPaychanguService(
         }
         if (attempts >= VERIFY_MAX_ATTEMPTS) {
           gaveUpPollingRef.current = true;
+          clearPendingPaychanguService();
+          dispatch(baseApi.util.invalidateTags(['TowingService', 'CarService', 'Payment']));
           setIsConfirmingServicePayment(false);
           stopPolling();
         }
@@ -156,6 +169,8 @@ export function useReconcilePendingPaychanguService(
         }
         if (attempts >= VERIFY_MAX_ATTEMPTS) {
           gaveUpPollingRef.current = true;
+          clearPendingPaychanguService();
+          dispatch(baseApi.util.invalidateTags(['TowingService', 'CarService', 'Payment']));
           setIsConfirmingServicePayment(false);
           stopPolling();
         }
@@ -178,5 +193,10 @@ export function useReconcilePendingPaychanguService(
     }
   }, [hasPending]);
 
-  return { isConfirmingServicePayment, pendingMatchesThisPage };
+  return {
+    isConfirmingServicePayment,
+    pendingMatchesThisPage,
+    pendingTowingServiceId: pending.towingServiceId,
+    pendingCarServiceId: pending.carServiceId,
+  };
 }

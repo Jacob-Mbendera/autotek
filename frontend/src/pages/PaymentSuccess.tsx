@@ -6,7 +6,11 @@ import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/ap
 import { baseApi } from '../store/api/baseApi';
 import { clearCart } from '../store/slices/cartSlice';
 import { clearPendingPaychanguOrder } from '../utils/pendingPaychanguOrder';
-import { clearPendingPaychanguService } from '../utils/pendingPaychanguService';
+import {
+  clearPendingPaychanguService,
+  getPendingPaychanguService,
+  setServicePayNowUiHold,
+} from '../utils/pendingPaychanguService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
@@ -91,6 +95,11 @@ export const PaymentSuccess = () => {
             transactionId: p?.transactionId,
           });
           setServiceVerifyState('success');
+          const pend = getPendingPaychanguService();
+          const holdSid = pend.towingServiceId || pend.carServiceId;
+          if (holdSid) {
+            setServicePayNowUiHold(holdSid, 8000);
+          }
           clearPendingPaychanguService();
           dispatch(
             baseApi.util.invalidateTags([
