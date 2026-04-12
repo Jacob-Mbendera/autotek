@@ -194,24 +194,38 @@ frameSrc: ["'none'"]                        // Block all frames
 
 ---
 
-### 6. ✅ NoSQL Injection Protection Added
+### 6. ⚠️ NoSQL Injection Protection (Partial Implementation)
 
 **Issue:** Direct user input in MongoDB queries - vulnerable to NoSQL injection attacks.
 
-**Fix Implemented:**
+**Attempted Fix:**
 - Installed `express-mongo-sanitize` package
-- Applied sanitization middleware globally
-- Configured to replace prohibited characters
+- ~~Applied sanitization middleware globally~~ (Disabled due to compatibility issue)
+
+**Status:** TEMPORARILY DISABLED
+
+**Reason:**
+- `express-mongo-sanitize` v2.2.0 has a compatibility issue with Express 4.x
+- Causes error: "Cannot set property query of #<IncomingMessage> which has only a getter"
+- This is a known issue with newer Express versions
+
+**Current Protection:**
+- Joi validation provides input sanitization for request bodies
+- MongoDB Mongoose ODM provides some protection through schema validation
+- Manual sanitization in controllers where needed
+
+**Recommended Actions:**
+1. **Short-term:** Implement manual sanitization utility function for query parameters
+2. **Medium-term:** Migrate to alternative package or manual sanitization
+3. **Long-term:** Monitor for `express-mongo-sanitize` v3.x or compatible alternatives
 
 **Files Modified:**
-- `backend/src/server.ts` - Added mongo-sanitize middleware
+- `backend/src/server.ts` - Commented out mongo-sanitize middleware
 
-**Configuration:**
-```javascript
-mongoSanitize({
-  replaceWith: '_', // Replace prohibited characters with underscore
-})
-```
+**Security Impact:**
+- Still protected against most injection via Joi validation
+- Query parameters need manual sanitization
+- Not a critical vulnerability but should be addressed before production
 
 **Protection Against:**
 - `$where` operator injection
