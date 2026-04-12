@@ -5,8 +5,11 @@ dotenv.config();
 import path from 'path';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import mongoSanitize from 'express-mongo-sanitize';
 import connectDB from './config/database';
 import { errorHandler } from './middleware/errorHandler';
+import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
@@ -29,26 +32,57 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
+// Security middleware
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Allow Cloudinary images
+  })
+);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Data sanitization against NoSQL query injection
+app.use(
+  mongoSanitize({
+    replaceWith: '_', // Replace prohibited characters with underscore
+  })
+);
+
 // Connect to MongoDB
 connectDB();
 
+// Apply general rate limiter to all API routes
+app.use('/api/', generalLimiter);
+
 // Routes
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-app.use('/api/auth', authRoutes);
+// Apply specific rate limiters to critical endpoints
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/custom-orders', customOrderRoutes);
 app.use('/api/towing', towingServiceRoutes);
 app.use('/api/car-services', carServiceRoutes);
-app.use('/api/payments', paymentRoutes);
+app.use('/api/payments', paymentLimiter, paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/reviews', reviewRoutes);
