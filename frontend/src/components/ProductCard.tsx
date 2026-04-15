@@ -307,7 +307,28 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
         <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-teal-600 transition-colors duration-300 leading-tight">
           {product.name}
         </h3>
-        
+
+        {/* Product Rating */}
+        {product.averageRating > 0 && (
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`h-3.5 w-3.5 ${
+                    star <= Math.round(product.averageRating)
+                      ? 'fill-yellow-400 text-yellow-400'
+                      : 'fill-gray-200 text-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-gray-600 font-medium">
+              {product.averageRating.toFixed(1)} ({product.reviewCount || 0})
+            </span>
+          </div>
+        )}
+
         {/* Product Description */}
         {product.description && (
           <p className="text-xs text-gray-600 mb-4 line-clamp-2 leading-relaxed">

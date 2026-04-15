@@ -1,38 +1,7 @@
-import { Star, Quote } from 'lucide-react';
+import { Star, Quote, ShoppingBag, Wrench, CheckCircle } from 'lucide-react';
 import { Card } from './ui/Card';
 import { H2, H4, Body, BodySmall } from './ui/Typography';
-
-interface Testimonial {
-  id: number;
-  name: string;
-  location: string;
-  rating: number;
-  comment: string;
-}
-
-const testimonials: Testimonial[] = [
-  {
-    id: 1,
-    name: 'John Banda',
-    location: 'Lilongwe',
-    rating: 5,
-    comment: 'Found exactly what I needed for my car. Fast delivery and great customer service!',
-  },
-  {
-    id: 2,
-    name: 'Mary Phiri',
-    location: 'Blantyre',
-    rating: 5,
-    comment: 'The custom order service is amazing. They found a rare part I couldn\'t find anywhere else.',
-  },
-  {
-    id: 3,
-    name: 'Peter Mwale',
-    location: 'Mzuzu',
-    rating: 5,
-    comment: 'Booked a home service and the mechanic was professional and on time. Highly recommend!',
-  },
-];
+import { testimonials } from '../data/testimonials';
 
 export const Testimonials = () => {
   return (
@@ -78,9 +47,33 @@ export const Testimonials = () => {
                 <div className="relative mb-6 flex-grow">
                   <Quote className="absolute -top-2 -left-2 h-8 w-8 text-teal-200 group-hover:text-teal-300 transition-colors" />
                   <Body className="text-gray-700 leading-relaxed pl-6 text-base italic">
-                    {testimonial.comment}
+                    {testimonial.text}
                   </Body>
                 </div>
+
+                {/* Product/Service Details */}
+                {(testimonial.productPurchased || testimonial.serviceType) && (
+                  <div className="mb-4 flex items-start gap-2 bg-teal-50/50 border border-teal-100 rounded-lg p-3">
+                    {testimonial.productPurchased ? (
+                      <ShoppingBag className="h-4 w-4 text-teal-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <Wrench className="h-4 w-4 text-teal-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <BodySmall className="text-xs font-semibold text-teal-700 uppercase tracking-wide">
+                        {testimonial.productPurchased ? 'Product' : 'Service'}
+                      </BodySmall>
+                      <BodySmall className="text-gray-700 font-medium text-sm truncate">
+                        {testimonial.productPurchased || testimonial.serviceType}
+                      </BodySmall>
+                      {testimonial.vehicleType && (
+                        <BodySmall className="text-gray-500 text-xs mt-0.5">
+                          {testimonial.vehicleType}
+                        </BodySmall>
+                      )}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Author with enhanced design */}
                 <div className="border-t-2 border-gray-100 pt-4 mt-auto">
@@ -95,8 +88,13 @@ export const Testimonials = () => {
                       </H4>
                       <BodySmall className="text-gray-500 flex items-center gap-1">
                         <span>{testimonial.location}</span>
-                        <span className="text-teal-500">•</span>
-                        <span>Verified Customer</span>
+                        {testimonial.verifiedPurchase && (
+                          <>
+                            <span className="text-teal-500">•</span>
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span className="text-green-600 font-medium">Verified Purchase</span>
+                          </>
+                        )}
                       </BodySmall>
                     </div>
                   </div>

@@ -163,7 +163,11 @@ function generateProducts(count: number = 50) {
     } else if (badgeChance < 0.3) {
       badge = 'featured';
     }
-    
+
+    // Generate realistic ratings (between 4.0 and 5.0 for auto parts)
+    const averageRating = parseFloat((4.0 + Math.random() * 1.0).toFixed(1));
+    const reviewCount = Math.floor(Math.random() * 50) + 5; // Between 5 and 55 reviews
+
     products.push({
       name,
       description: `${description}. Perfect for ${category.toLowerCase()} maintenance and repair.`,
@@ -173,6 +177,8 @@ function generateProducts(count: number = 50) {
       supplier,
       status,
       badge,
+      averageRating,
+      reviewCount,
       images: [], // Empty images array - will use placeholders
     });
   }

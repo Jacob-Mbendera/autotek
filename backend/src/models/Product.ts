@@ -10,6 +10,8 @@ export interface IProduct extends Document {
   supplier?: string;
   status: 'available' | 'out-of-stock';
   badge?: 'new' | 'sale' | 'featured';
+  averageRating: number;
+  reviewCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,10 +58,28 @@ const ProductSchema = new Schema<IProduct>(
       type: String,
       enum: ['new', 'sale', 'featured'],
     },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Indexes for performance
+ProductSchema.index({ category: 1, status: 1 }); // Category + stock filtering
+ProductSchema.index({ price: 1 }); // Price sorting
+ProductSchema.index({ name: 'text', description: 'text' }); // Text search
+ProductSchema.index({ createdAt: -1 }); // Latest products
+ProductSchema.index({ averageRating: -1 }); // Top rated products
 
 export default mongoose.model<IProduct>('Product', ProductSchema);
