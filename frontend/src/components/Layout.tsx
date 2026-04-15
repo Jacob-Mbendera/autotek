@@ -8,8 +8,11 @@ interface LayoutProps {
 export const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <a href="#main-content" className="skip-to-main">
+        Skip to main content
+      </a>
       <Header />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         {children}
       </main>
       <footer className="bg-white border-t border-gray-200 mt-auto">

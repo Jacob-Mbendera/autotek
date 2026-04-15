@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, Wrench, ShoppingCart, ArrowRight, ChevronDown, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -10,13 +10,43 @@ import { HowItWorks } from '../components/HowItWorks';
 import { Testimonials } from '../components/Testimonials';
 
 export const Home = () => {
+  const [scrollY, setScrollY] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
   useEffect(() => {
     // Add page transition class on mount
     document.body.classList.add('page-transition');
+
+    // Check for reduced motion preference
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+
     return () => {
       document.body.classList.remove('page-transition');
+      mediaQuery.removeEventListener('change', handleChange);
     };
   }, []);
+
+  useEffect(() => {
+    // Parallax scroll effect (only if motion is allowed)
+    if (prefersReducedMotion) return;
+
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [prefersReducedMotion]);
 
   return (
     <div className="w-full page-transition">
@@ -24,17 +54,59 @@ export const Home = () => {
       <section className="relative bg-gradient-to-br from-teal-50 via-white to-teal-50 overflow-hidden mb-16 animate-fade-in min-h-[90vh] flex items-center">
         {/* Enhanced decorative background pattern */}
         <div className="absolute inset-0 geometric-pattern opacity-20"></div>
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80')] bg-cover bg-center opacity-15"></div>
-        
-        {/* Animated blob backgrounds */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-4000 transform -translate-x-1/2 -translate-y-1/2"></div>
-        
-        {/* Floating particles/elements */}
-        <div className="absolute top-20 left-10 w-2 h-2 bg-teal-400 rounded-full opacity-60 animate-float"></div>
-        <div className="absolute top-40 right-20 w-3 h-3 bg-teal-500 rounded-full opacity-50 animate-float animation-delay-2000"></div>
-        <div className="absolute bottom-32 left-1/4 w-2 h-2 bg-teal-300 rounded-full opacity-70 animate-float animation-delay-4000"></div>
+        <div
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80')] bg-cover bg-center opacity-15"
+          style={!prefersReducedMotion ? {
+            transform: `translateY(${scrollY * 0.3}px)`,
+            transition: 'transform 0.1s ease-out'
+          } : undefined}
+        ></div>
+
+        {/* Animated blob backgrounds with parallax */}
+        <div
+          className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"
+          style={!prefersReducedMotion ? {
+            transform: `translate(${scrollY * 0.15}px, ${scrollY * 0.2}px)`,
+            transition: 'transform 0.1s ease-out'
+          } : undefined}
+        ></div>
+        <div
+          className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"
+          style={!prefersReducedMotion ? {
+            transform: `translate(${-scrollY * 0.1}px, ${-scrollY * 0.25}px)`,
+            transition: 'transform 0.1s ease-out'
+          } : undefined}
+        ></div>
+        <div
+          className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-4000 transform -translate-x-1/2 -translate-y-1/2"
+          style={!prefersReducedMotion ? {
+            transform: `translate(calc(-50% + ${scrollY * 0.05}px), calc(-50% + ${scrollY * 0.1}px))`,
+            transition: 'transform 0.1s ease-out'
+          } : undefined}
+        ></div>
+
+        {/* Floating particles/elements with parallax */}
+        <div
+          className="absolute top-20 left-10 w-2 h-2 bg-teal-400 rounded-full opacity-60 animate-float"
+          style={!prefersReducedMotion ? {
+            transform: `translateY(${scrollY * 0.4}px)`,
+            transition: 'transform 0.1s ease-out'
+          } : undefined}
+        ></div>
+        <div
+          className="absolute top-40 right-20 w-3 h-3 bg-teal-500 rounded-full opacity-50 animate-float animation-delay-2000"
+          style={!prefersReducedMotion ? {
+            transform: `translateY(${scrollY * 0.5}px)`,
+            transition: 'transform 0.1s ease-out'
+          } : undefined}
+        ></div>
+        <div
+          className="absolute bottom-32 left-1/4 w-2 h-2 bg-teal-300 rounded-full opacity-70 animate-float animation-delay-4000"
+          style={!prefersReducedMotion ? {
+            transform: `translateY(${-scrollY * 0.3}px)`,
+            transition: 'transform 0.1s ease-out'
+          } : undefined}
+        ></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">

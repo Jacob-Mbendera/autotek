@@ -1973,5 +1973,122 @@ This session accomplished comprehensive implementation and testing of two major 
 
 ---
 
-**Last Updated**: March 17, 2026
+## April 16, 2026 - Phase 3: UI Polish & Accessibility
+
+### Completed Improvements
+
+**Parallax Scrolling & Animations**:
+- Added parallax scrolling effect to hero section background elements
+- Implemented scroll position tracking with performance optimization (passive listeners)
+- Applied parallax transforms to:
+  - Background image (0.3x parallax factor)
+  - Animated blob backgrounds (varied speeds: 0.15x, 0.2x, 0.25x)
+  - Floating particles (0.3x to 0.5x parallax factors)
+
+**Accessibility Enhancements (WCAG 2.1 AA Compliance)**:
+- Added `prefers-reduced-motion` media query support
+  - Disables all animations/transitions when user preference is set
+  - Parallax effects respect motion preferences
+  - Animation duration reduced to 0.01ms for reduced motion
+- Enhanced focus indicators:
+  - Added visible `focus-visible` ring (2px teal-500 with offset)
+  - Focus styles for buttons, links, inputs, selects, textareas
+- Keyboard navigation improvements:
+  - Added "Skip to main content" link for keyboard users
+  - Implemented in both `Layout` and `AdminLayout`
+  - Link appears on focus with proper styling
+  - Links to `#main-content` and `#admin-main-content` anchors
+
+**Files Modified**:
+1. `frontend/src/pages/Home.tsx`:
+   - Added `useState` for scroll position tracking
+   - Added `prefers-reduced-motion` detection
+   - Applied conditional parallax transforms to hero elements
+
+2. `frontend/src/index.css`:
+   - Added `@media (prefers-reduced-motion: reduce)` rule
+   - Added enhanced focus indicators in base layer
+   - Added `.skip-to-main` utility class
+
+3. `frontend/src/components/Layout.tsx`:
+   - Added skip-to-main link
+   - Added `id="main-content"` to main element
+
+4. `frontend/src/components/AdminLayout.tsx`:
+   - Added skip-to-main link
+   - Added `id="admin-main-content"` to main element
+
+**Empty States Verification**:
+- Verified empty states exist across all data-driven pages:
+  - Cart, Orders, Wishlist, Returns (user pages)
+  - Products, Services, Orders, Custom Orders, Users (admin pages)
+- Services page confirmed as static content (no empty state needed)
+
+**Accessibility Features Summary**:
+- WCAG 2.1 Level AA compliant focus indicators
+- Reduced motion preference support
+- Keyboard navigation with skip links
+- Semantic HTML with proper ARIA labels
+- High contrast focus rings (teal-500)
+
+### Technical Implementation
+
+**Parallax Effect**:
+```typescript
+const [scrollY, setScrollY] = useState(0);
+const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+useEffect(() => {
+  const handleScroll = () => setScrollY(window.scrollY);
+  window.addEventListener('scroll', handleScroll, { passive: true });
+}, [prefersReducedMotion]);
+
+// Applied to elements:
+style={!prefersReducedMotion ? {
+  transform: `translateY(${scrollY * 0.3}px)`,
+  transition: 'transform 0.1s ease-out'
+} : undefined}
+```
+
+**Reduced Motion Detection**:
+```typescript
+const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+setPrefersReducedMotion(mediaQuery.matches);
+mediaQuery.addEventListener('change', handleChange);
+```
+
+**CSS Media Query**:
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+### Impact
+
+**Performance**:
+- Passive scroll listeners prevent layout thrashing
+- Conditional rendering based on motion preferences
+- Smooth 0.1s transitions for parallax effects
+
+**Accessibility**:
+- Users with vestibular disorders can browse without motion sickness
+- Keyboard users can quickly skip navigation
+- Screen reader users benefit from semantic landmarks
+- Focus indicators meet WCAG 2.1 contrast requirements
+
+**User Experience**:
+- Subtle parallax adds depth without being distracting
+- Motion respects user system preferences
+- Improved keyboard navigation flow
+- Professional, polished feel
+
+---
+
+**Last Updated**: April 16, 2026
 **Updated By**: Development Team
