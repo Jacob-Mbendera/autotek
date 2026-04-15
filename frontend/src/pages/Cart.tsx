@@ -11,9 +11,10 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { 
-  ShoppingCart, Plus, Minus, Trash2, ArrowRight, Package, X, AlertCircle, 
-  Bookmark, BookmarkCheck, Edit2, Check, Calendar, Tag, AlertTriangle, 
+import { OptimizedImage } from '../components/ui/OptimizedImage';
+import {
+  ShoppingCart, Plus, Minus, Trash2, ArrowRight, Package, X, AlertCircle,
+  Bookmark, BookmarkCheck, Edit2, Check, Calendar, Tag, AlertTriangle,
   CheckCircle, ChevronDown, ChevronUp, Banknote, TrendingUp,
   ShoppingBag, Shield, Percent, BarChart3, Loader2
 } from 'lucide-react';
@@ -33,7 +34,6 @@ export const Cart = () => {
   const [promoCode, setPromoCode] = useState<string>('');
   const [showSavedItems, setShowSavedItems] = useState<boolean>(false);
   const [updatingQuantityId, setUpdatingQuantityId] = useState<string | null>(null);
-  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   
   const [validateCoupon] = useValidateCouponMutation();
@@ -181,26 +181,13 @@ export const Cart = () => {
   // Calculate final total with discount
   const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
 
-  // Get placeholder image based on category (if we can determine it from product name or other data)
-  const getPlaceholderImage = (productName?: string) => {
-    // Default placeholder - can be enhanced to detect category from product name
-    return 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
-  };
-
-  // Handle image load error
-  const handleImageError = (productId: string) => {
-    setImageErrors((prev) => ({ ...prev, [productId]: true }));
-  };
-
   // Get display image for a cart item
   const getDisplayImage = (item: typeof cart.items[0]) => {
-    const hasError = imageErrors[item.productId];
-    const hasValidImage = item.image && 
-      typeof item.image === 'string' && 
-      item.image.trim() !== '' &&
-      !hasError;
-    
-    return hasValidImage ? item.image : getPlaceholderImage(item.productName);
+    const hasValidImage = item.image &&
+      typeof item.image === 'string' &&
+      item.image.trim() !== '';
+
+    return hasValidImage ? item.image : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
   };
 
   // Calculate statistics
@@ -362,18 +349,17 @@ export const Cart = () => {
                       to={`/products/${item.productId}`}
                       className="flex-shrink-0 w-full sm:w-32 h-32 md:h-36 bg-gray-100 rounded-lg overflow-hidden group relative"
                     >
-                      <img
-                        src={getDisplayImage(item)}
-                        alt={item.productName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={() => handleImageError(item.productId)}
-                      />
+                      <div className="group-hover:scale-105 transition-transform duration-300">
+                        <OptimizedImage
+                          src={getDisplayImage(item)}
+                          alt={item.productName}
+                          width={150}
+                          height={150}
+                          className="w-full h-full object-cover"
+                          priority={false}
+                        />
+                      </div>
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity" />
-                      {imageErrors[item.productId] && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                          <Package className="h-12 w-12 text-gray-400" />
-                        </div>
-                      )}
                     </Link>
 
                     {/* Product Info */}
@@ -544,17 +530,14 @@ export const Cart = () => {
                             to={`/products/${item.productId}`}
                             className="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg overflow-hidden relative"
                           >
-                            <img
+                            <OptimizedImage
                               src={getDisplayImage(item)}
                               alt={item.productName}
+                              width={80}
+                              height={80}
                               className="w-full h-full object-cover"
-                              onError={() => handleImageError(item.productId)}
+                              priority={false}
                             />
-                            {imageErrors[item.productId] && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                                <Package className="h-8 w-8 text-gray-400" />
-                              </div>
-                            )}
                           </Link>
                           <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div className="flex-1">
