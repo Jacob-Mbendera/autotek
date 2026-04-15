@@ -2090,5 +2090,95 @@ mediaQuery.addEventListener('change', handleChange);
 
 ---
 
+## April 16, 2026 - Image Upload System Implementation
+
+### Cloudinary Integration Complete
+
+**Backend Infrastructure** (Already Implemented):
+- Cloudinary configuration in `backend/src/config/cloudinary.ts`
+- Upload utilities: `uploadImage`, `uploadMultipleImages`, `deleteImage`
+- Product controller handles multipart/form-data uploads
+- Images stored in `autotek/products` folder
+- Automatic cleanup of temporary local files
+- Image deletion when products are updated/deleted
+
+**Frontend Optimized Image Component**:
+- Created `frontend/src/components/ui/OptimizedImage.tsx`
+- Automatic WebP conversion with fallback
+- Responsive image sizes (400w, 800w, 1200w)
+- Loading states with animated spinner
+- Error handling with placeholder SVG
+- External image detection (Unsplash, Cloudinary URLs)
+- Lazy loading support with priority option
+
+**Component Integration**:
+1. `ProductCard.tsx`:
+   - Replaced manual img tags with OptimizedImage
+   - Removed manual loading/error state handling
+   - Set width=400, height=400 for thumbnails
+   - Lazy loading enabled (priority=false)
+
+2. `ProductDetail.tsx`:
+   - Main image uses OptimizedImage (800x500)
+   - Thumbnail gallery uses OptimizedImage (150x150)
+   - Priority loading for main image
+   - Simplified error handling
+
+3. `Admin Products.tsx`:
+   - File upload UI already implemented
+   - Multiple file selection support
+   - Visual feedback (X files selected)
+   - Preview of existing images when editing
+
+**API Layer** (`frontend/src/store/api/productApi.ts`):
+- Automatic FormData conversion for file uploads
+- Handles createProduct and updateProduct mutations
+- Appends each image file to FormData
+- Backend receives multipart/form-data correctly
+
+**Documentation**:
+- Created `IMAGE_UPLOAD_GUIDE.md` (372 lines)
+- System architecture overview
+- Step-by-step upload instructions
+- Code examples for all layers
+- Testing checklist
+- Troubleshooting guide
+
+### Upload Flow Summary
+
+```
+Admin Panel → File Selection → FormData Creation → Backend API
+    ↓                                                    ↓
+Multer Temp Storage → Cloudinary Upload → secure_url → Database
+    ↓                                                    ↓
+Display Components → OptimizedImage → WebP + Responsive → Browser
+```
+
+### Files Modified
+- `frontend/src/components/ProductCard.tsx`
+- `frontend/src/components/ui/OptimizedImage.tsx` (created)
+- `frontend/src/pages/ProductDetail.tsx`
+- `IMAGE_UPLOAD_GUIDE.md` (created)
+
+### Backend (Pre-existing)
+- `backend/src/config/cloudinary.ts`
+- `backend/src/controllers/productController.ts`
+- `backend/src/middleware/upload.ts`
+- `backend/src/models/Product.ts`
+
+### Ready for Testing
+1. Upload images via `/admin/products`
+2. Images auto-upload to Cloudinary
+3. URLs stored in Product.images array
+4. Display optimized with WebP on product pages
+
+### Remaining Optional Tasks
+- Update Cart, Wishlist, OrderDetail to use OptimizedImage
+- Add drag-and-drop to admin upload UI
+- Implement image cropping/editing
+- Add blur-up placeholders (LQIP)
+
+---
+
 **Last Updated**: April 16, 2026
 **Updated By**: Development Team
