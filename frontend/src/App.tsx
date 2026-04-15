@@ -1,38 +1,68 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+
+// Eager load critical routes (immediate page load)
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { Home } from './pages/Home';
 import { Products } from './pages/Products';
-import { Wishlist } from './pages/Wishlist';
-import { CompareProducts } from './pages/CompareProducts';
-import { ProductDetail } from './pages/ProductDetail';
 import { Services } from './pages/Services';
-import { BookService } from './pages/BookService';
-import { MyServices } from './pages/MyServices';
-import { ServicePayment } from './pages/ServicePayment';
-import { Cart } from './pages/Cart';
-import { Checkout } from './pages/Checkout';
-import { Orders } from './pages/Orders';
-import { OrderDetail } from './pages/OrderDetail';
-import { Profile } from './pages/Profile';
-import { Returns } from './pages/Returns';
-import { ReturnDetail } from './pages/ReturnDetail';
-import { RequestReturn } from './pages/RequestReturn';
-import { PaymentSuccess } from './pages/PaymentSuccess';
-import { PaymentCancel } from './pages/PaymentCancel';
-import { AdminDashboard, AdminProducts, AdminOrders, AdminServices, AdminProviders, AdminCustomOrders, AdminUsers, AdminSettings, AdminSupport, AdminReturns, DeliveryLocations } from './pages/admin';
+
+// Lazy load secondary routes (code splitting)
+const Wishlist = lazy(() => import('./pages/Wishlist').then(m => ({ default: m.Wishlist })));
+const CompareProducts = lazy(() => import('./pages/CompareProducts').then(m => ({ default: m.CompareProducts })));
+const ProductDetail = lazy(() => import('./pages/ProductDetail').then(m => ({ default: m.ProductDetail })));
+const BookService = lazy(() => import('./pages/BookService').then(m => ({ default: m.BookService })));
+const MyServices = lazy(() => import('./pages/MyServices').then(m => ({ default: m.MyServices })));
+const ServicePayment = lazy(() => import('./pages/ServicePayment').then(m => ({ default: m.ServicePayment })));
+const Cart = lazy(() => import('./pages/Cart').then(m => ({ default: m.Cart })));
+const Checkout = lazy(() => import('./pages/Checkout').then(m => ({ default: m.Checkout })));
+const Orders = lazy(() => import('./pages/Orders').then(m => ({ default: m.Orders })));
+const OrderDetail = lazy(() => import('./pages/OrderDetail').then(m => ({ default: m.OrderDetail })));
+const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const Returns = lazy(() => import('./pages/Returns').then(m => ({ default: m.Returns })));
+const ReturnDetail = lazy(() => import('./pages/ReturnDetail').then(m => ({ default: m.ReturnDetail })));
+const RequestReturn = lazy(() => import('./pages/RequestReturn').then(m => ({ default: m.RequestReturn })));
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess').then(m => ({ default: m.PaymentSuccess })));
+const PaymentCancel = lazy(() => import('./pages/PaymentCancel').then(m => ({ default: m.PaymentCancel })));
+
+// Lazy load admin pages
+const AdminDashboard = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminDashboard })));
+const AdminProducts = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminProducts })));
+const AdminOrders = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminOrders })));
+const AdminServices = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminServices })));
+const AdminProviders = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminProviders })));
+const AdminCustomOrders = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminCustomOrders })));
+const AdminUsers = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminUsers })));
+const AdminSettings = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminSettings })));
+const AdminSupport = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminSupport })));
+const AdminReturns = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminReturns })));
+const DeliveryLocations = lazy(() => import('./pages/admin').then(m => ({ default: m.DeliveryLocations })));
+
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
 import { Toast } from './components/ui/Toast';
 
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
+    <div className="text-center">
+      <Loader2 className="h-12 w-12 animate-spin text-teal-600 mx-auto mb-4" />
+      <p className="text-gray-600 font-medium">Loading...</p>
+    </div>
+  </div>
+);
+
 function App() {
   return (
     <BrowserRouter>
       <Toast />
-      <Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
         {/* Public routes without layout */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -331,6 +361,7 @@ function App() {
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
