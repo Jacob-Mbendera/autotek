@@ -13,6 +13,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { ShoppingCart, Zap, CheckCircle, Package, Heart } from 'lucide-react';
 import { ReviewList } from '../components/ReviewList';
 import { ReviewForm } from '../components/ReviewForm';
+import { OptimizedImage } from '../components/ui/OptimizedImage';
 
 export const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -269,21 +270,14 @@ export const ProductDetail = () => {
         <div className="space-y-4">
           <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ minHeight: '500px' }}>
             {currentImageSrc ? (
-              <img
+              <OptimizedImage
                 key={`${product._id}-${currentImageSrc}`}
                 src={currentImageSrc}
                 alt={product.name}
+                width={800}
+                height={500}
                 className="w-full h-[500px] object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  // If placeholder fails, use a data URL fallback
-                  if (target.src === placeholderImage || target.src.includes('unsplash.com')) {
-                    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="600" height="500"%3E%3Crect width="600" height="500" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-family="Arial" font-size="18" fill="%239ca3af"%3ENo Image%3C/text%3E%3C/svg%3E';
-                  } else {
-                    // Product image failed, switch to placeholder
-                    setImageError(true);
-                  }
-                }}
+                priority={true}
               />
             ) : (
               <div className="w-full h-[500px] flex items-center justify-center bg-gray-200">
@@ -328,20 +322,13 @@ export const ProductDetail = () => {
                       : 'border-transparent'
                   }`}
                 >
-                  <img
+                  <OptimizedImage
                     src={image}
                     alt={`${product.name} ${index + 1}`}
+                    width={150}
+                    height={150}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      // If placeholder fails, use a data URL fallback
-                      if (target.src === placeholderImage || target.src.includes('unsplash.com')) {
-                        target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="150" height="150"%3E%3Crect width="150" height="150" fill="%23e5e7eb"/%3E%3C/svg%3E';
-                      } else {
-                        // Product image failed, switch to placeholder
-                        setImageError(true);
-                      }
-                    }}
+                    priority={index === 0}
                   />
                 </button>
               ))}

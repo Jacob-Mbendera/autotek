@@ -9,6 +9,7 @@ import { getErrorInfo } from '../utils/errorHandler';
 import { addToComparison } from '../store/slices/comparisonSlice';
 import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
+import { OptimizedImage } from './ui/OptimizedImage';
 
 interface ProductCardProps {
   product: Product;
@@ -18,8 +19,6 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardProps) => {
   const dispatch = useAppDispatch();
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [optimisticWishlistState, setOptimisticWishlistState] = useState<boolean | null>(null);
 
@@ -45,16 +44,9 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
 
   // Check if product has valid images - more lenient check
   const firstImage = product.images?.[0];
-  const hasValidImage = firstImage && 
-    typeof firstImage === 'string' && 
-    firstImage.trim() !== '' &&
-    !imageError;
-
-  // Reset image state when product changes
-  useEffect(() => {
-    setImageError(false);
-    setImageLoading(true);
-  }, [product._id, firstImage]);
+  const hasValidImage = firstImage &&
+    typeof firstImage === 'string' &&
+    firstImage.trim() !== '';
 
   // Default placeholder image based on category
   const getPlaceholderImage = () => {
@@ -143,19 +135,10 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
   const handleAddToComparison = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (canAddToComparison) {
       dispatch(addToComparison(product));
     }
-  };
-
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoading(false);
-  };
-
-  const handleImageLoad = () => {
-    setImageLoading(false);
   };
 
   const isOutOfStock = product.status === 'out-of-stock' || product.stock === 0;
@@ -201,20 +184,16 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
       
       {/* Image container with enhanced effects */}
       <div className="relative aspect-w-1 aspect-h-1 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-        {imageLoading && (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center z-0">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-200 border-t-teal-600"></div>
-          </div>
-        )}
-        <img
-          src={displayImage}
-          alt={product.name}
-          className={`w-full h-56 object-cover group-hover:scale-125 transition-transform duration-700 ${
-            imageLoading ? 'opacity-0' : 'opacity-100'
-          } ${isPlaceholder ? 'opacity-80' : ''}`}
-          onError={handleImageError}
-          onLoad={handleImageLoad}
-        />
+        <div className={`group-hover:scale-125 transition-transform duration-700 ${isPlaceholder ? 'opacity-80' : ''}`}>
+          <OptimizedImage
+            src={displayImage}
+            alt={product.name}
+            width={400}
+            height={400}
+            className="w-full h-56 object-cover"
+            priority={false}
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent group-hover:from-black/30 transition-opacity duration-500"></div>
         
         {/* Placeholder indicator badge */}
