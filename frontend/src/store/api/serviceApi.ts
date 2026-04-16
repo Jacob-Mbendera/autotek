@@ -47,7 +47,12 @@ export interface TowingService {
 export interface CarService {
   _id: string;
   user: string;
-  serviceType: ServiceType;
+  serviceType?: ServiceType;
+  serviceTypes: ServiceType[];
+  servicePricing?: Array<{
+    serviceType: ServiceType;
+    price?: number;
+  }>;
   vehicleType: string;
   vehicleModel?: string;
   location: {
@@ -94,7 +99,7 @@ interface CreateTowingServiceRequest {
 }
 
 interface CreateCarServiceRequest {
-  serviceType: ServiceType;
+  serviceTypes: ServiceType[];
   vehicleType: string;
   vehicleModel?: string;
   location: {
@@ -223,6 +228,7 @@ export const serviceApi = baseApi.injectEndpoints({
         status?: ServiceStatus;
         assignedMechanic?: string | null;
         price?: number;
+        servicePricing?: Array<{ serviceType: ServiceType; price?: number }>;
         notes?: string;
         estimatedArrivalAt?: string | null;
       }

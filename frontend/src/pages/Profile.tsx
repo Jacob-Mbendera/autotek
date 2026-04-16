@@ -241,7 +241,15 @@ export const Profile = () => {
     ...carServices.slice(0, 3).map((service: any) => ({
       type: 'service',
       id: service._id,
-      title: service.serviceType?.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Car Service',
+      title:
+        (Array.isArray(service.serviceTypes) && service.serviceTypes.length > 0
+          ? service.serviceTypes
+          : service.serviceType
+            ? [service.serviceType]
+            : []
+        )
+          .map((entry: string) => entry.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()))
+          .join(', ') || 'Car Service',
       description: `${service.vehicleType} ${service.vehicleModel}`,
       status: service.status,
       date: service.createdAt,

@@ -12,6 +12,42 @@ import { H1, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Users, Phone, Mail, Banknote, Save, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { ServiceStatus } from '@shared/types';
 
+const formatCarServiceTypes = (service: any): string => {
+  const types = Array.isArray(service.serviceTypes) && service.serviceTypes.length > 0
+    ? service.serviceTypes
+    : service.serviceType
+      ? [service.serviceType]
+      : [];
+  return types.length > 0 ? types.join(', ') : 'N/A';
+};
+
+const toRequestedCarServiceTypes = (service: any): string[] => {
+  const types = Array.isArray(service?.serviceTypes) && service.serviceTypes.length > 0
+    ? service.serviceTypes
+    : service?.serviceType
+      ? [service.serviceType]
+      : [];
+  return types.map(String);
+};
+
+const toPricingInputMap = (service: any): Record<string, string> => {
+  const byType = new Map<string, string>();
+  if (Array.isArray(service?.servicePricing)) {
+    service.servicePricing.forEach((entry: { serviceType?: string; price?: number }) => {
+      if (!entry?.serviceType) return;
+      byType.set(String(entry.serviceType), entry.price != null ? String(Math.round(Number(entry.price))) : '');
+    });
+  }
+  const out: Record<string, string> = {};
+  toRequestedCarServiceTypes(service).forEach((type) => {
+    out[type] = byType.get(type) ?? '';
+  });
+  return out;
+};
+
+const serviceTypeLabel = (type: string): string =>
+  type.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
 function assigneeIdFromSelectedService(s: { type?: string; assignedDriver?: unknown; assignedMechanic?: unknown }) {
   if (s.type === 'towing') {
     const a = s.assignedDriver;
@@ -41,6 +77,7 @@ export const AdminServices = () => {
   const [selectedService, setSelectedService] = useState<any | null>(null);
   const [newStatus, setNewStatus] = useState<ServiceStatus | ''>('');
   const [priceMwInput, setPriceMwInput] = useState('');
+  const [carServicePriceInputs, setCarServicePriceInputs] = useState<Record<string, string>>({});
   const [providerPickId, setProviderPickId] = useState('');
   const [etaInput, setEtaInput] = useState('');
 
@@ -74,6 +111,7 @@ export const AdminServices = () => {
     setNewStatus(service.status);
     const p = service.price;
     setPriceMwInput(p != null && p > 0 ? String(Math.round(Number(p))) : '');
+    setCarServicePriceInputs(toPricingInputMap(service));
     setProviderPickId(assigneeIdFromSelectedService(service));
     setEtaInput(toDatetimeLocalValue(service.estimatedArrivalAt));
   };
@@ -155,47 +193,64 @@ export const AdminServices = () => {
       return;
     }
 
-    const raw = priceMwInput.replace(/,/g, '').trim();
-    const n = Number(raw);
-    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
-      dispatch(
-        showNotification({
-          message:
-            'Enter a whole number of Malawi Kwacha (MWK), at least 1. No decimals.',
-          type: 'error',
-        })
-      );
-      return;
-    }
-
     try {
       let updated: Record<string, unknown>;
       if (selectedService.type === 'towing') {
+        const raw = priceMwInput.replace(/,/g, '').trim();
+        const n = Number(raw);
+        if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+          dispatch(
+            showNotification({
+              message:
+                'Enter a whole number of Malawi Kwacha (MWK), at least 1. No decimals.',
+              type: 'error',
+            })
+          );
+          return;
+        }
         updated = (await updateTowingService({
           id: selectedService._id,
           price: n,
         }).unwrap()) as Record<string, unknown>;
+        setPriceMwInput(String(n));
       } else {
+        const serviceTypes = toRequestedCarServiceTypes(selectedService);
+        if (serviceTypes.length === 0) {
+          dispatch(showNotification({ message: 'No requested service types found', type: 'error' }));
+          return;
+        }
+        const servicePricing = serviceTypes.map((serviceType) => {
+          const raw = (carServicePriceInputs[serviceType] || '').replace(/,/g, '').trim();
+          if (!raw) {
+            return { serviceType, price: 0 };
+          }
+          const value = Number(raw);
+          if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+            throw new Error(`Invalid price for ${serviceTypeLabel(serviceType)}`);
+          }
+          return { serviceType, price: value };
+        });
+        const total = servicePricing.reduce((sum, entry) => sum + entry.price, 0);
         updated = (await updateCarService({
           id: selectedService._id,
-          price: n,
+          servicePricing,
         }).unwrap()) as Record<string, unknown>;
+        setPriceMwInput(String(total));
       }
 
       dispatch(
         showNotification({
-          message: `Price saved: MWK ${n.toLocaleString()}. The customer can pay from My Services.`,
+          message: `Price saved successfully. The customer can pay from My Services.`,
           type: 'success',
         })
       );
       await refetch();
       setSelectedService({
         ...selectedService,
-        price: n,
+        ...(updated as Record<string, unknown>),
         paymentStatus: (updated.paymentStatus as string) ?? selectedService.paymentStatus,
         updatedAt: (updated.updatedAt as string) ?? selectedService.updatedAt,
       });
-      setPriceMwInput(String(n));
     } catch (error: any) {
       const errorInfo = getErrorInfo(error, 'Failed to save price');
       dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
@@ -351,7 +406,7 @@ export const AdminServices = () => {
                             </Body>
                           ) : (
                             <Body className="text-sm text-gray-300 capitalize">
-                              {service.serviceType || 'N/A'}
+                              {formatCarServiceTypes(service)}
                             </Body>
                           )}
                           {service.description && (
@@ -646,39 +701,92 @@ export const AdminServices = () => {
                         </Body>
                       </div>
                     )}
-                    <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-                      <div className="flex-1">
-                        <label htmlFor="admin-service-price-mwk" className="block text-xs text-gray-400 mb-1">
-                          Amount (MWK)
-                        </label>
-                        <Input
+                    {selectedService.type === 'car-service' ? (
+                      <div className="space-y-3">
+                        {toRequestedCarServiceTypes(selectedService).map((serviceType) => (
+                          <div key={serviceType} className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">
+                                {serviceTypeLabel(serviceType)} (MWK)
+                              </label>
+                              <Input
+                                dark
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="e.g. 15000"
+                                value={carServicePriceInputs[serviceType] || ''}
+                                onChange={(e) =>
+                                  setCarServicePriceInputs((prev) => ({
+                                    ...prev,
+                                    [serviceType]: e.target.value.replace(/[^\d]/g, ''),
+                                  }))
+                                }
+                                disabled={isUpdatingTowing || isUpdatingCar}
+                              />
+                            </div>
+                            <Body className="text-xs text-gray-400 sm:pb-2">Per service price</Body>
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-gray-600 flex items-center justify-between">
+                          <Body className="text-sm text-gray-300 font-semibold">Calculated total (MWK)</Body>
+                          <Body className="text-sm text-teal-400 font-semibold">
+                            {Object.values(carServicePriceInputs)
+                              .reduce((sum, raw) => sum + (Number(raw || 0) || 0), 0)
+                              .toLocaleString()}
+                          </Body>
+                        </div>
+                        <Button
+                          variant="primary"
+                          size="small"
                           dark
-                          id="admin-service-price-mwk"
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="e.g. 85000"
-                          value={priceMwInput}
-                          onChange={(e) => setPriceMwInput(e.target.value.replace(/[^\d]/g, ''))}
+                          type="button"
+                          onClick={handleSavePriceMw}
                           disabled={isUpdatingTowing || isUpdatingCar}
-                        />
+                          className="gap-2 shrink-0"
+                        >
+                          {isUpdatingTowing || isUpdatingCar ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                          Save service prices
+                        </Button>
                       </div>
-                      <Button
-                        variant="primary"
-                        size="small"
-                        dark
-                        type="button"
-                        onClick={handleSavePriceMw}
-                        disabled={isUpdatingTowing || isUpdatingCar}
-                        className="gap-2 shrink-0"
-                      >
-                        {isUpdatingTowing || isUpdatingCar ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4" />
-                        )}
-                        Save price
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                        <div className="flex-1">
+                          <label htmlFor="admin-service-price-mwk" className="block text-xs text-gray-400 mb-1">
+                            Amount (MWK)
+                          </label>
+                          <Input
+                            dark
+                            id="admin-service-price-mwk"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="e.g. 85000"
+                            value={priceMwInput}
+                            onChange={(e) => setPriceMwInput(e.target.value.replace(/[^\d]/g, ''))}
+                            disabled={isUpdatingTowing || isUpdatingCar}
+                          />
+                        </div>
+                        <Button
+                          variant="primary"
+                          size="small"
+                          dark
+                          type="button"
+                          onClick={handleSavePriceMw}
+                          disabled={isUpdatingTowing || isUpdatingCar}
+                          className="gap-2 shrink-0"
+                        >
+                          {isUpdatingTowing || isUpdatingCar ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                          Save price
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -730,7 +838,7 @@ export const AdminServices = () => {
                     <>
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Service Type</Body>
-                        <Body className="text-gray-50 capitalize">{selectedService.serviceType || 'N/A'}</Body>
+                        <Body className="text-gray-50 capitalize">{formatCarServiceTypes(selectedService)}</Body>
                       </div>
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Address</Body>

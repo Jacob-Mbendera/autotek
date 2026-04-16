@@ -19,7 +19,6 @@ import {
   Wrench,
   MapPin,
   Calendar,
-  Clock,
   Car,
   ArrowLeft,
   Loader2,
@@ -28,7 +27,7 @@ import {
   Crosshair,
 } from 'lucide-react';
 import { UserRole } from '@shared/types';
-import type { ServiceType } from '@shared/types';
+import { ServiceType } from '@shared/types';
 
 /** Combine date (YYYY-MM-DD) and optional time (HH:MM) into one ISO datetime for the API. */
 function buildPreferredDateISO(dateStr: string, timeStr: string): string | undefined {
@@ -77,7 +76,7 @@ export const BookService = () => {
   const [destinationDescription, setDestinationDescription] = useState('');
 
   // Car service-specific fields
-  const [carServiceType, setCarServiceType] = useState<ServiceType | ''>('');
+  const [carServiceTypes, setCarServiceTypes] = useState<ServiceType[]>([]);
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [addressDescription, setAddressDescription] = useState('');
@@ -156,8 +155,8 @@ export const BookService = () => {
         ? null
         : validateStructuredServiceLocation(carServiceShipping, 'service location');
       if (locErr) newErrors.location = locErr;
-      if (!carServiceType) {
-        newErrors.carServiceType = 'Service type is required';
+      if (carServiceTypes.length === 0) {
+        newErrors.carServiceTypes = 'Select at least one service type';
       }
     }
 
@@ -345,7 +344,7 @@ export const BookService = () => {
           );
         }
         const carServiceData = {
-          serviceType: carServiceType as ServiceType,
+          serviceTypes: carServiceTypes,
           vehicleType,
           vehicleModel: vehicleModel || undefined,
           location: {
@@ -373,13 +372,18 @@ export const BookService = () => {
   };
 
   const serviceTypeOptions: { value: ServiceType; label: string }[] = [
-    { value: 'oil-change', label: 'Oil Change' },
-    { value: 'brake-pads', label: 'Brake Pads Replacement' },
-    { value: 'spark-plugs', label: 'Spark Plugs Replacement' },
-    { value: 'air-filter', label: 'Air Filter Replacement' },
-    { value: 'battery', label: 'Battery Replacement' },
-    { value: 'tire-rotation', label: 'Tire Rotation' },
+    { value: ServiceType.OIL_CHANGE, label: 'Oil Change' },
+    { value: ServiceType.BRAKE_PADS, label: 'Brake Pads Replacement' },
+    { value: ServiceType.SPARK_PLUGS, label: 'Spark Plugs Replacement' },
+    { value: ServiceType.AIR_FILTER, label: 'Air Filter Replacement' },
+    { value: ServiceType.BATTERY, label: 'Battery Replacement' },
+    { value: ServiceType.TIRE_ROTATION, label: 'Tire Rotation' },
   ];
+  const toggleCarServiceType = (value: ServiceType) => {
+    setCarServiceTypes((prev) =>
+      prev.includes(value) ? prev.filter((entry) => entry !== value) : [...prev, value]
+    );
+  };
 
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
@@ -447,25 +451,30 @@ export const BookService = () => {
                 </H2>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Service Type <span className="text-red-500">*</span>
+                    Select Service Types <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={carServiceType}
-                    onChange={(e) => setCarServiceType(e.target.value as ServiceType)}
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all ${
-                      errors.carServiceType ? 'border-red-500' : 'border-gray-300'
+                  <div
+                    className={`grid grid-cols-1 md:grid-cols-2 gap-2 p-3 border rounded-lg ${
+                      errors.carServiceTypes ? 'border-red-500' : 'border-gray-300'
                     }`}
                   >
-                    <option value="">Select a service type</option>
                     {serviceTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
+                      <label
+                        key={option.value}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={carServiceTypes.includes(option.value)}
+                          onChange={() => toggleCarServiceType(option.value)}
+                          className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                        />
+                        <span className="text-sm text-gray-700">{option.label}</span>
+                      </label>
                     ))}
-                  </select>
-                  {errors.carServiceType && (
-                    <p className="mt-1 text-sm text-red-600">{errors.carServiceType}</p>
+                  </div>
+                  {errors.carServiceTypes && (
+                    <p className="mt-1 text-sm text-red-600">{errors.carServiceTypes}</p>
                   )}
                 </div>
               </div>

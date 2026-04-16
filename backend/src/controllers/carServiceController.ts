@@ -9,6 +9,75 @@ import { emailService } from '../services/emailService';
 import { resolveCoordsForAddress } from '../utils/geocoding';
 import { validateQuoteContactPhones } from '../utils/phoneValidation';
 
+const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
+  [ServiceType.OIL_CHANGE]: 'Oil Change',
+  [ServiceType.BRAKE_PADS]: 'Brake Pads Replacement',
+  [ServiceType.SPARK_PLUGS]: 'Spark Plugs Replacement',
+  [ServiceType.AIR_FILTER]: 'Air Filter Replacement',
+  [ServiceType.BATTERY]: 'Battery Replacement',
+  [ServiceType.TIRE_ROTATION]: 'Tire Rotation',
+  [ServiceType.OTHER]: 'Other Service',
+};
+
+const normalizeServiceTypes = (input: unknown): ServiceType[] => {
+  const list = Array.isArray(input) ? input : input ? [input] : [];
+  const validSet = new Set(Object.values(ServiceType));
+  const normalized = list
+    .map((value) => String(value))
+    .filter((value): value is ServiceType => validSet.has(value as ServiceType));
+  return Array.from(new Set(normalized));
+};
+
+const getServiceTypeLabel = (serviceType: ServiceType): string =>
+  SERVICE_TYPE_LABELS[serviceType] || serviceType;
+
+type ServicePricingEntry = { serviceType: ServiceType; price?: number };
+
+const buildDefaultServicePricing = (serviceTypes: ServiceType[]): ServicePricingEntry[] =>
+  serviceTypes.map((serviceType) => ({ serviceType }));
+
+const normalizeServicePricing = (input: unknown): ServicePricingEntry[] | null => {
+  if (!Array.isArray(input)) return null;
+  const validSet = new Set(Object.values(ServiceType));
+  const out: ServicePricingEntry[] = [];
+  for (const entry of input) {
+    if (!entry || typeof entry !== 'object') return null;
+    const rawType = String((entry as { serviceType?: unknown }).serviceType || '');
+    if (!validSet.has(rawType as ServiceType)) return null;
+    const rawPrice = (entry as { price?: unknown }).price;
+    if (rawPrice !== undefined && rawPrice !== null) {
+      const num = Number(rawPrice);
+      if (!Number.isFinite(num) || num < 0) return null;
+      out.push({ serviceType: rawType as ServiceType, price: Math.round(num) });
+    } else {
+      out.push({ serviceType: rawType as ServiceType });
+    }
+  }
+  return out;
+};
+
+const normalizeStoredServicePricing = (
+  serviceTypes: ServiceType[],
+  servicePricing?: Array<{ serviceType?: ServiceType; price?: number }>
+): ServicePricingEntry[] => {
+  const byType = new Map<ServiceType, number | undefined>();
+  for (const entry of servicePricing || []) {
+    if (!entry?.serviceType) continue;
+    byType.set(entry.serviceType, entry.price);
+  }
+  return serviceTypes.map((serviceType) => ({
+    serviceType,
+    price: byType.get(serviceType),
+  }));
+};
+
+const getStoredServiceTypes = (
+  service: { serviceTypes?: ServiceType[]; serviceType?: ServiceType }
+): ServiceType[] =>
+  service.serviceTypes?.length
+    ? service.serviceTypes
+    : [service.serviceType].filter((type): type is ServiceType => Boolean(type));
+
 export const createCarService = async (
   req: AuthRequest,
   res: Response
@@ -19,17 +88,12 @@ export const createCarService = async (
       return;
     }
 
-    const { serviceType } = req.body;
+    const serviceTypes = normalizeServiceTypes(req.body.serviceTypes ?? req.body.serviceType);
 
-    if (!serviceType) {
+    if (serviceTypes.length === 0) {
       res.status(400).json({
-        message: 'Service type is required',
+        message: 'At least one valid service type is required',
       });
-      return;
-    }
-
-    if (!Object.values(ServiceType).includes(serviceType)) {
-      res.status(400).json({ message: 'Invalid service type' });
       return;
     }
 
@@ -77,7 +141,9 @@ export const createCarService = async (
 
     const carService = new CarService({
       user: req.user!._id,
-      serviceType,
+      serviceType: serviceTypes[0],
+      serviceTypes,
+      servicePricing: buildDefaultServicePricing(serviceTypes),
       vehicleDetails,
       address,
       addressDescription,
@@ -123,6 +189,14 @@ export const createCarService = async (
     // Transform response to match frontend interface
     const transformed = {
       ...carService.toObject(),
+      serviceTypes: getStoredServiceTypes(carService),
+      serviceType:
+        carService.serviceType ||
+        (carService.serviceTypes?.length ? carService.serviceTypes[0] : undefined),
+      servicePricing: normalizeStoredServicePricing(
+        getStoredServiceTypes(carService),
+        carService.servicePricing
+      ),
       location: {
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -166,7 +240,7 @@ export const getCarServices = async (
     }
 
     if (serviceType) {
-      query.serviceType = serviceType;
+      query.$or = [{ serviceType }, { serviceTypes: serviceType }];
     }
 
     const carServices = await CarService.find(query)
@@ -186,6 +260,14 @@ export const getCarServices = async (
         const pref = service.preferredDate ? new Date(service.preferredDate) : null;
         return {
           ...service,
+          serviceTypes: getStoredServiceTypes(service),
+          serviceType:
+            service.serviceType ||
+            (service.serviceTypes?.length ? service.serviceTypes[0] : undefined),
+          servicePricing: normalizeStoredServicePricing(
+            getStoredServiceTypes(service),
+            service.servicePricing
+          ),
           location: {
             latitude: coords.latitude,
             longitude: coords.longitude,
@@ -251,6 +333,12 @@ export const getCarService = async (
     // Transform to match frontend interface
     const transformed = {
       ...carService,
+      serviceTypes: getStoredServiceTypes(cs),
+      serviceType: cs.serviceType || (cs.serviceTypes?.length ? cs.serviceTypes[0] : undefined),
+      servicePricing: normalizeStoredServicePricing(
+        getStoredServiceTypes(cs),
+        cs.servicePricing
+      ),
       location: {
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -401,6 +489,9 @@ export const requestCarServiceQuote = async (
         .filter(Boolean)
         .join(' ') || 'Not specified';
 
+    const carServiceTypes: ServiceType[] = carService.serviceTypes?.length
+      ? carService.serviceTypes
+      : [carService.serviceType].filter((type): type is ServiceType => Boolean(type));
     await emailService.sendAdminServiceQuoteRequest({
       kind: 'car-service',
       serviceId: carService._id.toString(),
@@ -410,7 +501,12 @@ export const requestCarServiceQuote = async (
       whatsAppPhone: validated.whatsAppPhone,
       quoteRequestNotes: notes,
       summaryEntries: [
-        { label: 'Service type', value: String(carService.serviceType) },
+        {
+          label: 'Service types',
+          value: carServiceTypes.length
+            ? carServiceTypes.map(getServiceTypeLabel).join(', ')
+            : 'N/A',
+        },
         { label: 'Address', value: carService.address },
         { label: 'Vehicle', value: vehicleStr },
       ],
@@ -430,7 +526,7 @@ export const updateCarService = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { status, assignedMechanic, price, notes, estimatedArrivalAt } = req.body;
+    const { status, assignedMechanic, price, notes, estimatedArrivalAt, servicePricing } = req.body;
 
     const carService = await CarService.findById(req.params.id);
     if (!carService) {
@@ -462,6 +558,25 @@ export const updateCarService = async (
         }
       }
       if (price !== undefined) carService.price = price;
+      if (servicePricing !== undefined) {
+        const requestedTypes = carService.serviceTypes?.length
+          ? carService.serviceTypes
+          : [carService.serviceType].filter((type): type is ServiceType => Boolean(type));
+        const normalizedPricing = normalizeServicePricing(servicePricing);
+        if (!normalizedPricing || normalizedPricing.length === 0) {
+          res.status(400).json({ message: 'Invalid servicePricing payload' });
+          return;
+        }
+        const validTypes = new Set(requestedTypes);
+        if (normalizedPricing.some((entry) => !validTypes.has(entry.serviceType))) {
+          res.status(400).json({ message: 'servicePricing includes unknown service type for this request' });
+          return;
+        }
+        const normalizedStored = normalizeStoredServicePricing(requestedTypes, normalizedPricing);
+        carService.servicePricing = normalizedStored;
+        const total = normalizedStored.reduce((sum, entry) => sum + (entry.price ?? 0), 0);
+        carService.price = total;
+      }
       if (notes !== undefined) carService.notes = notes;
       if (estimatedArrivalAt !== undefined) {
         if (estimatedArrivalAt === null || estimatedArrivalAt === '') {

@@ -222,6 +222,12 @@ class EmailService {
   }
 
   async sendServiceConfirmation(service: any, user: IUser): Promise<void> {
+    const serviceTypes = Array.isArray(service.serviceTypes) && service.serviceTypes.length > 0
+      ? service.serviceTypes
+      : service.serviceType
+        ? [service.serviceType]
+        : [];
+    const serviceTypeText = serviceTypes.length > 0 ? serviceTypes.join(', ') : 'N/A';
     const subject = 'Service Booking Confirmation - AutoTek';
     const html = `
       <!DOCTYPE html>
@@ -242,7 +248,7 @@ class EmailService {
           
           <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
             <h3 style="color: #14b8a6; margin-top: 0;">Service Details</h3>
-            <p style="margin: 5px 0;"><strong>Service Type:</strong> ${service.serviceType || 'N/A'}</p>
+            <p style="margin: 5px 0;"><strong>Service Type:</strong> ${serviceTypeText}</p>
             <p style="margin: 5px 0;"><strong>Status:</strong> ${service.status}</p>
             ${service.preferredDate ? `<p style="margin: 5px 0;"><strong>Preferred Date:</strong> ${new Date(service.preferredDate).toLocaleDateString()}</p>` : ''}
           </div>

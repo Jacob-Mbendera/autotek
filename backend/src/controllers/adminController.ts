@@ -268,6 +268,7 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
       
       const carSearchOr = [
         { serviceType: searchRegex },
+        { serviceTypes: searchRegex },
         { address: searchRegex },
         { notes: searchRegex },
         { 'vehicleDetails.make': searchRegex },

@@ -63,6 +63,15 @@ const serviceTypeInfo: Record<string, { name: string; icon: any }> = {
   'tire-rotation': { name: 'Tire Rotation', icon: Wrench },
   'other': { name: 'Other Service', icon: Wrench },
 };
+const getCarServiceTypeLabels = (service: CarService): string[] => {
+  const types =
+    service.serviceTypes && service.serviceTypes.length > 0
+      ? service.serviceTypes
+      : service.serviceType
+        ? [service.serviceType]
+        : [];
+  return types.map((type) => serviceTypeInfo[type]?.name || type);
+};
 
 // Helper function to get status badge colors
 const getStatusBadgeColor = (status: ServiceStatus) => {
@@ -300,11 +309,12 @@ export const MyServices = () => {
           );
         } else {
           const carService = service as CarService;
+          const serviceLabels = getCarServiceTypeLabels(carService);
           return (
             carService.location.address.toLowerCase().includes(query) ||
             carService.vehicleType.toLowerCase().includes(query) ||
             (carService.vehicleModel?.toLowerCase().includes(query) ?? false) ||
-            serviceTypeInfo[carService.serviceType]?.name.toLowerCase().includes(query)
+            serviceLabels.some((label) => label.toLowerCase().includes(query))
           );
         }
       });
@@ -592,6 +602,7 @@ export const MyServices = () => {
               const carService = !isTowing ? (service as CarService) : null;
               const assignedDriver = isTowing ? assigneeFromApi(towingService?.assignedDriver) : null;
               const assignedMechanic = !isTowing ? assigneeFromApi(carService?.assignedMechanic) : null;
+              const carServiceLabels = carService ? getCarServiceTypeLabels(carService) : [];
               const pickupSource =
                 towingService?.pickupLocationMethod === 'pin'
                   ? 'Map pin (town matched)'
@@ -630,7 +641,7 @@ export const MyServices = () => {
                           <h3 className="text-lg font-semibold text-gray-900">
                             {isTowing
                               ? 'Towing Service'
-                              : serviceTypeInfo[carService?.serviceType || 'other']?.name}
+                              : carServiceLabels.join(', ') || 'Car Service'}
                           </h3>
                           <span
                             className="inline-flex items-center gap-1 text-xs font-mono text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200"

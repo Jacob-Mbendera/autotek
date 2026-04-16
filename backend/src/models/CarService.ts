@@ -3,7 +3,12 @@ import { ServiceStatus, ServiceType } from '../types/shared';
 
 export interface ICarService extends Document {
   user: Types.ObjectId;
-  serviceType: ServiceType;
+  serviceType?: ServiceType;
+  serviceTypes: ServiceType[];
+  servicePricing?: Array<{
+    serviceType: ServiceType;
+    price?: number;
+  }>;
   vehicleDetails: {
     make?: string;
     model?: string;
@@ -42,8 +47,34 @@ const CarServiceSchema = new Schema<ICarService>(
     serviceType: {
       type: String,
       enum: Object.values(ServiceType),
-      required: true,
+      required: false,
     },
+    serviceTypes: {
+      type: [
+        {
+          type: String,
+          enum: Object.values(ServiceType),
+        },
+      ],
+      required: true,
+      validate: {
+        validator: (value: ServiceType[]) => Array.isArray(value) && value.length > 0,
+        message: 'At least one service type is required',
+      },
+    },
+    servicePricing: [
+      {
+        serviceType: {
+          type: String,
+          enum: Object.values(ServiceType),
+          required: true,
+        },
+        price: {
+          type: Number,
+          min: 0,
+        },
+      },
+    ],
     vehicleDetails: {
       make: String,
       model: String,
