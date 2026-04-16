@@ -11,6 +11,7 @@ import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { ImageCropModal } from '../../components/admin/ImageCropModal';
 import { Plus, Edit, Trash2, X, Package, Loader2, Image as ImageIcon, Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
+import { getProductImageUrl } from '../../utils/productImage';
 
 export const AdminProducts = () => {
   const dispatch = useAppDispatch();
@@ -421,12 +422,10 @@ export const AdminProducts = () => {
                   </thead>
                   <tbody>
                     {filteredProducts.map((product) => {
-                      const firstImage = product.images?.[0];
-                      const hasValidImage = firstImage && 
-                        typeof firstImage === 'string' && 
-                        firstImage.trim() !== '';
+                      const firstImageUrl = getProductImageUrl(product.images?.[0]);
+                      const hasValidImage = firstImageUrl.trim() !== '';
                       const hasErrored = imageErrorsRef.current.has(product._id);
-                      const displayImage = (hasValidImage && !hasErrored) ? firstImage : getPlaceholderImage(product.category);
+                      const displayImage = (hasValidImage && !hasErrored) ? firstImageUrl : getPlaceholderImage(product.category);
 
                       const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                         const target = e.target as HTMLImageElement;
@@ -747,7 +746,7 @@ export const AdminProducts = () => {
                       {editingProduct.images.map((img, idx) => (
                         <img
                           key={idx}
-                          src={img}
+                          src={getProductImageUrl(img)}
                           alt={`Product ${idx + 1}`}
                           className="w-20 h-20 object-cover rounded"
                           onError={(e) => {

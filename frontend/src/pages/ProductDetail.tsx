@@ -14,6 +14,7 @@ import { ShoppingCart, Zap, CheckCircle, Package, Heart } from 'lucide-react';
 import { ReviewList } from '../components/ReviewList';
 import { ReviewForm } from '../components/ReviewForm';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 
 export const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,7 +65,7 @@ export const ProductDetail = () => {
           productName: data.product.name,
           price: data.product.price,
           quantity: 1,
-          image: data.product.images?.[0],
+          image: getProductImageUrl(data.product.images?.[0]),
         })
       );
       dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
@@ -81,7 +82,7 @@ export const ProductDetail = () => {
           productName: data.product.name,
           price: data.product.price,
           quantity: 1,
-          image: data.product.images?.[0],
+          image: getProductImageUrl(data.product.images?.[0]),
         })
       );
       // Navigate to checkout
@@ -157,26 +158,25 @@ export const ProductDetail = () => {
   const isInStock = !isOutOfStock && product.stock > 10;
 
   // Determine display images
-  const firstImage = product.images?.[0];
-  const hasValidImage = firstImage && 
-    typeof firstImage === 'string' && 
-    firstImage.trim() !== '';
+  const firstImageUrl = getProductImageUrl(product.images?.[0]);
+  const hasValidImage = Boolean(firstImageUrl.trim());
   const placeholderImage = getPlaceholderImage(product.category);
-  
-  // Always ensure we have at least one image to display
-  // Use product images if available and not errored, otherwise use placeholder
-  let displayImages: string[];
+
+  let displayEntries: { url: string; blurDataUrl?: string }[];
   if (hasValidImage && product.images && product.images.length > 0 && !imageError) {
-    displayImages = product.images;
+    displayEntries = product.images.map((img) => ({
+      url: getProductImageUrl(img),
+      blurDataUrl: getProductImageBlur(img),
+    }));
   } else {
-    displayImages = [placeholderImage];
+    displayEntries = [{ url: placeholderImage }];
   }
-  
+
   const isPlaceholder = !hasValidImage || !product.images || product.images.length === 0 || imageError;
-  
-  // Ensure selectedImageIndex is within bounds
-  const safeImageIndex = Math.min(selectedImageIndex, displayImages.length - 1);
-  const currentImageSrc = displayImages[safeImageIndex] || displayImages[0] || placeholderImage;
+
+  const safeImageIndex = Math.min(selectedImageIndex, displayEntries.length - 1);
+  const currentEntry =
+    displayEntries[safeImageIndex] || displayEntries[0] || { url: placeholderImage };
 
   // Generate SKU from product ID
   const generateSKU = (productId: string, category: string) => {
@@ -269,10 +269,11 @@ export const ProductDetail = () => {
         {/* Product Images */}
         <div className="space-y-4">
           <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ minHeight: '500px' }}>
-            {currentImageSrc ? (
+            {currentEntry.url ? (
               <OptimizedImage
-                key={`${product._id}-${currentImageSrc}`}
-                src={currentImageSrc}
+                key={`${product._id}-${currentEntry.url}`}
+                src={currentEntry.url}
+                blurDataUrl={currentEntry.blurDataUrl}
                 alt={product.name}
                 width={800}
                 height={500}
@@ -293,9 +294,9 @@ export const ProductDetail = () => {
               </div>
             )}
             {/* Image carousel indicator */}
-            {displayImages.length > 1 && (
+            {displayEntries.length > 1 && (
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                {displayImages.map((_, index) => (
+                {displayEntries.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
@@ -310,9 +311,9 @@ export const ProductDetail = () => {
               </div>
             )}
           </div>
-          {displayImages.length > 1 && (
+          {displayEntries.length > 1 && (
             <div className="grid grid-cols-4 gap-4">
-              {displayImages.slice(0, 4).map((image, index) => (
+              {displayEntries.slice(0, 4).map((entry, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImageIndex(index)}
@@ -323,7 +324,8 @@ export const ProductDetail = () => {
                   }`}
                 >
                   <OptimizedImage
-                    src={image}
+                    src={entry.url}
+                    blurDataUrl={entry.blurDataUrl}
                     alt={`${product.name} ${index + 1}`}
                     width={150}
                     height={150}

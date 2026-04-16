@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import Product from '../models/Product';
-import { uploadImage, uploadMultipleImages, deleteImage, extractPublicId } from '../config/cloudinary';
+import { uploadImage, deleteImage, extractPublicId } from '../config/cloudinary';
 import { cleanupFile } from '../middleware/upload';
+import { generateBlurDataUrl } from '../utils/imageBlurPlaceholder';
+import { getImageUrl, normalizeProductImage } from '../utils/productImages';
 import path from 'path';
 
 // Extend Request type to include files
@@ -115,7 +117,7 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
 export const createProduct = async (req: MulterRequest, res: Response): Promise<void> => {
   try {
     const { name, description, category, price, stock, supplier } = req.body;
-    const uploadedImages: string[] = [];
+    const uploadedEntries: { url: string; blurDataUrl: string }[] = [];
 
     // Handle image uploads if files are present
     if (req.files) {
@@ -125,8 +127,14 @@ export const createProduct = async (req: MulterRequest, res: Response): Promise<
       const filePaths = files.map((file: Express.Multer.File) => path.join(process.cwd(), 'uploads', file.filename));
 
       try {
-        const uploadResults = await uploadMultipleImages(filePaths, 'autotek/products');
-        uploadedImages.push(...uploadResults.map((result) => result.secure_url));
+        const entries = await Promise.all(
+          filePaths.map(async (filePath) => {
+            const blurDataUrl = await generateBlurDataUrl(filePath);
+            const result = await uploadImage(filePath, 'autotek/products');
+            return { url: result.secure_url, blurDataUrl };
+          })
+        );
+        uploadedEntries.push(...entries);
 
         // Clean up local files after upload
         filePaths.forEach((filePath) => cleanupFile(filePath));
@@ -138,9 +146,14 @@ export const createProduct = async (req: MulterRequest, res: Response): Promise<
       }
     }
 
-    // If images are provided as URLs in request body, use those
-    const imageUrls = req.body.images ? (Array.isArray(req.body.images) ? req.body.images : [req.body.images]) : [];
-    const allImages = [...uploadedImages, ...imageUrls];
+    // If images are provided as URLs in request body, use those (no blur for URL-only entries)
+    const imageUrlsRaw = req.body.images
+      ? Array.isArray(req.body.images)
+        ? req.body.images
+        : [req.body.images]
+      : [];
+    const urlEntries = imageUrlsRaw.map((u: unknown) => normalizeProductImage(u));
+    const allImages = [...uploadedEntries, ...urlEntries];
 
     const product = new Product({
       name,
@@ -167,7 +180,7 @@ export const updateProduct = async (req: MulterRequest, res: Response): Promise<
       return;
     }
 
-    const uploadedImages: string[] = [];
+    const uploadedEntries: { url: string; blurDataUrl: string }[] = [];
     const imagesToDelete: string[] = [];
 
     // Handle new image uploads if files are present
@@ -178,8 +191,14 @@ export const updateProduct = async (req: MulterRequest, res: Response): Promise<
       const filePaths = files.map((file: Express.Multer.File) => path.join(process.cwd(), 'uploads', file.filename));
 
       try {
-        const uploadResults = await uploadMultipleImages(filePaths, 'autotek/products');
-        uploadedImages.push(...uploadResults.map((result) => result.secure_url));
+        const entries = await Promise.all(
+          filePaths.map(async (filePath) => {
+            const blurDataUrl = await generateBlurDataUrl(filePath);
+            const result = await uploadImage(filePath, 'autotek/products');
+            return { url: result.secure_url, blurDataUrl };
+          })
+        );
+        uploadedEntries.push(...entries);
 
         // Clean up local files after upload
         filePaths.forEach((filePath) => cleanupFile(filePath));
@@ -209,21 +228,33 @@ export const updateProduct = async (req: MulterRequest, res: Response): Promise<
     }
 
     // Update images array
-    let updatedImages = product.images.filter((img) => !imagesToDelete.includes(img));
-    
+    let updatedImages: unknown[] = product.images.filter(
+      (img) => !imagesToDelete.includes(getImageUrl(img))
+    );
+
     // Add new uploaded images
-    if (uploadedImages.length > 0) {
-      updatedImages = [...updatedImages, ...uploadedImages];
+    if (uploadedEntries.length > 0) {
+      updatedImages = [...updatedImages, ...uploadedEntries];
     }
 
-    // If images are provided as URLs in request body, use those
-    if (req.body.images && Array.isArray(req.body.images)) {
-      updatedImages = req.body.images;
+    // If images are provided in request body, replace with normalized entries
+    if (req.body.images !== undefined && req.body.images !== null) {
+      let bodyImages: unknown = req.body.images;
+      if (typeof bodyImages === 'string') {
+        try {
+          bodyImages = JSON.parse(bodyImages) as unknown;
+        } catch {
+          bodyImages = [bodyImages];
+        }
+      }
+      if (Array.isArray(bodyImages)) {
+        updatedImages = bodyImages.map((item: unknown) => normalizeProductImage(item));
+      }
     }
 
     // Update product
     const updateData: any = { ...req.body };
-    if (uploadedImages.length > 0 || imagesToDelete.length > 0) {
+    if (uploadedEntries.length > 0 || imagesToDelete.length > 0) {
       updateData.images = updatedImages;
     }
 
@@ -248,8 +279,8 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
 
     // Delete images from Cloudinary
     if (product.images && product.images.length > 0) {
-      for (const imageUrl of product.images) {
-        const publicId = extractPublicId(imageUrl);
+      for (const imageEntry of product.images) {
+        const publicId = extractPublicId(getImageUrl(imageEntry));
         if (publicId) {
           try {
             await deleteImage(publicId);

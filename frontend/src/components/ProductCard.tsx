@@ -8,6 +8,7 @@ import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { addToComparison } from '../store/slices/comparisonSlice';
 import type { Product } from '../store/api/productApi';
+import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 import { Button } from './ui/Button';
 import { OptimizedImage } from './ui/OptimizedImage';
 
@@ -43,10 +44,8 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
   }, [isInWishlistFromAPI, optimisticWishlistState]);
 
   // Check if product has valid images - more lenient check
-  const firstImage = product.images?.[0];
-  const hasValidImage = firstImage &&
-    typeof firstImage === 'string' &&
-    firstImage.trim() !== '';
+  const firstImageUrl = getProductImageUrl(product.images?.[0]);
+  const hasValidImage = Boolean(firstImageUrl.trim());
 
   // Default placeholder image based on category
   const getPlaceholderImage = () => {
@@ -62,7 +61,7 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
     return placeholders[category] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
   };
 
-  const displayImage = hasValidImage ? firstImage : getPlaceholderImage();
+  const displayImage = hasValidImage ? firstImageUrl : getPlaceholderImage();
   const isPlaceholder = !hasValidImage;
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -77,9 +76,10 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
     dispatch(
       addItem({
         productId: product._id,
+        productName: product.name,
         price: product.price,
         quantity: 1,
-        image: product.images?.[0],
+        image: getProductImageUrl(product.images?.[0]),
       })
     );
     dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
@@ -187,6 +187,7 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
         <div className={`group-hover:scale-125 transition-transform duration-700 ${isPlaceholder ? 'opacity-80' : ''}`}>
           <OptimizedImage
             src={displayImage}
+            blurDataUrl={hasValidImage ? getProductImageBlur(product.images?.[0]) : undefined}
             alt={product.name}
             width={400}
             height={400}

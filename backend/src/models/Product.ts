@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import type { ProductImageStored } from '../utils/productImages';
+import { normalizeProductImage } from '../utils/productImages';
 
 export interface IProduct extends Document {
   name: string;
@@ -6,7 +8,7 @@ export interface IProduct extends Document {
   category: string;
   price: number;
   stock: number;
-  images: string[];
+  images: ProductImageStored[];
   supplier?: string;
   status: 'available' | 'out-of-stock';
   badge?: 'new' | 'sale' | 'featured';
@@ -43,7 +45,7 @@ const ProductSchema = new Schema<IProduct>(
       default: 0,
     },
     images: {
-      type: [String],
+      type: [Schema.Types.Mixed],
       default: [],
     },
     supplier: {
@@ -74,6 +76,33 @@ const ProductSchema = new Schema<IProduct>(
     timestamps: true,
   }
 );
+
+function serializeImages(images: unknown): { url: string; blurDataUrl?: string }[] {
+  if (!Array.isArray(images)) return [];
+  return images.map((item) => normalizeProductImage(item));
+}
+
+ProductSchema.set('toJSON', {
+  virtuals: true,
+  transform(_doc, ret) {
+    const plain = ret as unknown as Record<string, unknown>;
+    if (Array.isArray(plain.images)) {
+      plain.images = serializeImages(plain.images);
+    }
+    return plain;
+  },
+});
+
+ProductSchema.set('toObject', {
+  virtuals: true,
+  transform(_doc, ret) {
+    const plain = ret as unknown as Record<string, unknown>;
+    if (Array.isArray(plain.images)) {
+      plain.images = serializeImages(plain.images);
+    }
+    return plain;
+  },
+});
 
 // Indexes for performance
 ProductSchema.index({ category: 1, status: 1 }); // Category + stock filtering

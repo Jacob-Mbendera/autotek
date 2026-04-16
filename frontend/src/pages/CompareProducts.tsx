@@ -6,6 +6,7 @@ import { addItem } from '../store/slices/cartSlice';
 import { Button } from '../components/ui/Button';
 import { H1, H2, H4, Body } from '../components/ui/Typography';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 import { X, ShoppingCart, Package, Check, XCircle } from 'lucide-react';
 
 export const CompareProducts = () => {
@@ -31,9 +32,10 @@ export const CompareProducts = () => {
     dispatch(
       addItem({
         productId: product._id,
+        productName: product.name,
         price: product.price,
         quantity: 1,
-        image: product.images?.[0],
+        image: getProductImageUrl(product.images?.[0]),
       })
     );
   };
@@ -105,10 +107,11 @@ export const CompareProducts = () => {
                       <X className="h-4 w-4 text-gray-600" />
                     </button>
                     
-                    {product.images?.[0] ? (
+                    {getProductImageUrl(product.images?.[0]) ? (
                       <div className="mx-auto mb-3">
                         <OptimizedImage
-                          src={product.images[0]}
+                          src={getProductImageUrl(product.images[0])}
+                          blurDataUrl={getProductImageBlur(product.images[0])}
                           alt={product.name}
                           width={128}
                           height={128}
@@ -176,13 +179,21 @@ export const CompareProducts = () => {
                         </span>
                       ) : field.key === 'description' ? (
                         <Body className="text-sm text-gray-700 line-clamp-3">
-                          {product[field.key as keyof typeof product] || 'N/A'}
+                          {product.description || 'N/A'}
                         </Body>
                       ) : (
                         <Body className="text-sm text-gray-900 font-medium">
                           {field.key === 'price'
-                            ? `MWK ${(product[field.key as keyof typeof product] as number).toLocaleString()}`
-                            : product[field.key as keyof typeof product] || 'N/A'}
+                            ? `MWK ${product.price.toLocaleString()}`
+                            : field.key === 'name'
+                              ? product.name
+                              : field.key === 'category'
+                                ? product.category
+                                : field.key === 'supplier'
+                                  ? product.supplier || 'N/A'
+                                  : field.key === 'stock'
+                                    ? String(product.stock)
+                                    : 'N/A'}
                         </Body>
                       )}
                     </td>

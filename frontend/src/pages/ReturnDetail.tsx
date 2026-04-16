@@ -10,6 +10,7 @@ import {
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+import { getProductImageUrl } from '../utils/productImage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -408,7 +409,7 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
               {returnDoc.items.map((item, index) => (
                 <li key={index} className="py-4 first:pt-0 flex gap-4">
                   <img
-                    src={item.product?.images?.[0] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=100&q=80'}
+                    src={getProductImageUrl(item.product?.images?.[0]) || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=100&q=80'}
                     alt={item.product?.name || 'Product'}
                     className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border border-gray-100 flex-shrink-0"
                   />

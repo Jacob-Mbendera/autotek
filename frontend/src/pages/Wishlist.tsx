@@ -5,6 +5,7 @@ import { addItem } from '../store/slices/cartSlice';
 import { useGetWishlistQuery, useRemoveFromWishlistMutation, useClearWishlistMutation } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+import { getProductImageUrl } from '../utils/productImage';
 import { ProductCard } from '../components/ProductCard';
 import { Button } from '../components/ui/Button';
 import { H1, H2, Body } from '../components/ui/Typography';
@@ -73,9 +74,10 @@ export const Wishlist = () => {
       dispatch(
         addItem({
           productId: product._id,
+          productName: product.name,
           price: product.price,
           quantity: 1,
-          image: product.images?.[0],
+          image: getProductImageUrl(product.images?.[0]),
         })
       );
       await removeFromWishlist(product._id).unwrap();
@@ -101,9 +103,10 @@ export const Wishlist = () => {
           dispatch(
             addItem({
               productId: product._id,
+              productName: product.name,
               price: product.price,
               quantity: 1,
-              image: product.images?.[0],
+              image: getProductImageUrl(product.images?.[0]),
             })
           );
           await removeFromWishlist(product._id).unwrap();

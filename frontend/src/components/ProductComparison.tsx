@@ -6,6 +6,8 @@ import { Button } from './ui/Button';
 import { H3, Body } from './ui/Typography';
 import { Link } from 'react-router-dom';
 import type { Product } from '../store/api/productApi';
+import { OptimizedImage } from './ui/OptimizedImage';
+import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 
 export const ProductComparison = () => {
   const dispatch = useAppDispatch();
@@ -25,9 +27,10 @@ export const ProductComparison = () => {
     dispatch(
       addItem({
         productId: product._id,
+        productName: product.name,
         price: product.price,
         quantity: 1,
-        image: product.images?.[0],
+        image: getProductImageUrl(product.images?.[0]),
       })
     );
   };
@@ -68,12 +71,18 @@ export const ProductComparison = () => {
                 <X className="h-4 w-4 text-gray-600" />
               </button>
               
-              {product.images?.[0] ? (
-                <img
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-32 object-cover rounded-lg mb-2"
-                />
+              {getProductImageUrl(product.images?.[0]) ? (
+                <div className="mb-2">
+                  <OptimizedImage
+                    src={getProductImageUrl(product.images?.[0])}
+                    blurDataUrl={getProductImageBlur(product.images?.[0])}
+                    alt={product.name}
+                    width={192}
+                    height={128}
+                    className="w-full h-32 object-cover rounded-lg"
+                    priority={false}
+                  />
+                </div>
               ) : (
                 <div className="w-full h-32 bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
                   <span className="text-xs text-gray-400">No image</span>

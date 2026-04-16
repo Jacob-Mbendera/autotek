@@ -7,6 +7,8 @@ import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlist
 import { showNotification } from '../store/slices/uiSlice';
 import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
+import { OptimizedImage } from './ui/OptimizedImage';
+import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 
 interface ProductCardListProps {
   product: Product;
@@ -14,8 +16,6 @@ interface ProductCardListProps {
 
 export const ProductCardList = ({ product }: ProductCardListProps) => {
   const dispatch = useAppDispatch();
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [optimisticWishlistState, setOptimisticWishlistState] = useState<boolean | null>(null);
 
@@ -35,16 +35,8 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
     }
   }, [isInWishlistFromAPI, optimisticWishlistState]);
 
-  const firstImage = product.images?.[0];
-  const hasValidImage = firstImage && 
-    typeof firstImage === 'string' && 
-    firstImage.trim() !== '' &&
-    !imageError;
-
-  useEffect(() => {
-    setImageError(false);
-    setImageLoading(true);
-  }, [product._id, firstImage]);
+  const firstImageUrl = getProductImageUrl(product.images?.[0]);
+  const hasValidImage = Boolean(firstImageUrl.trim());
 
   const getPlaceholderImage = () => {
     const category = product.category?.toLowerCase() || '';
@@ -59,7 +51,7 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
     return placeholders[category] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
   };
 
-  const displayImage = hasValidImage ? firstImage : getPlaceholderImage();
+  const displayImage = hasValidImage ? firstImageUrl : getPlaceholderImage();
   const isPlaceholder = !hasValidImage;
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -69,9 +61,10 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
     dispatch(
       addItem({
         productId: product._id,
+        productName: product.name,
         price: product.price,
         quantity: 1,
-        image: product.images?.[0],
+        image: getProductImageUrl(product.images?.[0]),
       })
     );
     dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
@@ -123,15 +116,6 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
     }
   };
 
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoading(false);
-  };
-
-  const handleImageLoad = () => {
-    setImageLoading(false);
-  };
-
   const isOutOfStock = product.status === 'out-of-stock' || product.stock === 0;
   const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
 
@@ -167,20 +151,21 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
     >
       {/* Image section */}
       <div className="relative w-48 h-48 flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-        {imageLoading && (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center z-0">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-200 border-t-teal-600"></div>
-          </div>
-        )}
-        <img
-          src={displayImage}
-          alt={product.name}
-          className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${
-            imageLoading ? 'opacity-0' : 'opacity-100'
-          } ${isPlaceholder ? 'opacity-80' : ''}`}
-          onError={handleImageError}
-          onLoad={handleImageLoad}
-        />
+        <div
+          className={`w-full h-full group-hover:scale-110 transition-transform duration-500 ${
+            isPlaceholder ? 'opacity-80' : ''
+          }`}
+        >
+          <OptimizedImage
+            src={displayImage}
+            blurDataUrl={hasValidImage ? getProductImageBlur(product.images?.[0]) : undefined}
+            alt={product.name}
+            width={192}
+            height={192}
+            className="w-full h-full object-cover"
+            priority={false}
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
         
         {isPlaceholder && (

@@ -1,5 +1,13 @@
 import { baseApi } from './baseApi';
 
+export interface ProductImage {
+  url: string;
+  blurDataUrl?: string;
+}
+
+/** Legacy APIs may still return a plain URL string per slot until re-saved. */
+export type ProductImageField = ProductImage | string;
+
 export interface Product {
   _id: string;
   name: string;
@@ -7,7 +15,7 @@ export interface Product {
   category: string;
   price: number;
   stock: number;
-  images: string[];
+  images: ProductImageField[];
   supplier?: string;
   status: 'available' | 'out-of-stock';
   badge?: 'new' | 'sale' | 'featured';

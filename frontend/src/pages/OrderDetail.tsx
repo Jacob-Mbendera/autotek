@@ -14,6 +14,7 @@ import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
+import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 
 // Helper function to format shipping address
 const formatShippingAddress = (address: ShippingAddress | string): string => {
@@ -600,7 +601,8 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   >
                     {product?.images && product.images.length > 0 ? (
                       <OptimizedImage
-                        src={product.images[0]}
+                        src={getProductImageUrl(product.images[0])}
+                        blurDataUrl={getProductImageBlur(product.images[0])}
                         alt={product.name || 'Product'}
                         width={80}
                         height={80}

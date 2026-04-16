@@ -1,11 +1,12 @@
 import { baseApi } from './baseApi';
 import type { OrderStatus, PaymentMethod, PaymentStatus } from '../../../../shared/types';
+import type { ProductImageField } from './productApi';
 
 export interface OrderItem {
   product: {
     _id: string;
     name: string;
-    images: string[];
+    images: ProductImageField[];
   } | null;
   quantity: number;
   price: number;

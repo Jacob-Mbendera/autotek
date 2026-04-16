@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface OptimizedImageProps {
   src: string;
   alt: string;
+  /** Tiny LQIP (e.g. data URL) shown until `src` finishes loading */
+  blurDataUrl?: string;
   width?: number;
   height?: number;
   className?: string;
@@ -19,7 +21,7 @@ interface OptimizedImageProps {
  * - WebP format with fallback to original
  * - Responsive image sizes (400w, 800w, 1200w)
  * - Lazy loading (unless priority)
- * - Loading state with placeholder
+ * - Optional blur-up placeholder (`blurDataUrl`) while the full image loads
  *
  * Usage:
  * <OptimizedImage
@@ -33,6 +35,7 @@ interface OptimizedImageProps {
 export const OptimizedImage = ({
   src,
   alt,
+  blurDataUrl,
   width,
   height,
   className = '',
@@ -41,6 +44,11 @@ export const OptimizedImage = ({
 }: OptimizedImageProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setHasError(false);
+  }, [src, blurDataUrl]);
 
   // Extract base path and extension
   const getImageVariants = (imageSrc: string) => {
@@ -57,7 +65,6 @@ export const OptimizedImage = ({
     // For local images, generate WebP variants
     const lastDot = imageSrc.lastIndexOf('.');
     const basePath = lastDot > -1 ? imageSrc.substring(0, lastDot) : imageSrc;
-    const ext = lastDot > -1 ? imageSrc.substring(lastDot) : '';
 
     return {
       isExternal: false,
@@ -81,6 +88,9 @@ export const OptimizedImage = ({
     setHasError(true);
     setIsLoading(false);
   };
+
+  const showSpinner = isLoading && !blurDataUrl;
+  const mainOpacity = isLoading ? 'opacity-0' : 'opacity-100';
 
   // Fallback placeholder for broken images
   if (hasError) {
@@ -109,21 +119,29 @@ export const OptimizedImage = ({
   // External images (Unsplash, etc.) - no optimization
   if (variants.isExternal) {
     return (
-      <div className="relative">
-        {isLoading && (
+      <div className="relative overflow-hidden">
+        {showSpinner && (
           <div
-            className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center animate-pulse"
+            className="absolute inset-0 z-[1] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center animate-pulse"
             style={{ width, height }}
           >
             <div className="rounded-full h-8 w-8 border-2 border-teal-200 border-t-teal-600 animate-spin" />
           </div>
+        )}
+        {blurDataUrl && (
+          <img
+            src={blurDataUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 z-[1] w-full h-full object-cover scale-110 blur-2xl"
+          />
         )}
         <img
           src={src}
           alt={alt}
           width={width}
           height={height}
-          className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+          className={`relative z-[2] ${className} ${mainOpacity} transition-opacity duration-300`}
           loading={priority ? 'eager' : 'lazy'}
           onLoad={handleLoad}
           onError={handleError}
@@ -134,16 +152,24 @@ export const OptimizedImage = ({
 
   // Local images with WebP optimization
   return (
-    <div className="relative">
-      {isLoading && (
+    <div className="relative overflow-hidden">
+      {showSpinner && (
         <div
-          className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center animate-pulse"
+          className="absolute inset-0 z-[1] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center animate-pulse"
           style={{ width, height }}
         >
           <div className="rounded-full h-8 w-8 border-2 border-teal-200 border-t-teal-600 animate-spin" />
         </div>
       )}
-      <picture>
+      {blurDataUrl && (
+        <img
+          src={blurDataUrl}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 z-[1] w-full h-full object-cover scale-110 blur-2xl"
+        />
+      )}
+      <picture className="relative z-[2] block">
         {variants.srcSet && (
           <source
             type="image/webp"
@@ -162,7 +188,7 @@ export const OptimizedImage = ({
           alt={alt}
           width={width}
           height={height}
-          className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+          className={`${className} ${mainOpacity} transition-opacity duration-300`}
           loading={priority ? 'eager' : 'lazy'}
           onLoad={handleLoad}
           onError={handleError}

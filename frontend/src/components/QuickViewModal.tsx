@@ -6,6 +6,8 @@ import { addItem } from '../store/slices/cartSlice';
 import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
 import { H2, H4, Body } from './ui/Typography';
+import { OptimizedImage } from './ui/OptimizedImage';
+import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 
 interface QuickViewModalProps {
   product: Product | null;
@@ -16,12 +18,10 @@ interface QuickViewModalProps {
 export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps) => {
   const dispatch = useAppDispatch();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (isOpen && product) {
       setCurrentImageIndex(0);
-      setImageError(false);
     }
   }, [isOpen, product]);
 
@@ -40,15 +40,20 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
 
   const images = product.images && product.images.length > 0 ? product.images : [];
   const hasMultipleImages = images.length > 1;
-  const currentImage = images[currentImageIndex] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+  const currentEntry = images[currentImageIndex];
+  const currentImageUrl = currentEntry
+    ? getProductImageUrl(currentEntry)
+    : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+  const currentBlur = currentEntry ? getProductImageBlur(currentEntry) : undefined;
 
   const handleAddToCart = () => {
     dispatch(
       addItem({
         productId: product._id,
+        productName: product.name,
         price: product.price,
         quantity: 1,
-        image: product.images?.[0],
+        image: getProductImageUrl(product.images?.[0]),
       })
     );
   };
@@ -101,11 +106,14 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
           {/* Image Section */}
           <div className="relative bg-gray-100 rounded-t-xl lg:rounded-l-xl lg:rounded-tr-none overflow-hidden">
             <div className="relative aspect-square">
-              <img
-                src={currentImage}
+              <OptimizedImage
+                src={currentImageUrl}
+                blurDataUrl={currentBlur}
                 alt={product.name}
+                width={600}
+                height={600}
                 className="w-full h-full object-cover"
-                onError={() => setImageError(true)}
+                priority={true}
               />
               
               {/* Image Navigation */}
@@ -163,10 +171,14 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
                         : 'border-gray-200 hover:border-teal-300'
                     }`}
                   >
-                    <img
-                      src={img}
+                    <OptimizedImage
+                      src={getProductImageUrl(img)}
+                      blurDataUrl={getProductImageBlur(img)}
                       alt={`${product.name} view ${index + 1}`}
+                      width={64}
+                      height={64}
                       className="w-full h-full object-cover"
+                      priority={false}
                     />
                   </button>
                 ))}
