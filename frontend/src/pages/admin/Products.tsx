@@ -32,9 +32,10 @@ export const AdminProducts = () => {
     status: 'available' as 'available' | 'out-of-stock',
     images: [] as File[],
   });
-  
+
   // Track which product images have errored to prevent flickering
   const imageErrorsRef = useRef<Set<string>>(new Set());
+  const [isDragging, setIsDragging] = useState(false);
 
   const { data, isLoading } = useGetProductsQuery({
     page,
@@ -172,6 +173,29 @@ export const AdminProducts = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFormData({ ...formData, images: Array.from(e.target.files) });
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files).filter(file =>
+      file.type.startsWith('image/')
+    );
+
+    if (files.length > 0) {
+      setFormData({ ...formData, images: files });
     }
   };
 
@@ -557,7 +581,14 @@ export const AdminProducts = () => {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Images {!editingProduct && '(Optional)'}
                 </label>
-                <div className="flex items-center gap-4">
+                <div
+                  className={`flex items-center gap-4 transition-all ${
+                    isDragging ? 'scale-105' : ''
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <label className="flex-1 cursor-pointer">
                     <input
                       type="file"
@@ -566,18 +597,62 @@ export const AdminProducts = () => {
                       onChange={handleImageChange}
                       className="hidden"
                     />
-                    <div className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-700 rounded-lg hover:border-teal-500 transition-colors bg-slate-900">
-                      <ImageIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <Body className="text-gray-400">
-                        {formData.images.length > 0
-                          ? `${formData.images.length} file(s) selected`
-                          : 'Choose images'}
+                    <div
+                      className={`flex flex-col items-center justify-center px-4 py-6 border-2 border-dashed rounded-lg transition-all ${
+                        isDragging
+                          ? 'border-teal-400 bg-teal-900/20 scale-105'
+                          : 'border-gray-700 bg-slate-900 hover:border-teal-500'
+                      }`}
+                    >
+                      <ImageIcon className={`h-8 w-8 mb-2 transition-colors ${
+                        isDragging ? 'text-teal-400' : 'text-gray-400'
+                      }`} />
+                      <Body className={`text-center transition-colors ${
+                        isDragging ? 'text-teal-300' : 'text-gray-400'
+                      }`}>
+                        {isDragging ? (
+                          'Drop images here'
+                        ) : formData.images.length > 0 ? (
+                          `${formData.images.length} file(s) selected`
+                        ) : (
+                          <>
+                            <span className="font-semibold">Click to upload</span> or drag and drop
+                            <br />
+                            <span className="text-xs text-gray-500">PNG, JPG, WebP up to 10MB</span>
+                          </>
+                        )}
                       </Body>
                     </div>
                   </label>
                 </div>
+
+                {/* Preview selected files */}
+                {formData.images.length > 0 && (
+                  <div className="mt-3">
+                    <Body className="text-sm text-gray-400 mb-2">Selected files:</Body>
+                    <div className="flex gap-2 flex-wrap">
+                      {formData.images.map((file, idx) => (
+                        <div key={idx} className="relative group">
+                          <div className="w-20 h-20 bg-gray-700 rounded-lg overflow-hidden">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center">
+                            <Body className="text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity text-center px-1 truncate">
+                              {file.name}
+                            </Body>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {editingProduct && editingProduct.images && editingProduct.images.length > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-3">
                     <Body className="text-sm text-gray-400 mb-2">Current images:</Body>
                     <div className="flex gap-2 flex-wrap">
                       {editingProduct.images.map((img, idx) => (
