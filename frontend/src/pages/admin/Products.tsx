@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, H2, Body } from '../../components/ui/Typography';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
+import { ImageCropModal } from '../../components/admin/ImageCropModal';
 import { Plus, Edit, Trash2, X, Package, Loader2, Image as ImageIcon, Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
 
@@ -37,6 +38,18 @@ export const AdminProducts = () => {
   const imageErrorsRef = useRef<Set<string>>(new Set());
   const [isDragging, setIsDragging] = useState(false);
 
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState('');
+  const [cropMimeType, setCropMimeType] = useState('image/jpeg');
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [cropQueueIndex, setCropQueueIndex] = useState(0);
+  const [imagesSnapshotBeforeCrop, setImagesSnapshotBeforeCrop] = useState<File[] | null>(null);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const cropQueueRef = useRef<File[]>([]);
+  const cropQueueIndexRef = useRef(0);
+  const croppedResultsRef = useRef<File[]>([]);
+
   const { data, isLoading } = useGetProductsQuery({
     page,
     limit,
@@ -53,6 +66,19 @@ export const AdminProducts = () => {
   useEffect(() => {
     imageErrorsRef.current.clear();
   }, [data?.products, page, searchTerm, categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    setImagePreviewUrls((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return formData.images.map((file) => URL.createObjectURL(file));
+    });
+    return () => {
+      setImagePreviewUrls((prev) => {
+        prev.forEach((url) => URL.revokeObjectURL(url));
+        return [];
+      });
+    };
+  }, [formData.images]);
 
   // Get placeholder image based on category
   const getPlaceholderImage = (category?: string) => {
@@ -102,6 +128,17 @@ export const AdminProducts = () => {
   };
 
   const handleCloseModal = () => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropModalOpen(false);
+    setCropImageSrc(null);
+    setCropQueue([]);
+    setCropQueueIndex(0);
+    cropQueueRef.current = [];
+    cropQueueIndexRef.current = 0;
+    croppedResultsRef.current = [];
+    setImagesSnapshotBeforeCrop(null);
     setShowModal(false);
     setEditingProduct(null);
     setFormData({
@@ -114,6 +151,57 @@ export const AdminProducts = () => {
       status: 'available',
       images: [],
     });
+  };
+
+  const beginCropSession = (files: File[]) => {
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    setImagesSnapshotBeforeCrop(formData.images);
+    setCropQueue(imageFiles);
+    setCropQueueIndex(0);
+    cropQueueRef.current = imageFiles;
+    cropQueueIndexRef.current = 0;
+    croppedResultsRef.current = [];
+
+    const first = imageFiles[0];
+    const url = URL.createObjectURL(first);
+    setCropImageSrc(url);
+    setCropFileName(first.name);
+    setCropMimeType(first.type || 'image/jpeg');
+    setCropModalOpen(true);
+  };
+
+  const finishCropSession = (finalFiles: File[]) => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropModalOpen(false);
+    setCropImageSrc(null);
+    setCropQueue([]);
+    setCropQueueIndex(0);
+    cropQueueRef.current = [];
+    cropQueueIndexRef.current = 0;
+    croppedResultsRef.current = [];
+    setImagesSnapshotBeforeCrop(null);
+    setFormData((prev) => ({ ...prev, images: finalFiles }));
+  };
+
+  const abortCropSession = () => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropModalOpen(false);
+    setCropImageSrc(null);
+    setCropQueue([]);
+    setCropQueueIndex(0);
+    cropQueueRef.current = [];
+    cropQueueIndexRef.current = 0;
+    croppedResultsRef.current = [];
+    if (imagesSnapshotBeforeCrop) {
+      setFormData((prev) => ({ ...prev, images: imagesSnapshotBeforeCrop }));
+    }
+    setImagesSnapshotBeforeCrop(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,7 +260,8 @@ export const AdminProducts = () => {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFormData({ ...formData, images: Array.from(e.target.files) });
+      beginCropSession(Array.from(e.target.files));
+      e.target.value = '';
     }
   };
 
@@ -195,7 +284,7 @@ export const AdminProducts = () => {
     );
 
     if (files.length > 0) {
-      setFormData({ ...formData, images: files });
+      beginCropSession(files);
     }
   };
 
@@ -635,7 +724,7 @@ export const AdminProducts = () => {
                         <div key={idx} className="relative group">
                           <div className="w-20 h-20 bg-gray-700 rounded-lg overflow-hidden">
                             <img
-                              src={URL.createObjectURL(file)}
+                              src={imagePreviewUrls[idx] || ''}
                               alt={file.name}
                               className="w-full h-full object-cover"
                             />
@@ -710,6 +799,37 @@ export const AdminProducts = () => {
         dark
         isLoading={isDeleting}
       />
+
+      {cropModalOpen && cropImageSrc && (
+        <ImageCropModal
+          open={cropModalOpen}
+          imageSrc={cropImageSrc}
+          fileName={cropFileName}
+          mimeType={cropMimeType}
+          queuePosition={cropQueueIndex + 1}
+          queueTotal={cropQueue.length}
+          onClose={abortCropSession}
+          onConfirm={(croppedFile) => {
+            croppedResultsRef.current = [...croppedResultsRef.current, croppedFile];
+            const nextIndex = cropQueueIndexRef.current + 1;
+
+            if (nextIndex < cropQueueRef.current.length) {
+              const next = cropQueueRef.current[nextIndex];
+              cropQueueIndexRef.current = nextIndex;
+              setCropQueueIndex(nextIndex);
+              setCropImageSrc((currentSrc) => {
+                if (currentSrc) URL.revokeObjectURL(currentSrc);
+                return URL.createObjectURL(next);
+              });
+              setCropFileName(next.name);
+              setCropMimeType(next.type || 'image/jpeg');
+              return;
+            }
+
+            finishCropSession(croppedResultsRef.current);
+          }}
+        />
+      )}
     </div>
   );
 };
