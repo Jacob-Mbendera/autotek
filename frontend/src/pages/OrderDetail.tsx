@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
+import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -598,10 +599,13 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                     className="flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0 last:pb-0"
                   >
                     {product?.images && product.images.length > 0 ? (
-                      <img
+                      <OptimizedImage
                         src={product.images[0]}
                         alt={product.name || 'Product'}
+                        width={80}
+                        height={80}
                         className="w-20 h-20 object-cover rounded-lg"
+                        priority={false}
                       />
                     ) : (
                       <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">

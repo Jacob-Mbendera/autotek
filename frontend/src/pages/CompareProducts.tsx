@@ -5,6 +5,7 @@ import { clearComparison, removeFromComparison } from '../store/slices/compariso
 import { addItem } from '../store/slices/cartSlice';
 import { Button } from '../components/ui/Button';
 import { H1, H2, H4, Body } from '../components/ui/Typography';
+import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { X, ShoppingCart, Package, Check, XCircle } from 'lucide-react';
 
 export const CompareProducts = () => {
@@ -105,11 +106,16 @@ export const CompareProducts = () => {
                     </button>
                     
                     {product.images?.[0] ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="w-32 h-32 object-cover rounded-lg mx-auto mb-3"
-                      />
+                      <div className="mx-auto mb-3">
+                        <OptimizedImage
+                          src={product.images[0]}
+                          alt={product.name}
+                          width={128}
+                          height={128}
+                          className="w-32 h-32 object-cover rounded-lg"
+                          priority={false}
+                        />
+                      </div>
                     ) : (
                       <div className="w-32 h-32 bg-gray-200 rounded-lg mx-auto mb-3 flex items-center justify-center">
                         <Package className="h-8 w-8 text-gray-400" />
