@@ -1,5 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { useGetProductsQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation, useGetCategoriesQuery } from '../../store/api/productApi';
+import {
+  useGetProductsQuery,
+  useCreateProductMutation,
+  useUpdateProductMutation,
+  useDeleteProductMutation,
+  useGetCategoriesQuery,
+  useBatchImportProductImagesMutation,
+} from '../../store/api/productApi';
+import type { BatchImageImportResponse } from '../../store/api/productApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
 import { getErrorInfo } from '../../utils/errorHandler';
@@ -9,7 +17,22 @@ import { Input } from '../../components/ui/Input';
 import { H1, H2, Body } from '../../components/ui/Typography';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { ImageCropModal } from '../../components/admin/ImageCropModal';
-import { Plus, Edit, Trash2, X, Package, Loader2, Image as ImageIcon, Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
+import {
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  Package,
+  Loader2,
+  Image as ImageIcon,
+  Search,
+  Filter,
+  ArrowLeft,
+  ArrowRight,
+  Upload,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
 import { getProductImageUrl } from '../../utils/productImage';
 
@@ -62,6 +85,9 @@ export const AdminProducts = () => {
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
   const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
+  const [batchImportImages, { isLoading: isBatchImporting }] = useBatchImportProductImagesMutation();
+  const [batchFiles, setBatchFiles] = useState<File[]>([]);
+  const [batchResult, setBatchResult] = useState<BatchImageImportResponse | null>(null);
 
   // Clear image errors when products change (page, filters, etc.)
   useEffect(() => {
@@ -296,6 +322,37 @@ export const AdminProducts = () => {
     setPage(1);
   };
 
+  const handleBatchFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setBatchFiles(Array.from(e.target.files));
+      setBatchResult(null);
+    }
+    e.target.value = '';
+  };
+
+  const handleBatchImportRun = async () => {
+    if (batchFiles.length === 0) return;
+    try {
+      const data = await batchImportImages({ files: batchFiles }).unwrap();
+      setBatchResult(data);
+      dispatch(
+        showNotification({
+          message: `Bulk import: ${data.summary.ok} succeeded, ${data.summary.failed} failed.`,
+          type: data.summary.failed ? 'info' : 'success',
+        })
+      );
+      setBatchFiles([]);
+    } catch (error: unknown) {
+      const errorInfo = getErrorInfo(error, 'Bulk import failed.');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
+  const handleClearBatch = () => {
+    setBatchFiles([]);
+    setBatchResult(null);
+  };
+
   const filteredProducts = data?.products || [];
   const hasActiveFilters = searchTerm || categoryFilter || statusFilter;
 
@@ -380,6 +437,97 @@ export const AdminProducts = () => {
               <Filter className="h-4 w-4" />
               Clear Filters
             </Button>
+          </div>
+        )}
+      </AdminCard>
+
+      <AdminCard variant="default" className="mb-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <H2 className="text-lg font-semibold text-gray-50 mb-1">Bulk image import</H2>
+            <Body className="text-sm text-gray-400 max-w-2xl">
+              Rename each image file to the product&apos;s MongoDB id plus an extension (e.g.{' '}
+              <span className="text-gray-300 font-mono text-xs">507f1f77bcf86cd799439011.jpg</span>
+              ). JPEG, PNG, WebP, or GIF. Images are appended to that product (max 30 images per product).
+            </Body>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex">
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleBatchFilesChange}
+              className="hidden"
+            />
+            <span className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-600 bg-slate-900 text-gray-200 text-sm hover:border-teal-500 transition-colors">
+              <Upload className="h-4 w-4" />
+              Choose files
+            </span>
+          </label>
+          <Body className="text-sm text-gray-400">
+            {batchFiles.length > 0 ? `${batchFiles.length} file(s) selected` : 'No files selected'}
+          </Body>
+          <Button
+            type="button"
+            dark
+            onClick={handleBatchImportRun}
+            disabled={batchFiles.length === 0 || isBatchImporting}
+          >
+            {isBatchImporting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              'Run import'
+            )}
+          </Button>
+          {(batchFiles.length > 0 || batchResult) && (
+            <Button type="button" variant="secondary" size="small" dark onClick={handleClearBatch}>
+              Clear
+            </Button>
+          )}
+        </div>
+        {batchResult && (
+          <div className="mt-4 border-t border-gray-700 pt-4">
+            <Body className="text-sm text-gray-300 mb-2">
+              Last run: {batchResult.summary.ok} ok, {batchResult.summary.failed} failed (total{' '}
+              {batchResult.summary.total})
+            </Body>
+            <div className="overflow-x-auto max-h-64 overflow-y-auto rounded-lg border border-gray-700">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-900 sticky top-0">
+                  <tr>
+                    <th className="text-left py-2 px-3 text-gray-400 font-medium">File</th>
+                    <th className="text-left py-2 px-3 text-gray-400 font-medium">Product</th>
+                    <th className="text-left py-2 px-3 text-gray-400 font-medium">Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batchResult.results.map((row, idx) => (
+                    <tr key={`${row.originalName}-${idx}`} className="border-t border-gray-700/80">
+                      <td className="py-2 px-3 text-gray-200 font-mono text-xs">{row.originalName}</td>
+                      <td className="py-2 px-3 text-gray-300 font-mono text-xs">{row.productId || '—'}</td>
+                      <td className="py-2 px-3">
+                        {row.ok ? (
+                          <span className="inline-flex items-center gap-1 text-green-400">
+                            <CheckCircle className="h-4 w-4 shrink-0" />
+                            <span className="text-xs">Added ({row.imageCount} images)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-start gap-1 text-red-400">
+                            <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                            <span className="text-xs">{row.error || 'Failed'}</span>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </AdminCard>

@@ -6,14 +6,22 @@ import {
   updateProduct,
   deleteProduct,
   getCategories,
+  batchImportProductImages,
 } from '../controllers/productController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
-import { uploadMultiple } from '../middleware/upload';
+import { uploadMultiple, uploadBatchImageFiles } from '../middleware/upload';
 
 const router = Router();
 
 router.get('/', getProducts);
 router.get('/categories', getCategories);
+router.post(
+  '/batch-images',
+  authMiddleware,
+  adminMiddleware,
+  uploadBatchImageFiles,
+  batchImportProductImages
+);
 router.get('/:id', getProduct);
 router.post('/', authMiddleware, adminMiddleware, uploadMultiple, createProduct);
 router.put('/:id', authMiddleware, adminMiddleware, uploadMultiple, updateProduct);

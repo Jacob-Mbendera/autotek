@@ -299,6 +299,109 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+const MAX_IMAGES_PER_PRODUCT = 30;
+
+const isHexObjectId = (value: string): boolean => /^[a-fA-F0-9]{24}$/.test(value);
+
+/**
+ * POST /api/products/batch-images (multipart field `files`)
+ * Each file's basename (without extension) must equal a product Mongo _id.
+ * Images are appended with blur placeholder (same pipeline as single upload).
+ */
+export const batchImportProductImages = async (req: MulterRequest, res: Response): Promise<void> => {
+  try {
+    const files = Array.isArray(req.files)
+      ? req.files
+      : typeof req.files === 'object' && req.files
+        ? Object.values(req.files).flat()
+        : [];
+
+    if (files.length === 0) {
+      res.status(400).json({ message: 'No files uploaded. Use multipart field "files".' });
+      return;
+    }
+
+    type Row = {
+      originalName: string;
+      productId: string | null;
+      ok: boolean;
+      error?: string;
+      imageUrl?: string;
+      imageCount?: number;
+    };
+
+    const results: Row[] = [];
+
+    for (const file of files) {
+      const filePath = path.join(process.cwd(), 'uploads', file.filename);
+      const originalName = file.originalname;
+      const idCandidate = path.parse(originalName).name;
+
+      if (!isHexObjectId(idCandidate)) {
+        cleanupFile(filePath);
+        results.push({
+          originalName,
+          productId: null,
+          ok: false,
+          error:
+            'Filename must be the product Mongo id (24 hex chars) plus an image extension, e.g. 507f1f77bcf86cd799439011.jpg',
+        });
+        continue;
+      }
+
+      try {
+        const product = await Product.findById(idCandidate);
+        if (!product) {
+          cleanupFile(filePath);
+          results.push({ originalName, productId: idCandidate, ok: false, error: 'Product not found' });
+          continue;
+        }
+
+        const currentImages = product.images || [];
+        if (currentImages.length >= MAX_IMAGES_PER_PRODUCT) {
+          cleanupFile(filePath);
+          results.push({
+            originalName,
+            productId: idCandidate,
+            ok: false,
+            error: `Product already has the maximum of ${MAX_IMAGES_PER_PRODUCT} images`,
+          });
+          continue;
+        }
+
+        const blurDataUrl = await generateBlurDataUrl(filePath);
+        const uploadResult = await uploadImage(filePath, 'autotek/products');
+        cleanupFile(filePath);
+
+        const entry = { url: uploadResult.secure_url, blurDataUrl };
+        product.set('images', [...currentImages, entry]);
+        await product.save();
+
+        results.push({
+          originalName,
+          productId: idCandidate,
+          ok: true,
+          imageUrl: entry.url,
+          imageCount: (product.images || []).length,
+        });
+      } catch (err: unknown) {
+        cleanupFile(filePath);
+        const message = err instanceof Error ? err.message : 'Upload failed';
+        results.push({ originalName, productId: idCandidate, ok: false, error: message });
+      }
+    }
+
+    const okCount = results.filter((r) => r.ok).length;
+    res.json({
+      results,
+      summary: { total: results.length, ok: okCount, failed: results.length - okCount },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Batch import failed';
+    res.status(500).json({ message });
+  }
+};
+
 export const getCategories = async (req: Request, res: Response): Promise<void> => {
   try {
     const categories = await Product.distinct('category');
