@@ -9,6 +9,7 @@ import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
 import { Lock, CheckCircle, XCircle, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { BrandLogo } from '../components/BrandLogo';
 
 export const ResetPassword = () => {
   const dispatch = useAppDispatch();
@@ -88,6 +89,9 @@ export const ResetPassword = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-teal-50/30 px-4 py-12">
         <Card variant="lg" className="shadow-2xl border-2 border-gray-200 text-center py-12">
+          <div className="flex justify-center mb-6">
+            <BrandLogo variant="auth" to="/" imgClassName="h-9 w-auto max-w-[220px]" />
+          </div>
           <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
           <Body className="text-gray-600">Verifying reset token...</Body>
         </Card>
@@ -99,6 +103,9 @@ export const ResetPassword = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-teal-50/30 px-4 py-12">
         <Card variant="lg" className="shadow-2xl border-2 border-gray-200">
+          <div className="flex justify-center mb-6">
+            <BrandLogo variant="auth" to="/" imgClassName="h-9 w-auto max-w-[220px]" />
+          </div>
           <div className="text-center py-8">
             <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <XCircle className="h-8 w-8 text-red-600" />
@@ -130,6 +137,9 @@ export const ResetPassword = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-teal-50/30 px-4 py-12">
       <div className="w-full max-w-md">
         <Card variant="lg" className="shadow-2xl border-2 border-gray-200">
+          <div className="flex justify-center mb-6">
+            <BrandLogo variant="auth" to="/" imgClassName="h-9 w-auto max-w-[220px]" />
+          </div>
           <div className="text-center mb-8">
             <div className="h-16 w-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Lock className="h-8 w-8 text-teal-600" />

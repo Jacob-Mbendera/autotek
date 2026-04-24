@@ -9,7 +9,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
-import { UserPlus, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { BrandLogo } from '../components/BrandLogo';
 
 export const Register = () => {
   const navigate = useNavigate();
@@ -101,10 +102,11 @@ export const Register = () => {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 mb-6">
-          <UserPlus className="h-6 w-6 text-teal-600" />
-          <H1 className="text-2xl">Create Account</H1>
+        <div className="flex justify-center mb-6">
+          <BrandLogo variant="auth" to="/" imgClassName="h-10 w-auto max-w-[240px]" />
         </div>
+
+        <H1 className="text-2xl text-center mb-6">Create Account</H1>
 
         {returnUrl && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">

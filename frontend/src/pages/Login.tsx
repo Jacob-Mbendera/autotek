@@ -9,7 +9,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
-import { LogIn, Home, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { BrandLogo } from '../components/BrandLogo';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -60,10 +61,11 @@ export const Login = () => {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 mb-6">
-          <LogIn className="h-6 w-6 text-teal-600" />
-          <H1 className="text-2xl">Login</H1>
+        <div className="flex justify-center mb-6">
+          <BrandLogo variant="auth" to="/" imgClassName="h-10 w-auto max-w-[240px]" />
         </div>
+
+        <H1 className="text-2xl text-center mb-6">Login</H1>
 
         {returnUrl && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Product from '../models/Product';
 import { uploadImage, deleteImage, extractPublicId } from '../config/cloudinary';
 import { cleanupFile } from '../middleware/upload';
@@ -398,6 +399,66 @@ export const batchImportProductImages = async (req: MulterRequest, res: Response
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Batch import failed';
+    res.status(500).json({ message });
+  }
+};
+
+/**
+ * POST /api/products/:id/assign-media
+ * Body: { "assets": [{ "url": "...", "blurDataUrl"?: "..." }] }
+ * Appends normalized images; dedupes by URL; max 30 images per product.
+ */
+export const assignMediaToProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      res.status(400).json({ message: 'Invalid product id' });
+      return;
+    }
+
+    const raw = (req.body as { assets?: unknown }).assets;
+    if (!Array.isArray(raw) || raw.length === 0) {
+      res.status(400).json({ message: 'Request body must include a non-empty "assets" array' });
+      return;
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    const current = (product.images || []).map((img) => normalizeProductImage(img));
+    const existingUrls = new Set(current.map((e) => e.url).filter(Boolean));
+
+    const toAdd: { url: string; blurDataUrl?: string }[] = [];
+    for (const item of raw) {
+      const normalized = normalizeProductImage(item);
+      if (!normalized.url) continue;
+      if (existingUrls.has(normalized.url)) continue;
+      existingUrls.add(normalized.url);
+      toAdd.push(normalized);
+    }
+
+    if (toAdd.length === 0) {
+      res.status(400).json({ message: 'No new images to add (empty or all duplicates)' });
+      return;
+    }
+
+    const combined = [...current, ...toAdd];
+    if (combined.length > MAX_IMAGES_PER_PRODUCT) {
+      res.status(400).json({
+        message: `Cannot assign: product would exceed ${MAX_IMAGES_PER_PRODUCT} images (currently ${current.length}, adding ${toAdd.length})`,
+      });
+      return;
+    }
+
+    product.set('images', combined);
+    await product.save();
+
+    res.json({ product });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to assign media';
     res.status(500).json({ message });
   }
 };

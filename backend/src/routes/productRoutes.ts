@@ -7,6 +7,7 @@ import {
   deleteProduct,
   getCategories,
   batchImportProductImages,
+  assignMediaToProduct,
 } from '../controllers/productController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
 import { uploadMultiple, uploadBatchImageFiles } from '../middleware/upload';
@@ -22,6 +23,7 @@ router.post(
   uploadBatchImageFiles,
   batchImportProductImages
 );
+router.post('/:id/assign-media', authMiddleware, adminMiddleware, assignMediaToProduct);
 router.get('/:id', getProduct);
 router.post('/', authMiddleware, adminMiddleware, uploadMultiple, createProduct);
 router.put('/:id', authMiddleware, adminMiddleware, uploadMultiple, updateProduct);

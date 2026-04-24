@@ -11,7 +11,6 @@ import {
   Settings,
   HelpCircle,
   Plus,
-  Truck,
   Menu,
   X,
   Users,
@@ -19,6 +18,7 @@ import {
   MapPin,
   Building2,
 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 export const AdminSidebar = () => {
   const location = useLocation();
@@ -71,14 +71,13 @@ export const AdminSidebar = () => {
       >
       {/* Logo and Branding */}
       <div className="p-6 border-b border-gray-700">
-        <Link to="/admin/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-teal-500 rounded-lg flex items-center justify-center">
-            <Truck className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <div className="text-white font-bold text-lg">AutoTek Admin</div>
-            <div className="text-gray-400 text-xs">Malawi Operations</div>
-          </div>
+        <Link
+          to="/admin/dashboard"
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="flex flex-col gap-2"
+        >
+          <BrandLogo variant="admin" imgClassName="h-9 w-auto max-w-[200px]" />
+          <div className="text-gray-400 text-xs tracking-wide">Admin · Malawi Operations</div>
         </Link>
       </div>
 

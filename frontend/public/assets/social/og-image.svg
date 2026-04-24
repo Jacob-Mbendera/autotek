@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  
+  <defs>
+    <linearGradient id="ogG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F766E"></stop>
+      <stop offset="1" stop-color="#14B8A6"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#111827"></rect>
+  <path d="M760 -40 L1240 440 L1060 670 L 580 190 Z" fill="url(#ogG)" opacity="0.9"></path>
+  <circle cx="1060" cy="480" r="140" fill="#14B8A6" opacity="0.14"></circle>
+  <g transform="translate(72,72)">
+    <g transform="scale(0.56)">
+      <path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"></path>
+      <path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#FFFFFF"></path>
+    </g>
+    <text x="72" y="44" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="34" letter-spacing="-1" fill="#FFFFFF">AutoTek</text>
+  </g>
+  <text x="72" y="478" font-family="JetBrains Mono, monospace" font-size="16" letter-spacing="2.2" fill="#5EEAD4">MALAWI&#39;S AUTOMOTIVE PLATFORM</text>
+  <text x="72" y="548" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="64" letter-spacing="-2.4" fill="#FFFFFF">Spare parts, towing &amp; home</text>
+  <text x="72" y="614" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="64" letter-spacing="-2.4" fill="#FFFFFF">service — on demand.</text>
+</svg>

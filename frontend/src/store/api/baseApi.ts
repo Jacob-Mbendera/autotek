@@ -61,6 +61,7 @@ export const baseApi = createApi({
     'Garage',
     'ServiceProvider',
     'ServicePayout',
+    'MediaAsset',
   ],
   endpoints: () => ({}),
 });

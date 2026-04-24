@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
 import { Search, Bell, User, LogOut } from 'lucide-react';
 import { Button } from './ui/Button';
+import { BrandLogo } from './BrandLogo';
 
 export const AdminHeader = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -18,7 +19,14 @@ export const AdminHeader = () => {
 
   return (
     <header className="sticky top-0 z-30 bg-slate-900 border-b border-gray-700">
-      <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+      <div className="flex items-center justify-between h-16 px-4 lg:px-6 gap-3">
+        <Link
+          to="/admin/dashboard"
+          className="flex shrink-0 items-center md:min-w-[140px]"
+          aria-label="Admin dashboard home"
+        >
+          <BrandLogo variant="admin" imgClassName="h-8 w-auto max-w-[140px] sm:max-w-[160px]" />
+        </Link>
         {/* Search Bar */}
         <div className="flex-1 max-w-2xl mx-auto hidden md:block">
           <div className="relative">
@@ -34,7 +42,7 @@ export const AdminHeader = () => {
         </div>
 
         {/* Right Side - Notifications and User */}
-        <div className="flex items-center gap-2 lg:gap-4 ml-2 lg:ml-6">
+        <div className="flex items-center gap-2 lg:gap-4 shrink-0">
           {/* Notifications */}
           <button className="relative p-2 text-gray-400 hover:text-white transition-colors">
             <Bell className="h-5 w-5" />

@@ -6,6 +6,7 @@ import { logout } from '../store/slices/authSlice';
 import { useGetWishlistQuery } from '../store/api/wishlistApi';
 import { UserRole } from '@shared/types';
 import { Button } from './ui/Button';
+import { BrandLogo } from './BrandLogo';
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -53,12 +54,11 @@ export const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-teal-500 rounded-lg flex items-center justify-center">
-                <Truck className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-900">AutoTek</span>
-            </Link>
+            <BrandLogo
+              variant="header"
+              to="/"
+              imgClassName="h-10 sm:h-11 max-h-11 max-w-[min(240px,calc(100vw-170px))] sm:max-w-[300px]"
+            />
           </div>
 
           {/* Desktop Navigation */}

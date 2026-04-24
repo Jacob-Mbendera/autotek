@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 480 120">
+  
+  <g transform="translate(0,20)">
+    <g transform="translate(0,0) scale(0.8)">
+      <path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"></path>
+      <path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#FFFFFF"></path>
+    </g>
+  </g>
+  <text x="100" y="80" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="68" letter-spacing="-2.5" fill="#111827">AutoTek</text>
+</svg>

@@ -51,6 +51,9 @@ export const uploadMultiple = upload.array('images', 10); // Max 10 images
 /** Batch import: many files mapped by filename to product ids (admin). */
 export const uploadBatchImageFiles = upload.array('files', 60);
 
+/** Admin media library: upload many files into shared library (admin). */
+export const uploadLibraryFiles = upload.array('files', 30);
+
 /**
  * Clean up uploaded file after processing
  * @param filePath - Path to the file to delete

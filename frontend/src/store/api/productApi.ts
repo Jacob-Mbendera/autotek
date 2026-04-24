@@ -75,6 +75,37 @@ export interface BatchImageImportResponse {
   summary: { total: number; ok: number; failed: number };
 }
 
+export interface MediaAsset {
+  _id: string;
+  url: string;
+  blurDataUrl?: string;
+  originalName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MediaAssetsListResponse {
+  assets: MediaAsset[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface MediaLibraryUploadRow {
+  originalName: string;
+  ok: boolean;
+  error?: string;
+  asset?: MediaAsset;
+}
+
+export interface MediaLibraryUploadResponse {
+  results: MediaLibraryUploadRow[];
+  summary: { total: number; ok: number; failed: number };
+}
+
 export const productApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getProducts: builder.query<ProductsResponse, ProductsQueryParams>({
@@ -169,6 +200,45 @@ export const productApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ['Product'],
     }),
+    getMediaAssets: builder.query<
+      MediaAssetsListResponse,
+      { page?: number; limit?: number; q?: string }
+    >({
+      query: ({ page = 1, limit = 12, q = '' }) => {
+        const params = new URLSearchParams();
+        params.set('page', String(page));
+        params.set('limit', String(limit));
+        if (q.trim()) params.set('q', q.trim());
+        return {
+          url: `/admin/media-assets?${params.toString()}`,
+          method: 'GET',
+        };
+      },
+      providesTags: ['MediaAsset'],
+    }),
+    uploadMediaLibrary: builder.mutation<MediaLibraryUploadResponse, { files: File[] }>({
+      query: ({ files }) => {
+        const formData = new FormData();
+        files.forEach((f) => formData.append('files', f));
+        return {
+          url: '/admin/media-assets',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['MediaAsset'],
+    }),
+    assignMediaToProduct: builder.mutation<
+      { product: Product },
+      { productId: string; assets: ProductImage[] }
+    >({
+      query: ({ productId, assets }) => ({
+        url: `/products/${productId}/assign-media`,
+        method: 'POST',
+        body: { assets },
+      }),
+      invalidatesTags: (_result, _error, { productId }) => [{ type: 'Product', id: productId }, 'Product'],
+    }),
   }),
 });
 
@@ -180,4 +250,7 @@ export const {
   useDeleteProductMutation,
   useGetCategoriesQuery,
   useBatchImportProductImagesMutation,
+  useGetMediaAssetsQuery,
+  useUploadMediaLibraryMutation,
+  useAssignMediaToProductMutation,
 } = productApi;

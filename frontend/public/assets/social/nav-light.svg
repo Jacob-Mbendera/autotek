@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="96" viewBox="0 0 280 48">
+  
+  <rect width="280" height="48" fill="#FFFFFF"></rect>
+  <g transform="translate(16,8) scale(0.32)">
+    <path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"></path>
+    <path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#FFFFFF"></path>
+  </g>
+  <text x="60" y="32" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="22" letter-spacing="-0.7" fill="#111827">AutoTek</text>
+</svg>

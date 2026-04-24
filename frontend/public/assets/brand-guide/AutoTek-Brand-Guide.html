@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AutoTek — One-page Brand Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 14mm; }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#fff;color:#111827;font-family:Inter,system-ui,sans-serif}
+  .page{max-width:190mm;margin:0 auto;padding:14mm 12mm}
+  .row{display:grid;gap:10mm}
+  .r2{grid-template-columns:1fr 1fr}
+  .r3{grid-template-columns:repeat(3,1fr)}
+  .r4{grid-template-columns:repeat(4,1fr)}
+  h1{font-size:28pt;font-weight:800;letter-spacing:-0.03em;margin:0}
+  h2{font-family:'JetBrains Mono',monospace;font-size:9pt;letter-spacing:0.16em;text-transform:uppercase;color:#6B7280;margin:0 0 4mm;font-weight:600}
+  p{margin:0;font-size:10pt;line-height:1.45;color:#374151}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:8.5pt;color:#0D9488;letter-spacing:0.2em;text-transform:uppercase;font-weight:500}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:6mm;border-bottom:1px solid #E5E7EB;margin-bottom:8mm}
+  .hdr .meta{font-family:'JetBrains Mono',monospace;font-size:8.5pt;color:#6B7280;text-align:right;letter-spacing:0.1em;text-transform:uppercase}
+  .mark-row{display:flex;align-items:center;gap:6mm;margin-bottom:3mm}
+  .swatch{border:1px solid #E5E7EB;border-radius:4px;overflow:hidden}
+  .swatch .chip{height:18mm}
+  .swatch .meta{padding:2mm 3mm;font-family:'JetBrains Mono',monospace;font-size:8pt;color:#374151}
+  .swatch .meta b{color:#111827;display:block;font-weight:600;font-size:9pt;margin-bottom:1mm;font-family:Inter}
+  .cell{border:1px solid #E5E7EB;border-radius:4px;padding:5mm}
+  .cell h3{margin:0 0 2mm;font-size:11pt;font-weight:700;letter-spacing:-0.01em}
+  .cell small{font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:#6B7280;letter-spacing:0.08em;text-transform:uppercase}
+  .rule{border:1px solid #E5E7EB;border-radius:4px;overflow:hidden}
+  .rule .head{padding:2mm 3mm;font-family:'JetBrains Mono',monospace;font-size:8pt;letter-spacing:0.12em;text-transform:uppercase;font-weight:600}
+  .rule.do .head{background:#ECFDF5;color:#047857}
+  .rule.no .head{background:#FEF2F2;color:#B91C1C}
+  .rule .stage{padding:6mm;display:flex;align-items:center;justify-content:center;background:#F9FAFB;min-height:22mm}
+  .rule .note{font-size:8.5pt;color:#4B5563;padding:2mm 3mm;border-top:1px solid #E5E7EB}
+  .dark{background:#111827}
+  .footer{margin-top:10mm;padding-top:4mm;border-top:1px solid #E5E7EB;font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:#9CA3AF;display:flex;justify-content:space-between;letter-spacing:0.1em;text-transform:uppercase}
+  .neutral-strip{display:grid;grid-template-columns:repeat(10,1fr);border:1px solid #E5E7EB;border-radius:4px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:7pt}
+  .neutral-strip div{padding:2mm 1mm;text-align:center}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hdr">
+    <div>
+      <div class="kicker">Brand Guide · v1.0 · April 2026</div>
+      <h1 style="margin-top:2mm">AutoTek</h1>
+    </div>
+    <div class="meta">
+      Malawi · Automotive platform<br>
+      One-page reference
+    </div>
+  </div>
+
+  <!-- Row 1 : mark + mission -->
+  <div class="row r2">
+    <div>
+      <h2>Primary mark</h2>
+      <div class="mark-row">
+        <svg width="28mm" height="28mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg>
+        <div style="font-weight:800;font-size:32pt;letter-spacing:-0.035em">AutoTek</div>
+      </div>
+      <p><b>Velo</b> — a diamond aperture (forward motion, open road) with a geometric AT monogram. Reads as both shield (trust) and arrowhead (speed). Wordmark is Inter 800, tracking −35.</p>
+    </div>
+    <div>
+      <h2>Voice</h2>
+      <p>Trustworthy, technical, fast. We don't over-promise — we show fitment. Plain words, no jargon. Celebrate local mechanics and the roads we serve.</p>
+      <p style="margin-top:3mm"><b>Yes:</b> "Brake pads for Toyota Hilux, delivered Monday." <br><b>No:</b> "Revolutionary automotive aftermarket ecosystem."</p>
+    </div>
+  </div>
+
+  <div style="height:8mm"></div>
+
+  <!-- Row 2: colors -->
+  <h2>Color system</h2>
+  <div class="row r4">
+    <div class="swatch"><div class="chip" style="background:#14B8A6"></div><div class="meta"><b>Teal 500 · Primary</b>#14B8A6 · 20·184·166</div></div>
+    <div class="swatch"><div class="chip" style="background:#0D9488"></div><div class="meta"><b>Teal 600</b>#0D9488 · 13·148·136</div></div>
+    <div class="swatch"><div class="chip" style="background:#0F766E"></div><div class="meta"><b>Teal 700</b>#0F766E · 15·118·110</div></div>
+    <div class="swatch"><div class="chip" style="background:#5EEAD4"></div><div class="meta"><b>Teal 300</b>#5EEAD4 · 94·234·212</div></div>
+  </div>
+  <div class="row r4" style="margin-top:3mm">
+    <div class="swatch"><div class="chip" style="background:#3B82F6"></div><div class="meta"><b>Blue 500 · Support</b>#3B82F6 · 59·130·246</div></div>
+    <div class="swatch"><div class="chip" style="background:#F97316"></div><div class="meta"><b>Orange 500 · Support</b>#F97316 · 249·115·22</div></div>
+    <div class="swatch"><div class="chip" style="background:#111827"></div><div class="meta" style="color:#fff;background:#111827"><b style="color:#fff">Gray 900 · Ink</b>#111827 · 17·24·39</div></div>
+    <div class="swatch"><div class="chip" style="background:#F9FAFB;border-bottom:1px solid #E5E7EB"></div><div class="meta"><b>Gray 50 · Paper</b>#F9FAFB · 249·250·251</div></div>
+  </div>
+
+  <div style="height:3mm"></div>
+  <div class="neutral-strip">
+    <div style="background:#F9FAFB">50</div><div style="background:#F3F4F6">100</div><div style="background:#E5E7EB">200</div><div style="background:#D1D5DB">300</div><div style="background:#9CA3AF;color:#fff">400</div><div style="background:#6B7280;color:#fff">500</div><div style="background:#4B5563;color:#fff">600</div><div style="background:#374151;color:#fff">700</div><div style="background:#1F2937;color:#fff">800</div><div style="background:#111827;color:#fff">900</div>
+  </div>
+
+  <div style="height:8mm"></div>
+
+  <!-- Row 3: spacing + sizing + type -->
+  <div class="row r3">
+    <div class="cell">
+      <small>Clear space</small>
+      <h3>Padding = X</h3>
+      <p>X = height of the diamond. Keep that zone clear of type, imagery, borders, or other marks on all sides.</p>
+    </div>
+    <div class="cell">
+      <small>Minimum size</small>
+      <h3>16 px · 8 mm</h3>
+      <p>Never render the mark smaller than 16 px on screen or 8 mm in print. Lockup minimum 112 px / 30 mm wide.</p>
+    </div>
+    <div class="cell">
+      <small>Typography</small>
+      <h3>Inter · JetBrains Mono</h3>
+      <p>Inter 400–800 for UI and marketing; JetBrains Mono 400–600 for technical specs, part numbers, receipts.</p>
+    </div>
+  </div>
+
+  <div style="height:6mm"></div>
+
+  <!-- Row 4: do / don't -->
+  <h2>Usage</h2>
+  <div class="row r4">
+    <div class="rule do"><div class="head">✓ Do — light</div><div class="stage"><svg width="14mm" height="14mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg></div><div class="note">Teal on Gray 50 or white.</div></div>
+    <div class="rule do"><div class="head">✓ Do — dark</div><div class="stage dark"><svg width="14mm" height="14mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#111827"/></svg></div><div class="note">Teal mark; white wordmark.</div></div>
+    <div class="rule no"><div class="head">✗ Don't — distort</div><div class="stage"><div style="transform:skewX(-12deg) scaleY(.7)"><svg width="14mm" height="14mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg></div></div><div class="note">Never rotate, skew, or stretch.</div></div>
+    <div class="rule no"><div class="head">✗ Don't — low contrast</div><div class="stage" style="background:#5EEAD4"><svg width="14mm" height="14mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg></div><div class="note">Ensure 4.5:1 contrast.</div></div>
+  </div>
+
+  <div style="height:6mm"></div>
+
+  <!-- Row 5: favicon + icons -->
+  <div class="row r2">
+    <div class="cell">
+      <small>Favicon &amp; app icon</small>
+      <h3>Identifiable at 16×16</h3>
+      <p style="margin-bottom:3mm">The Velo diamond holds shape down to 16 px. Use the rounded Teal 700 container for iOS / Android app tiles; PWA maskable icons keep artwork within the inner 80% safe circle.</p>
+      <div style="display:flex;align-items:flex-end;gap:4mm">
+        <svg width="4.2mm" height="4.2mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg>
+        <svg width="8.4mm" height="8.4mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg>
+        <svg width="12mm" height="12mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg>
+        <div style="width:14mm;height:14mm;border-radius:3mm;background:#0F766E;display:flex;align-items:center;justify-content:center"><svg width="10mm" height="10mm" viewBox="0 0 100 100"><path d="M50 6 L90 50 L50 94 L10 50 Z" fill="#14B8A6"/><path d="M30 62 L46 28 L50 36 L54 28 L70 62 L60 62 L50 42 L40 62 Z" fill="#fff"/></svg></div>
+      </div>
+    </div>
+    <div class="cell">
+      <small>Background contrast</small>
+      <h3>Pick mark by surface</h3>
+      <p>Teal mark on light (Gray 50–100) and dark (Gray 900) surfaces. Use black on vivid Orange 500 accents. Never teal-on-teal.</p>
+      <p style="margin-top:2mm"><b>AA minimum</b> for mark-on-background contrast: 3:1 for logo, 4.5:1 for type.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>AutoTek · Brand guide v1.0</span>
+    <span>Lilongwe · Malawi · 2026</span>
+  </div>
+</div>
+</body>
+</html>

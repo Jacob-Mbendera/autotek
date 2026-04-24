@@ -440,6 +440,55 @@ curl -X DELETE http://localhost:5000/api/products/<PRODUCT_ID> \
 
 ---
 
+## Admin media library API (curl gate)
+
+Prerequisites: backend on `http://localhost:5000`, admin JWT.
+
+### 1) Create admin (one-off) and login
+
+```bash
+BASE=http://localhost:5000
+EMAIL="media.lib.test+$(date +%s)@example.com"
+curl -sS -X POST "$BASE/api/auth/register" -H "Content-Type: application/json" \
+  -d "{\"name\":\"Media Lib Test\",\"email\":\"$EMAIL\",\"password\":\"TempPass123!\",\"phone\":\"+265991234567\",\"role\":\"admin\"}" | tee /tmp/media_reg.json
+TOKEN=$(curl -sS -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"TempPass123!\"}" | jq -r '.token')
+```
+
+### 2) List library (empty ok)
+
+```bash
+curl -sS "$BASE/api/admin/media-assets?page=1&limit=12" -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+### 3) Upload to library (multipart field `files`)
+
+```bash
+curl -sS -X POST "$BASE/api/admin/media-assets" -H "Authorization: Bearer $TOKEN" \
+  -F "files=@/path/to/small.png;type=image/png" | jq '{summary, first: .results[0]}'
+```
+
+### 4) Assign library images to a product
+
+Use a real product id from `GET /api/products?limit=1`, then:
+
+```bash
+PRODUCT_ID=$(curl -sS "$BASE/api/products?limit=1" | jq -r '.products[0]._id')
+IMAGE_URL=$(curl -sS "$BASE/api/admin/media-assets?page=1&limit=1" -H "Authorization: Bearer $TOKEN" | jq -r '.assets[0].url')
+curl -sS -X POST "$BASE/api/products/$PRODUCT_ID/assign-media" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"assets\":[{\"url\":\"$IMAGE_URL\"}]}" | jq '{productId:.product._id, imageCount:(.product.images|length)}'
+```
+
+### 5) Negative checks
+
+- **Non-admin token**: expect `403` on `/api/admin/media-assets`.
+- **Invalid assign body** (empty `assets`): expect `400`.
+- **Duplicate URLs**: second assign with same URL should return `400` with message about duplicates.
+- **Invalid upload MIME** (e.g. text file as `text/plain`): expect **400** (multer / file filter).
+
+---
+
 ## Known Issues
 
 *To be filled during testing*
