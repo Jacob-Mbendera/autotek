@@ -91,11 +91,14 @@ export const Products = () => {
   const [quickViewProduct, setQuickViewProduct] = useState<{ _id: string; name: string; description: string; category: string; price: number; stock: number; images: string[]; supplier?: string; status: 'available' | 'out-of-stock'; createdAt: string; updatedAt: string } | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  const { data, isLoading, error } = useGetProductsQuery({
-    page: pagination.page,
-    limit: pagination.limit,
-    ...filters,
-  });
+  const { data, isLoading, error } = useGetProductsQuery(
+    {
+      page: pagination.page,
+      limit: pagination.limit,
+      ...filters,
+    },
+    { refetchOnMountOrArgChange: true }
+  );
 
   const { data: categoriesData } = useGetCategoriesQuery();
 

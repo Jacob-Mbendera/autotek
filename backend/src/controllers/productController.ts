@@ -4,7 +4,7 @@ import Product from '../models/Product';
 import { uploadImage, deleteImage, extractPublicId } from '../config/cloudinary';
 import { cleanupFile } from '../middleware/upload';
 import { generateBlurDataUrl } from '../utils/imageBlurPlaceholder';
-import { getImageUrl, normalizeProductImage } from '../utils/productImages';
+import { getImageUrl, moveImageToPrimary, normalizeProductImage } from '../utils/productImages';
 import path from 'path';
 
 // Extend Request type to include files
@@ -459,6 +459,53 @@ export const assignMediaToProduct = async (req: Request, res: Response): Promise
     res.json({ product });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to assign media';
+    res.status(500).json({ message });
+  }
+};
+
+/**
+ * PATCH /api/products/:id/primary-image
+ * Body: { "url": "https://..." }
+ * Moves the matching image to index 0 (cover / primary).
+ */
+export const setPrimaryProductImage = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      res.status(400).json({ message: 'Invalid product id' });
+      return;
+    }
+
+    const url =
+      typeof (req.body as { url?: unknown }).url === 'string'
+        ? (req.body as { url: string }).url.trim()
+        : '';
+    if (!url) {
+      res.status(400).json({ message: 'Request body must include a non-empty "url" string' });
+      return;
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    let reordered;
+    try {
+      reordered = moveImageToPrimary(product.images || [], url);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid image URL';
+      res.status(400).json({ message });
+      return;
+    }
+
+    product.set('images', reordered);
+    await product.save();
+
+    res.json({ product });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to set primary image';
     res.status(500).json({ message });
   }
 };

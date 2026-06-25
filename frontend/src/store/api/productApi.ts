@@ -1,4 +1,6 @@
 import { baseApi } from './baseApi';
+import { patchProductInCaches } from './productCacheUtils';
+import type { RootState } from '../index';
 
 export interface ProductImage {
   url: string;
@@ -127,7 +129,13 @@ export const productApi = baseApi.injectEndpoints({
           method: 'GET',
         };
       },
-      providesTags: ['Product'],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.products.map((p) => ({ type: 'Product' as const, id: p._id })),
+              { type: 'Product' as const, id: 'LIST' },
+            ]
+          : [{ type: 'Product' as const, id: 'LIST' }],
     }),
     getProduct: builder.query<{ product: Product }, string>({
       query: (id) => `/products/${id}`,
@@ -247,7 +255,40 @@ export const productApi = baseApi.injectEndpoints({
         method: 'POST',
         body: { assets },
       }),
-      invalidatesTags: (_result, _error, { productId }) => [{ type: 'Product', id: productId }, 'Product'],
+      invalidatesTags: (_result, _error, { productId }) => [
+        { type: 'Product', id: productId },
+        { type: 'Product', id: 'LIST' },
+      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled, getState }) {
+        try {
+          const { data } = await queryFulfilled;
+          patchProductInCaches(dispatch, getState as () => RootState, data.product);
+        } catch {
+          // mutation failed; invalidation skipped
+        }
+      },
+    }),
+    setPrimaryProductImage: builder.mutation<
+      { product: Product },
+      { productId: string; url: string }
+    >({
+      query: ({ productId, url }) => ({
+        url: `/products/${productId}/primary-image`,
+        method: 'PATCH',
+        body: { url },
+      }),
+      invalidatesTags: (_result, _error, { productId }) => [
+        { type: 'Product', id: productId },
+        { type: 'Product', id: 'LIST' },
+      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled, getState }) {
+        try {
+          const { data } = await queryFulfilled;
+          patchProductInCaches(dispatch, getState as () => RootState, data.product);
+        } catch {
+          // mutation failed; invalidation skipped
+        }
+      },
     }),
   }),
 });
@@ -264,4 +305,5 @@ export const {
   useUploadMediaLibraryMutation,
   useDeleteMediaAssetMutation,
   useAssignMediaToProductMutation,
+  useSetPrimaryProductImageMutation,
 } = productApi;

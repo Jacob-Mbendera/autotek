@@ -1,5 +1,9 @@
 import type { ProductImageField } from '../store/api/productApi';
 
+export function getPrimaryProductImage(images?: ProductImageField[] | null): ProductImageField | null {
+  return images?.[0] ?? null;
+}
+
 export function getProductImageUrl(image: ProductImageField | undefined | null): string {
   if (image == null) return '';
   if (typeof image === 'string') return image;

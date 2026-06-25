@@ -6,6 +6,7 @@ import {
   useDeleteProductMutation,
   useGetCategoriesQuery,
   useBatchImportProductImagesMutation,
+  useSetPrimaryProductImageMutation,
 } from '../../store/api/productApi';
 import type { BatchImageImportResponse } from '../../store/api/productApi';
 import { useAppDispatch } from '../../store/types';
@@ -33,9 +34,10 @@ import {
   Upload,
   CheckCircle,
   XCircle,
+  Star,
 } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
-import { getProductImageUrl } from '../../utils/productImage';
+import { getPrimaryProductImage, getProductImageUrl } from '../../utils/productImage';
 
 export const AdminProducts = () => {
   const dispatch = useAppDispatch();
@@ -87,8 +89,10 @@ export const AdminProducts = () => {
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
   const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
   const [batchImportImages, { isLoading: isBatchImporting }] = useBatchImportProductImagesMutation();
+  const [setPrimaryProductImage, { isLoading: isSettingPrimary }] = useSetPrimaryProductImageMutation();
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [batchResult, setBatchResult] = useState<BatchImageImportResponse | null>(null);
+  const [settingPrimaryUrl, setSettingPrimaryUrl] = useState<string | null>(null);
 
   // Clear image errors when products change (page, filters, etc.)
   useEffect(() => {
@@ -284,6 +288,34 @@ export const AdminProducts = () => {
       setShowDeleteModal(false);
       setDeletingProductId(null);
     }
+  };
+
+  const handleSetPrimary = async (url: string) => {
+    if (!editingProduct || !url.trim()) return;
+    setSettingPrimaryUrl(url);
+    try {
+      const { product } = await setPrimaryProductImage({
+        productId: editingProduct._id,
+        url,
+      }).unwrap();
+      setEditingProduct(product);
+      imageErrorsRef.current.delete(product._id);
+      dispatch(showNotification({ message: 'Primary image updated.', type: 'success' }));
+    } catch (error: unknown) {
+      dispatch(
+        showNotification({
+          message: getErrorInfo(error, 'Could not set primary image.').message,
+          type: 'error',
+        })
+      );
+    } finally {
+      setSettingPrimaryUrl(null);
+    }
+  };
+
+  const handleProductImagesUpdated = (product: Product) => {
+    setEditingProduct(product);
+    imageErrorsRef.current.delete(product._id);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -571,7 +603,7 @@ export const AdminProducts = () => {
                   </thead>
                   <tbody>
                     {filteredProducts.map((product) => {
-                      const firstImageUrl = getProductImageUrl(product.images?.[0]);
+                      const firstImageUrl = getProductImageUrl(getPrimaryProductImage(product.images));
                       const hasValidImage = firstImageUrl.trim() !== '';
                       const hasErrored = imageErrorsRef.current.has(product._id);
                       const displayImage = (hasValidImage && !hasErrored) ? firstImageUrl : getPlaceholderImage(product.category);
@@ -890,20 +922,55 @@ export const AdminProducts = () => {
 
                 {editingProduct && editingProduct.images && editingProduct.images.length > 0 && (
                   <div className="mt-3">
-                    <Body className="text-sm text-gray-400 mb-2">Current images:</Body>
-                    <div className="flex gap-2 flex-wrap">
-                      {editingProduct.images.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={getProductImageUrl(img)}
-                          alt={`Product ${idx + 1}`}
-                          className="w-20 h-20 object-cover rounded"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = getPlaceholderImage(editingProduct.category);
-                          }}
-                        />
-                      ))}
+                    <Body className="text-sm text-gray-400 mb-1">Current images:</Body>
+                    <Body className="text-xs text-gray-500 mb-2">
+                      The primary image is shown on product cards and as the default gallery image.
+                    </Body>
+                    <div className="flex gap-3 flex-wrap">
+                      {editingProduct.images.map((img, idx) => {
+                        const url = getProductImageUrl(img);
+                        const isPrimary = idx === 0;
+                        const isSettingThis = settingPrimaryUrl === url && isSettingPrimary;
+                        return (
+                          <div key={`${url}-${idx}`} className="flex flex-col items-center gap-1.5 w-24">
+                            <div className="relative w-20 h-20 rounded overflow-hidden border-2 border-gray-700">
+                              <img
+                                src={url}
+                                alt={`Product ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = getPlaceholderImage(editingProduct.category);
+                                }}
+                              />
+                              {isPrimary && (
+                                <span className="absolute top-0 left-0 right-0 flex items-center justify-center gap-0.5 bg-teal-600/95 text-white text-[10px] font-medium py-0.5 px-1">
+                                  <Star className="h-3 w-3 fill-current" />
+                                  Primary
+                                </span>
+                              )}
+                              {isSettingThis && (
+                                <span className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                  <Loader2 className="h-5 w-5 animate-spin text-teal-400" />
+                                </span>
+                              )}
+                            </div>
+                            {!isPrimary && (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="small"
+                                dark
+                                disabled={isSettingPrimary}
+                                onClick={() => handleSetPrimary(url)}
+                                className="text-[10px] px-1.5 py-1 h-auto leading-tight w-full"
+                              >
+                                Set as primary
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -915,7 +982,7 @@ export const AdminProducts = () => {
                   enabled={showModal}
                   layout="compact"
                   assignToProductId={editingProduct?._id}
-                  onProductUpdated={(product) => setEditingProduct(product)}
+                  onProductUpdated={handleProductImagesUpdated}
                 />
               </div>
 
