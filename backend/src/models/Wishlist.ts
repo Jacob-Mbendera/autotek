@@ -27,7 +27,4 @@ const WishlistSchema = new Schema<IWishlist>(
   }
 );
 
-// Ensure one wishlist per user
-WishlistSchema.index({ user: 1 }, { unique: true });
-
 export default mongoose.model<IWishlist>('Wishlist', WishlistSchema);

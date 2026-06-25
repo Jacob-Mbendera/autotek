@@ -6,6 +6,7 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import morgan from 'morgan';
 // import mongoSanitize from 'express-mongo-sanitize'; // Disabled due to Express 4.x compatibility issue
 import connectDB from './config/database';
 import { errorHandler } from './middleware/errorHandler';
@@ -57,6 +58,13 @@ app.use(
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// HTTP request logging
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined')); // Apache-style combined log format
+} else {
+  app.use(morgan('dev')); // Colored concise output for development
+}
 
 // Data sanitization against NoSQL query injection
 // Note: Temporarily disabled due to compatibility issue with Express 4.x
