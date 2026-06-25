@@ -6,11 +6,8 @@ import {
   useDeleteProductMutation,
   useGetCategoriesQuery,
   useBatchImportProductImagesMutation,
-  useGetMediaAssetsQuery,
-  useUploadMediaLibraryMutation,
-  useAssignMediaToProductMutation,
 } from '../../store/api/productApi';
-import type { BatchImageImportResponse, ProductImage } from '../../store/api/productApi';
+import type { BatchImageImportResponse } from '../../store/api/productApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
 import { getErrorInfo } from '../../utils/errorHandler';
@@ -20,6 +17,7 @@ import { Input } from '../../components/ui/Input';
 import { H1, H2, Body } from '../../components/ui/Typography';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { ImageCropModal } from '../../components/admin/ImageCropModal';
+import { MediaLibraryPanel } from '../../components/admin/MediaLibraryPanel';
 import {
   Plus,
   Edit,
@@ -35,7 +33,6 @@ import {
   Upload,
   CheckCircle,
   XCircle,
-  Check,
 } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
 import { getProductImageUrl } from '../../utils/productImage';
@@ -93,29 +90,6 @@ export const AdminProducts = () => {
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [batchResult, setBatchResult] = useState<BatchImageImportResponse | null>(null);
 
-  const [libraryQuery, setLibraryQuery] = useState('');
-  const [libraryDebounced, setLibraryDebounced] = useState('');
-  const [libraryPage, setLibraryPage] = useState(1);
-  const [selectedLibrary, setSelectedLibrary] = useState<Record<string, ProductImage>>({});
-  const libraryFileInputRef = useRef<HTMLInputElement>(null);
-
-  const { data: mediaData, isFetching: isMediaFetching } = useGetMediaAssetsQuery(
-    { page: libraryPage, limit: 12, q: libraryDebounced },
-    { skip: !showModal }
-  );
-  const [uploadToLibrary, { isLoading: isUploadingLibrary }] = useUploadMediaLibraryMutation();
-  const [assignMediaToProduct, { isLoading: isAssigningMedia }] = useAssignMediaToProductMutation();
-
-  useEffect(() => {
-    const t = setTimeout(() => setLibraryDebounced(libraryQuery), 350);
-    return () => clearTimeout(t);
-  }, [libraryQuery]);
-
-  useEffect(() => {
-    if (!showModal) return;
-    setLibraryPage(1);
-  }, [libraryDebounced, showModal]);
-
   // Clear image errors when products change (page, filters, etc.)
   useEffect(() => {
     imageErrorsRef.current.clear();
@@ -153,10 +127,6 @@ export const AdminProducts = () => {
   };
 
   const handleOpenModal = (product?: Product) => {
-    setSelectedLibrary({});
-    setLibraryQuery('');
-    setLibraryDebounced('');
-    setLibraryPage(1);
     if (product) {
       setEditingProduct(product);
       setFormData({
@@ -186,10 +156,6 @@ export const AdminProducts = () => {
   };
 
   const handleCloseModal = () => {
-    setLibraryQuery('');
-    setLibraryDebounced('');
-    setLibraryPage(1);
-    setSelectedLibrary({});
     if (cropImageSrc) {
       URL.revokeObjectURL(cropImageSrc);
     }
@@ -386,64 +352,6 @@ export const AdminProducts = () => {
   const handleClearBatch = () => {
     setBatchFiles([]);
     setBatchResult(null);
-  };
-
-  const handleLibraryFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-      ? Array.from(e.target.files).filter((f) => f.type.startsWith('image/'))
-      : [];
-    e.target.value = '';
-    if (files.length === 0) return;
-    try {
-      const data = await uploadToLibrary({ files }).unwrap();
-      dispatch(
-        showNotification({
-          message: `Media library: ${data.summary.ok} uploaded, ${data.summary.failed} failed.`,
-          type: data.summary.failed ? 'info' : 'success',
-        })
-      );
-    } catch (err: unknown) {
-      dispatch(
-        showNotification({
-          message: getErrorInfo(err, 'Media library upload failed.').message,
-          type: 'error',
-        })
-      );
-    }
-  };
-
-  const toggleLibrarySelect = (asset: { url: string; blurDataUrl?: string }) => {
-    setSelectedLibrary((prev) => {
-      const next = { ...prev };
-      if (next[asset.url]) {
-        delete next[asset.url];
-      } else {
-        next[asset.url] = { url: asset.url, blurDataUrl: asset.blurDataUrl };
-      }
-      return next;
-    });
-  };
-
-  const handleAssignLibrary = async () => {
-    if (!editingProduct) return;
-    const assets = Object.values(selectedLibrary);
-    if (assets.length === 0) return;
-    try {
-      const { product } = await assignMediaToProduct({
-        productId: editingProduct._id,
-        assets,
-      }).unwrap();
-      setEditingProduct(product);
-      setSelectedLibrary({});
-      dispatch(showNotification({ message: 'Selected images assigned to this product.', type: 'success' }));
-    } catch (err: unknown) {
-      dispatch(
-        showNotification({
-          message: getErrorInfo(err, 'Could not assign images.').message,
-          type: 'error',
-        })
-      );
-    }
   };
 
   const filteredProducts = data?.products || [];
@@ -1002,141 +910,13 @@ export const AdminProducts = () => {
               </div>
 
               <div className="border-t border-gray-700 pt-6 mt-6 space-y-4">
-                <div>
-                  <H2 className="text-lg font-semibold text-gray-50 mb-1">Media library</H2>
-                  <Body className="text-sm text-gray-400">
-                    Upload images once to the shared library. When editing a product, select thumbnails and
-                    assign them without renaming files to product ids.
-                  </Body>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    ref={libraryFileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={handleLibraryFilesChange}
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="small"
-                    dark
-                    disabled={isUploadingLibrary}
-                    onClick={() => libraryFileInputRef.current?.click()}
-                    className="gap-2"
-                  >
-                    {isUploadingLibrary ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4" />
-                        Upload to library
-                      </>
-                    )}
-                  </Button>
-                  {!editingProduct && (
-                    <Body className="text-xs text-gray-500">
-                      Save the product first to assign library images to it.
-                    </Body>
-                  )}
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                  <div className="flex-1">
-                    <Input
-                      dark
-                      label="Search library"
-                      value={libraryQuery}
-                      onChange={(e) => setLibraryQuery(e.target.value)}
-                      placeholder="Filter by file name or URL"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="small"
-                    dark
-                    disabled={isMediaFetching || libraryPage <= 1}
-                    onClick={() => setLibraryPage((p) => Math.max(1, p - 1))}
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="small"
-                    dark
-                    disabled={
-                      isMediaFetching ||
-                      !mediaData?.pagination ||
-                      libraryPage >= (mediaData.pagination.totalPages || 1)
-                    }
-                    onClick={() => setLibraryPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-                {isMediaFetching && (
-                  <div className="flex items-center gap-2 text-gray-400 text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading library...
-                  </div>
-                )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1">
-                  {(mediaData?.assets || []).map((asset) => {
-                    const selected = Boolean(selectedLibrary[asset.url]);
-                    return (
-                      <button
-                        key={asset._id}
-                        type="button"
-                        onClick={() => toggleLibrarySelect(asset)}
-                        className={`relative rounded-lg border-2 overflow-hidden focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                          selected ? 'border-teal-500 ring-1 ring-teal-500/40' : 'border-gray-700'
-                        }`}
-                      >
-                        <img
-                          src={asset.url}
-                          alt={asset.originalName || 'Library image'}
-                          className="w-full h-24 object-cover bg-slate-900"
-                        />
-                        {selected && (
-                          <span className="absolute top-1 right-1 bg-teal-600 text-white rounded-full p-0.5">
-                            <Check className="h-3.5 w-3.5" />
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {mediaData?.pagination && (
-                  <Body className="text-xs text-gray-500">
-                    Page {mediaData.pagination.page} of {mediaData.pagination.totalPages} (
-                    {mediaData.pagination.total} assets)
-                  </Body>
-                )}
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    type="button"
-                    dark
-                    disabled={
-                      !editingProduct || Object.keys(selectedLibrary).length === 0 || isAssigningMedia
-                    }
-                    onClick={handleAssignLibrary}
-                  >
-                    {isAssigningMedia ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Assigning...
-                      </>
-                    ) : (
-                      `Assign selected (${Object.keys(selectedLibrary).length})`
-                    )}
-                  </Button>
-                </div>
+                <H2 className="text-lg font-semibold text-gray-50 mb-1">Media library</H2>
+                <MediaLibraryPanel
+                  enabled={showModal}
+                  layout="compact"
+                  assignToProductId={editingProduct?._id}
+                  onProductUpdated={(product) => setEditingProduct(product)}
+                />
               </div>
 
               <div className="flex justify-end gap-3 pt-4">

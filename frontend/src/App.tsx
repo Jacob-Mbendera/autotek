@@ -41,6 +41,7 @@ const AdminSettings = lazy(() => import('./pages/admin').then(m => ({ default: m
 const AdminSupport = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminSupport })));
 const AdminReturns = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminReturns })));
 const DeliveryLocations = lazy(() => import('./pages/admin').then(m => ({ default: m.DeliveryLocations })));
+const AdminMediaLibrary = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminMediaLibrary })));
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
@@ -244,6 +245,16 @@ function App() {
             <ProtectedRoute adminOnly>
               <AdminLayout>
                 <AdminProducts />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/media"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminMediaLibrary />
               </AdminLayout>
             </ProtectedRoute>
           }

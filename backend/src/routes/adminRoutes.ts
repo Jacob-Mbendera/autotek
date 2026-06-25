@@ -10,7 +10,7 @@ import {
   getUser,
   updateUserRole,
 } from '../controllers/adminController';
-import { listMediaAssets, uploadMediaLibrary } from '../controllers/mediaAssetController';
+import { listMediaAssets, uploadMediaLibrary, deleteMediaAsset } from '../controllers/mediaAssetController';
 import { uploadLibraryFiles } from '../middleware/upload';
 import {
   listGarages,
@@ -63,5 +63,6 @@ router.patch('/service-payouts/:id/mark-paid', markPayoutPaid);
 
 router.get('/media-assets', listMediaAssets);
 router.post('/media-assets', uploadLibraryFiles, uploadMediaLibrary);
+router.delete('/media-assets/:id', deleteMediaAsset);
 
 export default router;

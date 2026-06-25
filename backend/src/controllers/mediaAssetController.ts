@@ -1,11 +1,17 @@
 import type { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import path from 'path';
 import MediaAsset from '../models/MediaAsset';
-import { uploadImage } from '../config/cloudinary';
+import Product from '../models/Product';
+import { uploadImage, deleteImage, extractPublicId } from '../config/cloudinary';
 import { generateBlurDataUrl } from '../utils/imageBlurPlaceholder';
 import { cleanupFile } from '../middleware/upload';
 
 const LIBRARY_CLOUDINARY_FOLDER = 'autotek/media-library';
+
+const productsUsingImageFilter = (url: string) => ({
+  $or: [{ images: url }, { 'images.url': url }],
+});
 
 const clampInt = (value: unknown, fallback: number, min: number, max: number): number => {
   const n = typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : fallback;
@@ -73,7 +79,10 @@ export const uploadMediaLibrary = async (req: Request, res: Response): Promise<v
     const results: Row[] = [];
 
     for (const file of files) {
-      const filePath = path.join(process.cwd(), 'uploads', file.filename);
+      const onDisk = 'path' in file && typeof (file as { path?: string }).path === 'string';
+      const filePath = onDisk
+        ? (file as { path: string }).path
+        : path.join(process.cwd(), 'uploads', file.filename);
       const originalName = file.originalname;
 
       try {
@@ -128,6 +137,59 @@ export const uploadMediaLibrary = async (req: Request, res: Response): Promise<v
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Media library upload failed';
+    res.status(500).json({ message });
+  }
+};
+
+/**
+ * DELETE /api/admin/media-assets/:id
+ * Removes library record and Cloudinary file when not referenced by any product.
+ */
+export const deleteMediaAsset = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!rawId || !mongoose.Types.ObjectId.isValid(rawId)) {
+      res.status(400).json({ message: 'Invalid media asset id' });
+      return;
+    }
+
+    const asset = await MediaAsset.findById(rawId);
+    if (!asset) {
+      res.status(404).json({ message: 'Media asset not found' });
+      return;
+    }
+
+    const url = asset.url;
+    const productCount = await Product.countDocuments(productsUsingImageFilter(url));
+
+    if (productCount > 0) {
+      const products = await Product.find(productsUsingImageFilter(url))
+        .select('name')
+        .limit(10)
+        .lean();
+
+      res.status(409).json({
+        message: `Cannot delete: image is used on ${productCount} product${productCount === 1 ? '' : 's'}. Remove it from those products first.`,
+        productCount,
+        products: products.map((p) => ({ _id: String(p._id), name: p.name })),
+      });
+      return;
+    }
+
+    const publicId = extractPublicId(url);
+    if (publicId) {
+      try {
+        await deleteImage(publicId);
+      } catch (cloudErr: unknown) {
+        console.error('Cloudinary delete failed for media library asset:', cloudErr);
+      }
+    }
+
+    await asset.deleteOne();
+
+    res.json({ message: 'Media asset deleted successfully' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to delete media asset';
     res.status(500).json({ message });
   }
 };

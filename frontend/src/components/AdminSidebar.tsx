@@ -17,6 +17,7 @@ import {
   RotateCcw,
   MapPin,
   Building2,
+  Images,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 
@@ -28,6 +29,7 @@ export const AdminSidebar = () => {
   const navigationItems = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
     { name: 'Products', href: '/admin/products', icon: Package },
+    { name: 'Media library', href: '/admin/media', icon: Images },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Returns', href: '/admin/returns', icon: RotateCcw },
     { name: 'Services', href: '/admin/services', icon: Wrench },

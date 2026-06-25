@@ -228,6 +228,16 @@ export const productApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ['MediaAsset'],
     }),
+    deleteMediaAsset: builder.mutation<
+      { message: string },
+      string
+    >({
+      query: (id) => ({
+        url: `/admin/media-assets/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['MediaAsset'],
+    }),
     assignMediaToProduct: builder.mutation<
       { product: Product },
       { productId: string; assets: ProductImage[] }
@@ -252,5 +262,6 @@ export const {
   useBatchImportProductImagesMutation,
   useGetMediaAssetsQuery,
   useUploadMediaLibraryMutation,
+  useDeleteMediaAssetMutation,
   useAssignMediaToProductMutation,
 } = productApi;

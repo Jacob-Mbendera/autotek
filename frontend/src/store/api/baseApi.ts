@@ -6,7 +6,7 @@ const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 // Create base query with error transformation
 const baseQueryWithErrorHandling = fetchBaseQuery({
   baseUrl,
-  prepareHeaders: (headers, { getState }) => {
+  prepareHeaders: (headers, { getState, arg }) => {
     const state = getState() as RootState;
     const token = state.auth.token;
 
@@ -14,7 +14,17 @@ const baseQueryWithErrorHandling = fetchBaseQuery({
       headers.set('authorization', `Bearer ${token}`);
     }
 
-    // Only set Content-Type if not already set (FormData will set it automatically)
+    // Multipart uploads: never force application/json; browser must set boundary on FormData.
+    const filesArg = arg as { files?: unknown[] } | undefined;
+    const isMultipartFileUpload =
+      Array.isArray(filesArg?.files) &&
+      filesArg.files.length > 0 &&
+      filesArg.files[0] instanceof File;
+    if (isMultipartFileUpload) {
+      headers.delete('Content-Type');
+      return headers;
+    }
+
     if (!headers.get('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
