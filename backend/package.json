@@ -8,7 +8,9 @@
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:products": "ts-node src/scripts/seedProducts.ts",
-    "seed:services": "ts-node src/scripts/seedServices.ts"
+    "seed:services": "ts-node src/scripts/seedServices.ts",
+    "generate:static-assets": "ts-node src/scripts/generateStaticAssets.ts",
+    "upload:static-assets": "ts-node src/scripts/uploadStaticAssets.ts"
   },
   "keywords": [],
   "author": "",

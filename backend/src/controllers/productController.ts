@@ -25,6 +25,7 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
       limit = '20',
       sortBy,
       sortOrder,
+      missingImages,
     } = req.query;
 
     const query: any = {};
@@ -64,6 +65,34 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
         query.stock = { $gt: 10 };
         query.status = 'available';
       }
+    }
+
+    if (missingImages === 'true') {
+      query.$expr = {
+        $eq: [
+          {
+            $size: {
+              $filter: {
+                input: { $ifNull: ['$images', []] },
+                as: 'img',
+                cond: {
+                  $cond: {
+                    if: { $eq: [{ $type: '$$img' }, 'string'] },
+                    then: { $gt: [{ $strLenCP: '$$img' }, 0] },
+                    else: {
+                      $gt: [
+                        { $strLenCP: { $ifNull: ['$$img.url', ''] } },
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          0,
+        ],
+      };
     }
 
     const pageNum = parseInt(page as string, 10);

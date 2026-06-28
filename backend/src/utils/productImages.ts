@@ -23,6 +23,14 @@ export function getImageUrl(stored: ProductImageStored | unknown): string {
   return normalizeProductImage(stored).url;
 }
 
+/** True when the product has at least one non-empty stored image URL. */
+export function productHasStoredImage(images: unknown): boolean {
+  if (!Array.isArray(images) || images.length === 0) {
+    return false;
+  }
+  return images.some((raw) => getImageUrl(raw).trim() !== '');
+}
+
 /**
  * Move the image matching `targetUrl` to index 0 (primary / cover).
  * Preserves each entry's stored shape (string or object).
