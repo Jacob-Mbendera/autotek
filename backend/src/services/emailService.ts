@@ -136,7 +136,78 @@ class EmailService {
           </div>
 
           <p style="color: #6b7280; font-size: 14px;">
-            We'll send you another email when your order ships. If you have any questions, please contact our support team.
+            Complete your payment to confirm this order. We'll send a separate email once your payment is received.
+            If you have any questions, please contact our support team.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+            © ${new Date().getFullYear()} AutoTek. All rights reserved.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: email, subject, html });
+  }
+
+  async sendPaymentConfirmation(
+    order: IOrder,
+    paymentDetails: { amount: number; method: string; transactionId?: string },
+    user?: IUser,
+    guestEmail?: string
+  ): Promise<void> {
+    const email = user?.email || guestEmail || order.guestInfo?.email || '';
+    if (!email) return;
+
+    const userName = user?.name || order.guestInfo?.name || 'Customer';
+    const orderId = order._id.toString().slice(-8).toUpperCase();
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const trackOrderUrl = user
+      ? `${frontendUrl}/orders/${order._id}`
+      : `${frontendUrl}/orders/${order._id}?email=${encodeURIComponent(email)}`;
+
+    const methodLabel = paymentDetails.method
+      ? paymentDetails.method.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+      : 'PayChangu';
+
+    const referenceLine = paymentDetails.transactionId
+      ? `<p style="margin: 5px 0;"><strong>Payment reference:</strong> ${escapeHtml(paymentDetails.transactionId)}</p>`
+      : '';
+
+    const subject = `Payment Received – Order #${orderId} - AutoTek`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Confirmation</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Payment Confirmed</h2>
+          <p>Hello ${escapeHtml(userName)},</p>
+          <p>We've received your payment. Your order is confirmed and will be processed shortly.</p>
+
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: #14b8a6; margin-top: 0;">Order #${orderId}</h3>
+            <p style="margin: 5px 0;"><strong>Amount paid:</strong> MWK ${paymentDetails.amount.toLocaleString()}</p>
+            <p style="margin: 5px 0;"><strong>Payment method:</strong> ${escapeHtml(methodLabel)}</p>
+            ${referenceLine}
+            <p style="margin: 5px 0;"><strong>Payment status:</strong> Paid</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${trackOrderUrl}" style="background: #14b8a6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">View Your Order</a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px;">
+            We'll email you again when your order ships. If you have any questions, contact our support team.
           </p>
 
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">

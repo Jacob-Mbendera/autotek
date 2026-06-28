@@ -5,10 +5,12 @@ import Payment from '../models/Payment';
 import Order from '../models/Order';
 import TowingService from '../models/TowingService';
 import CarService from '../models/CarService';
+import User from '../models/User';
 import { PaymentMethod, PaymentStatus, UserRole } from '../types/shared';
 import { initiatePayment } from '../utils/paymentGateways';
 import { log } from '../utils/logger';
 import { createPayoutAfterPaymentSave } from '../utils/servicePayout';
+import { emailService } from '../services/emailService';
 
 const normalizeRedirectUrl = (url: string | undefined, fallbackUrl: string): string => {
   const candidateUrl = (url || fallbackUrl).trim();
@@ -117,12 +119,43 @@ async function syncCompletedPaymentToRelatedEntities(payment: {
   order?: unknown;
   towingService?: unknown;
   carService?: unknown;
+  amount?: number;
+  method?: string;
+  transactionId?: string;
 }): Promise<void> {
   if (payment.type === 'order' && payment.order) {
-    const order = await Order.findById(payment.order);
-    if (order && order.paymentStatus !== PaymentStatus.COMPLETED) {
-      order.paymentStatus = PaymentStatus.COMPLETED;
-      await order.save();
+    const order = await Order.findOneAndUpdate(
+      { _id: payment.order, paymentStatus: { $ne: PaymentStatus.COMPLETED } },
+      { paymentStatus: PaymentStatus.COMPLETED },
+      { new: true }
+    );
+
+    if (!order) {
+      return;
+    }
+
+    try {
+      const paymentDetails = {
+        amount: payment.amount ?? order.totalAmount,
+        method: payment.method ?? PaymentMethod.PAYCHANGU,
+        transactionId: payment.transactionId,
+      };
+
+      if (order.user) {
+        const user = await User.findById(order.user);
+        if (user) {
+          await emailService.sendPaymentConfirmation(order, paymentDetails, user);
+        }
+      } else if (order.guestInfo?.email) {
+        await emailService.sendPaymentConfirmation(
+          order,
+          paymentDetails,
+          undefined,
+          order.guestInfo.email
+        );
+      }
+    } catch (emailError) {
+      log.error('Failed to send payment confirmation email', emailError);
     }
   } else if (payment.type === 'towing' && payment.towingService) {
     const towingService = await TowingService.findById(payment.towingService);
@@ -545,32 +578,7 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
       // Store PayChangu's charge_id for refund purposes
       payment.chargeId = charge_id || chargeId || payment.chargeId;
 
-      // Update related entity payment status
-      if (payment.type === 'order' && payment.order) {
-        const order = await Order.findById(payment.order);
-        if (order) {
-          order.paymentStatus = PaymentStatus.COMPLETED;
-          await order.save();
-        }
-      } else if (payment.type === 'towing' && payment.towingService) {
-        const towingService = await TowingService.findById(payment.towingService);
-        if (towingService) {
-          towingService.paymentStatus = 'completed';
-          if (!towingService.payment) {
-            towingService.payment = payment._id;
-          }
-          await towingService.save();
-        }
-      } else if (payment.type === 'car-service' && payment.carService) {
-        const carService = await CarService.findById(payment.carService);
-        if (carService) {
-          carService.paymentStatus = 'completed';
-          if (!carService.payment) {
-            carService.payment = payment._id;
-          }
-          await carService.save();
-        }
-      }
+      await syncCompletedPaymentToRelatedEntities(payment);
     } else if (status === 'failed' || status === 'cancelled') {
       payment.status = PaymentStatus.FAILED;
     }

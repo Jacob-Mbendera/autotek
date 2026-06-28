@@ -5,7 +5,7 @@ import { useGetOrderQuery } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/api/paymentApi';
 import { baseApi } from '../store/api/baseApi';
 import { clearCart } from '../store/slices/cartSlice';
-import { clearPendingPaychanguOrder } from '../utils/pendingPaychanguOrder';
+import { clearPendingPaychanguOrder, clearPaychanguRedirectAt } from '../utils/pendingPaychanguOrder';
 import {
   clearPendingPaychanguService,
   getPendingPaychanguService,
@@ -61,6 +61,7 @@ export const PaymentSuccess = () => {
     if (!hasClearedCartRef.current) {
       dispatch(clearCart());
       clearPendingPaychanguOrder();
+      clearPaychanguRedirectAt();
       hasClearedCartRef.current = true;
     }
   };

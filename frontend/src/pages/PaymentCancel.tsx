@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetOrderQuery } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery } from '../store/api/paymentApi';
+import { clearPendingPaychanguOrder, clearPaychanguRedirectAt } from '../utils/pendingPaychanguOrder';
+import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
@@ -12,6 +15,12 @@ export const PaymentCancel = () => {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const email = searchParams.get('email');
+  const { completePayment, isCompletingPayment } = useCompleteOrderPayment();
+
+  useEffect(() => {
+    clearPendingPaychanguOrder();
+    clearPaychanguRedirectAt();
+  }, []);
 
   const { data: orderData, isLoading: isLoadingOrder } = useGetOrderQuery(
     { id: orderId || '', email: email || undefined },
@@ -29,6 +38,15 @@ export const PaymentCancel = () => {
   const paymentMethodDisplay = payment?.paymentMethod
     ? payment.paymentMethod.replace('-', ' ')
     : 'Not specified';
+
+  const handleRetryPayment = () => {
+    if (!orderId) return;
+    void completePayment({
+      orderId,
+      guestEmail: email || order?.guestInfo?.email,
+      phoneNumber: order?.guestInfo?.phone,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -93,18 +111,28 @@ export const PaymentCancel = () => {
             <>
               <Button
                 variant="primary"
+                onClick={handleRetryPayment}
+                disabled={isCompletingPayment}
+                className="flex items-center justify-center gap-2"
+              >
+                {isCompletingPayment ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    Redirecting...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-5 w-5" />
+                    Retry Payment
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => navigate(`/orders/${orderId}`)}
                 className="flex items-center justify-center gap-2"
               >
                 View Order
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/checkout?orderId=${orderId}`)}
-                className="flex items-center justify-center gap-2"
-              >
-                <CreditCard className="h-5 w-5" />
-                Retry Payment
               </Button>
             </>
           )}

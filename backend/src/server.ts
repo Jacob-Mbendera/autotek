@@ -10,7 +10,7 @@ import morgan from 'morgan';
 // import mongoSanitize from 'express-mongo-sanitize'; // Disabled due to Express 4.x compatibility issue
 import connectDB from './config/database';
 import { errorHandler } from './middleware/errorHandler';
-import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
+import { generalLimiter, authLimiter } from './middleware/rateLimiter';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
@@ -94,7 +94,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/custom-orders', customOrderRoutes);
 app.use('/api/towing', towingServiceRoutes);
 app.use('/api/car-services', carServiceRoutes);
-app.use('/api/payments', paymentLimiter, paymentRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/reviews', reviewRoutes);

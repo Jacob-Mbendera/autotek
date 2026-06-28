@@ -15,6 +15,7 @@ import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
+import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
 
 // Helper function to format shipping address
 const formatShippingAddress = (address: ShippingAddress | string): string => {
@@ -173,6 +174,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   
   // Order cancellation mutation
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
+  const { completePayment, isCompletingPayment } = useCompleteOrderPayment();
 
   if (isLoading) {
     return (
@@ -397,6 +399,23 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     navigate(`/returns/new?orderId=${id}`);
   };
 
+  const needsPayment =
+    !isAdmin &&
+    order.status !== OrderStatus.CANCELLED &&
+    (order.paymentStatus === PaymentStatus.PENDING ||
+      order.paymentStatus === PaymentStatus.FAILED);
+
+  const handleCompletePayment = () => {
+    const emailForPayment = isAuthenticated
+      ? undefined
+      : guestEmail || order.guestInfo?.email;
+    void completePayment({
+      orderId: order._id,
+      guestEmail: emailForPayment,
+      phoneNumber: order.guestInfo?.phone,
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumbs */}
@@ -458,6 +477,38 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
           </span>
         </div>
       </div>
+
+      {needsPayment && (
+        <Card variant="md" className="mb-6 border-amber-200 bg-amber-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <Body className="font-medium text-amber-900 mb-1">Payment required</Body>
+              <Body className="text-sm text-amber-800">
+                This order is waiting for payment. Complete checkout with PayChangu to confirm your
+                order.
+              </Body>
+            </div>
+            <Button
+              variant="primary"
+              className="shrink-0 flex items-center justify-center"
+              onClick={handleCompletePayment}
+              disabled={isCompletingPayment}
+            >
+              {isCompletingPayment ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+                  Redirecting...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Complete Payment
+                </>
+              )}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Progress Bar */}
       {order.status !== OrderStatus.CANCELLED && (
@@ -752,6 +803,26 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
           <Card variant="md">
             <H1 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</H1>
             <div className="space-y-2">
+              {needsPayment && (
+                <Button
+                  variant="primary"
+                  className="w-full flex items-center justify-center"
+                  onClick={handleCompletePayment}
+                  disabled={isCompletingPayment}
+                >
+                  {isCompletingPayment ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+                      Redirecting...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Complete Payment
+                    </>
+                  )}
+                </Button>
+              )}
               {order.status !== OrderStatus.CANCELLED && order.status !== OrderStatus.COMPLETED && (
                 <Button
                   variant="secondary"

@@ -86,15 +86,24 @@ PayChangu
 
 Frontend (PaymentCancel page)
   - Shows order still pending
-  - User can retry payment
+  - User clicks Retry Payment -> useCompleteOrderPayment hook
+  - Or opens /orders/:id and clicks Complete Payment
+
+Frontend (Order detail)
+  - Complete Payment shown when paymentStatus is pending/failed and order not cancelled
+  - Uses same useCompleteOrderPayment hook as PaymentCancel
 
 Frontend
   -> Backend POST /api/payments/initiate (same orderId)
+    - Does NOT use /checkout?orderId= (checkout always creates a new order)
 
 Backend
   - Reuses pending payment record
   - Generates fresh tx_ref/session
   <- Returns new redirectUrl
+
+Frontend
+  -> Redirects browser to PayChangu Checkout URL
 ```
 
 ## 5) Service Payment Variant (Towing and Car Service)
@@ -111,4 +120,19 @@ Same payment engine, different entity:
 - Webhook plus return-page verification gives resilience if callbacks are delayed
 - Pending payment reconciliation helps recover from tab close/interrupted redirect
 - Guest and authenticated checkout are both supported
+
+### Pending checkout reconciliation (Cart / background)
+
+- `localStorage` stores pending order id + timestamp when redirecting to PayChangu (30-minute TTL).
+- `sessionStorage` stores `autotek_paychanguRedirectAt` when leaving for PayChangu; cleared on success/cancel.
+- `/payment/cancel` clears pending storage so abandoned checkouts do not block future cart visits.
+- `/cart` uses **passive** reconcile (`mode: 'cart'`): non-blocking banner, checkout always enabled, **Dismiss** + **View pending order** links.
+- If user opens `/cart` without a recent PayChangu redirect, one verify with still-pending payment clears pending immediately (abandoned checkout).
+- Cart polling caps at 3 attempts / ~45s; consecutive gateway-pending responses give up quickly.
+- `/checkout` uses **active** reconcile for the “paid but tab closed” edge case.
+- Stale pending (no timestamp or older than 30 minutes) is cleared automatically on load.
+- Reconcile polling stops on rate limit (429), payment failed, or max attempts; pending is then cleared.
+- `paymentLimiter` applies only to `POST /api/payments/initiate`; read-only verify endpoints use the general API limiter.
+- **Payment confirmed email** is sent once when order `paymentStatus` moves to `completed` (webhook or verify-txref), separate from the place-order confirmation email.
+- Retry unpaid orders from **Order detail** (`/orders/:id` → Complete Payment) or **Payment cancel** (`/payment/cancel` → Retry Payment). Both call `POST /api/payments/initiate` with the existing `orderId` via `useCompleteOrderPayment`. `/checkout?orderId=` is not used for retry.
 

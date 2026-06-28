@@ -12,6 +12,8 @@ import { Input } from '../components/ui/Input';
 import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { getProductImageUrl } from '../utils/productImage';
+import type { ProductImageField } from '../store/api/productApi';
 import {
   ShoppingCart, Plus, Minus, Trash2, ArrowRight, Package, X, AlertCircle,
   Bookmark, BookmarkCheck, Edit2, Check, Calendar, Tag, AlertTriangle,
@@ -37,7 +39,8 @@ export const Cart = () => {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   
   const [validateCoupon] = useValidateCouponMutation();
-  const { isConfirmingRecentCheckout } = useReconcilePendingPaychanguOrder();
+  const { isCheckingPayment, pendingOrderId, dismissPendingCheckout } =
+    useReconcilePendingPaychanguOrder({ mode: 'cart' });
 
   const handleQuantityChange = async (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -183,11 +186,9 @@ export const Cart = () => {
 
   // Get display image for a cart item
   const getDisplayImage = (item: typeof cart.items[0]) => {
-    const hasValidImage = item.image &&
-      typeof item.image === 'string' &&
-      item.image.trim() !== '';
-
-    return hasValidImage ? item.image : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+    const url = getProductImageUrl(item.image as ProductImageField);
+    const hasValidImage = url.trim() !== '';
+    return hasValidImage ? url : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
   };
 
   // Calculate statistics
@@ -227,27 +228,38 @@ export const Cart = () => {
     );
   }
 
-  if (isConfirmingRecentCheckout && cart.items.length > 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Breadcrumb items={breadcrumbItems} />
-          <Card variant="md" className="text-center py-16 mt-8 shadow-lg max-w-lg mx-auto">
-            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-6" aria-hidden />
-            <H1 className="text-xl font-bold text-gray-900 mb-2">Confirming your payment</H1>
-            <Body className="text-gray-600">
-              Checking your order with PayChangu. This usually takes a few seconds.
-            </Body>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
+
+        {isCheckingPayment && (
+          <div
+            className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-teal-900"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-teal-600" aria-hidden />
+              <Body className="text-sm text-teal-800">
+                Checking your recent PayChangu payment. You can still proceed to checkout.
+              </Body>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {pendingOrderId && (
+                <Link
+                  to={`/orders/${pendingOrderId}`}
+                  className="text-sm font-medium text-teal-700 hover:text-teal-900 underline"
+                >
+                  View pending order
+                </Link>
+              )}
+              <Button type="button" variant="secondary" size="small" onClick={dismissPendingCheckout}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Hero Section */}
         <div className="mt-8 mb-8">
@@ -347,19 +359,17 @@ export const Cart = () => {
                     {/* Product Image */}
                     <Link
                       to={`/products/${item.productId}`}
-                      className="flex-shrink-0 w-full sm:w-32 h-32 md:h-36 bg-gray-100 rounded-lg overflow-hidden group relative"
+                      className="flex-shrink-0 w-full sm:w-32 h-32 md:h-36 bg-gray-100 rounded-lg overflow-hidden group relative block"
                     >
-                      <div className="group-hover:scale-105 transition-transform duration-300">
-                        <OptimizedImage
-                          src={getDisplayImage(item)}
-                          alt={item.productName}
-                          width={150}
-                          height={150}
-                          className="w-full h-full object-cover"
-                          priority={false}
-                        />
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity" />
+                      <OptimizedImage
+                        src={getDisplayImage(item)}
+                        alt={item.productName}
+                        width={150}
+                        height={150}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        priority={false}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity pointer-events-none" />
                     </Link>
 
                     {/* Product Info */}
@@ -528,7 +538,7 @@ export const Cart = () => {
                         <div className="flex gap-4">
                           <Link
                             to={`/products/${item.productId}`}
-                            className="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg overflow-hidden relative"
+                            className="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg overflow-hidden relative block"
                           >
                             <OptimizedImage
                               src={getDisplayImage(item)}

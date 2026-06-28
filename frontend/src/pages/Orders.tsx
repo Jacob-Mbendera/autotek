@@ -10,7 +10,7 @@ import {
   Package, Loader2, Filter, ChevronRight, Search, Calendar, 
   Download, Grid3x3, List, X, ArrowUpDown, CheckSquare, Square,
   TrendingUp, Banknote, CheckCircle, Clock, XCircle, ShoppingBag,
-  BarChart3, FileText, Sparkles
+  BarChart3, FileText, Sparkles, CreditCard
 } from 'lucide-react';
 import type { OrderStatus } from '@shared/types';
 import { format } from 'date-fns';
@@ -49,6 +49,10 @@ const getPaymentStatusBadgeColor = (status: string) => {
 const formatDate = (dateString: string) => {
   return format(new Date(dateString), 'MMM dd, yyyy');
 };
+
+const orderNeedsPayment = (order: { status: OrderStatus; paymentStatus: string }) =>
+  order.status !== 'cancelled' &&
+  (order.paymentStatus === 'pending' || order.paymentStatus === 'failed');
 
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'status';
 type ViewMode = 'grid' | 'table';
@@ -634,8 +638,19 @@ export const Orders = () => {
                     </div>
 
                     <div className="flex items-center justify-end pt-4 border-t border-gray-200">
-                      <span className="text-sm text-teal-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all">
-                        View Details
+                      <span
+                        className={`text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all ${
+                          orderNeedsPayment(order) ? 'text-amber-700' : 'text-teal-600'
+                        }`}
+                      >
+                        {orderNeedsPayment(order) ? (
+                          <>
+                            <CreditCard className="h-4 w-4" />
+                            Complete Payment
+                          </>
+                        ) : (
+                          'View Details'
+                        )}
                         <ChevronRight className="h-4 w-4" />
                       </span>
                     </div>
@@ -729,9 +744,26 @@ export const Orders = () => {
                     </td>
                     <td className="py-4 px-4 text-right">
                       <Link to={`/orders/${order._id}`}>
-                        <Button variant="ghost" size="small" className="text-teal-600 hover:text-teal-700">
-                          View
-                          <ChevronRight className="h-4 w-4 ml-1" />
+                        <Button
+                          variant={orderNeedsPayment(order) ? 'primary' : 'ghost'}
+                          size="small"
+                          className={
+                            orderNeedsPayment(order)
+                              ? ''
+                              : 'text-teal-600 hover:text-teal-700'
+                          }
+                        >
+                          {orderNeedsPayment(order) ? (
+                            <>
+                              <CreditCard className="h-4 w-4 mr-1" />
+                              Complete Payment
+                            </>
+                          ) : (
+                            <>
+                              View
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </>
+                          )}
                         </Button>
                       </Link>
                     </td>

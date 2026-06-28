@@ -63,20 +63,6 @@ interface UpdateProductRequest extends Partial<CreateProductRequest> {
   images?: File[];
 }
 
-export interface BatchImageImportRow {
-  originalName: string;
-  productId: string | null;
-  ok: boolean;
-  error?: string;
-  imageUrl?: string;
-  imageCount?: number;
-}
-
-export interface BatchImageImportResponse {
-  results: BatchImageImportRow[];
-  summary: { total: number; ok: number; failed: number };
-}
-
 export interface MediaAsset {
   _id: string;
   url: string;
@@ -196,18 +182,6 @@ export const productApi = baseApi.injectEndpoints({
       query: () => '/products/categories',
       providesTags: ['Product'],
     }),
-    batchImportProductImages: builder.mutation<BatchImageImportResponse, { files: File[] }>({
-      query: ({ files }) => {
-        const formData = new FormData();
-        files.forEach((f) => formData.append('files', f));
-        return {
-          url: '/products/batch-images',
-          method: 'POST',
-          body: formData,
-        };
-      },
-      invalidatesTags: ['Product'],
-    }),
     getMediaAssets: builder.query<
       MediaAssetsListResponse,
       { page?: number; limit?: number; q?: string }
@@ -300,7 +274,6 @@ export const {
   useUpdateProductMutation,
   useDeleteProductMutation,
   useGetCategoriesQuery,
-  useBatchImportProductImagesMutation,
   useGetMediaAssetsQuery,
   useUploadMediaLibraryMutation,
   useDeleteMediaAssetMutation,

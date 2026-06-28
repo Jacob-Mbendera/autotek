@@ -9,10 +9,11 @@ import {
   verifyPaymentByTxRef,
 } from '../controllers/paymentController';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
+import { paymentLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-router.post('/initiate', optionalAuthMiddleware, initiatePaymentRequest);
+router.post('/initiate', paymentLimiter, optionalAuthMiddleware, initiatePaymentRequest);
 router.get('/order/:orderId', authMiddleware, getPaymentByOrder);
 router.get('/towing-service/:serviceId', authMiddleware, getPaymentByTowingService);
 router.get('/car-service/:serviceId', authMiddleware, getPaymentByCarService);

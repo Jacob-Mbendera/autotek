@@ -6,24 +6,16 @@ import {
   updateProduct,
   deleteProduct,
   getCategories,
-  batchImportProductImages,
   assignMediaToProduct,
   setPrimaryProductImage,
 } from '../controllers/productController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
-import { uploadMultiple, uploadBatchImageFiles } from '../middleware/upload';
+import { uploadMultiple } from '../middleware/upload';
 
 const router = Router();
 
 router.get('/', getProducts);
 router.get('/categories', getCategories);
-router.post(
-  '/batch-images',
-  authMiddleware,
-  adminMiddleware,
-  uploadBatchImageFiles,
-  batchImportProductImages
-);
 router.post('/:id/assign-media', authMiddleware, adminMiddleware, assignMediaToProduct);
 router.patch('/:id/primary-image', authMiddleware, adminMiddleware, setPrimaryProductImage);
 router.get('/:id', getProduct);

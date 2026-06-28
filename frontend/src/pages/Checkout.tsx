@@ -9,7 +9,7 @@ import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getResolvedFrontendBaseUrl } from '../utils/frontendBaseUrl';
-import { setPendingPaychanguOrder } from '../utils/pendingPaychanguOrder';
+import { setPendingPaychanguOrder, setPaychanguRedirectAt } from '../utils/pendingPaychanguOrder';
 import { useReconcilePendingPaychanguOrder } from '../hooks/useReconcilePendingPaychanguOrder';
 import { UserRole } from '@shared/types';
 import type { PaymentMethod } from '../../../shared/types';
@@ -250,6 +250,7 @@ export const Checkout = () => {
             orderResult.order._id,
             !orderResult.user && !isAuthenticated ? guestEmail.trim() : undefined
           );
+          setPaychanguRedirectAt();
           window.location.href = paymentResult.redirectUrl;
           return; // Don't clear cart yet, wait for payment confirmation
         }

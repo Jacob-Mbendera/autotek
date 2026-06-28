@@ -92,17 +92,25 @@ Run curl checks and validate:
 
 ---
 
-## Milestone 3 (Later): Batch Upload for Multiple Products
+## Milestone 3: Admin Media Library and Product Image Assignment — **Completed**
 
 ### Objective
-Bulk import images and map to products with progress + per-item errors.
+Central media library for uploads, assign images to products, set primary cover, and safe delete when not in use.
+
+### Delivered
+- `/admin/media` page with upload, browse, search, and delete (409 when URL is on a product).
+- `MediaLibraryPanel` reused in product edit for assign-from-library.
+- `POST /api/products/:id/assign-media` and `PATCH /api/products/:id/primary-image`.
+- RTK cache sync so storefront and admin lists update without full refresh.
 
 ### Notes
-- Defer until Milestones 1 and 2 are stable.
-- Consider this a separate release because validation/mapping complexity is higher.
+- Supersedes the earlier filename-to-product-id batch import approach (removed).
+- Bulk workflow: upload to library, then assign to one or more products as needed.
 
-### Mandatory Gate
-- Backend curl test coverage for batch endpoints before rollout.
+### Exit Criteria
+- Admin can upload to library, assign to products, set primary, and delete unused assets.
+- Storefront uses `images[0]` as cover after set-primary.
+- Delete blocked with clear error when image is still assigned to a product.
 
 ---
 
