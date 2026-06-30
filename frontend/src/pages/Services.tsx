@@ -26,8 +26,8 @@ import {
 } from 'lucide-react';
 import { marketingImageUrl } from '../constants/cloudinaryAssets';
 
-const HERO_SERVICES_BG = marketingImageUrl('heroServices');
-const TOWING_SECTION_BG = marketingImageUrl('categoryDefault', 800);
+const SERVICES_HERO_BG = marketingImageUrl('servicesAtHome');
+const SERVICES_TOWING_BG = marketingImageUrl('servicesTowing', 800);
 
 // Service type definitions for display
 const serviceTypeInfo: Record<string, { name: string; icon: any; gradient: string; bgGradient: string; description: string }> = {
@@ -142,15 +142,15 @@ export const Services = () => {
           heroRef.isRevealed ? 'animate-slide-in-up' : ''
         }`}
       >
-        <div className="absolute inset-0 geometric-pattern opacity-20"></div>
+        <div className="absolute inset-0 geometric-pattern opacity-10"></div>
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-15"
-          style={{ backgroundImage: `url('${HERO_SERVICES_BG}')` }}
+          className="absolute inset-0 bg-cover bg-center opacity-35"
+          style={{ backgroundImage: `url('${SERVICES_HERO_BG}')` }}
         ></div>
 
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-4000 transform -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-[0.08] animate-blob animation-delay-4000 transform -translate-x-1/2 -translate-y-1/2"></div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -368,7 +368,7 @@ export const Services = () => {
               <div className="relative bg-gradient-to-br from-teal-100 to-teal-200 rounded-2xl overflow-hidden flex items-center justify-center p-8 min-h-[400px]">
                 <div
                   className="absolute inset-0 bg-cover bg-center opacity-40"
-                  style={{ backgroundImage: `url('${TOWING_SECTION_BG}')` }}
+                  style={{ backgroundImage: `url('${SERVICES_TOWING_BG}')` }}
                 ></div>
                 <div className="absolute inset-0 bg-gradient-to-br from-teal-100/60 to-teal-200/60"></div>
                 <Truck className="h-48 w-48 text-teal-600 opacity-90 relative z-10" />
@@ -523,7 +523,7 @@ export const Services = () => {
       <section className="py-16 bg-gradient-to-br from-teal-600 to-teal-700 text-white relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-20"
-          style={{ backgroundImage: `url('${HERO_SERVICES_BG}')` }}
+          style={{ backgroundImage: `url('${SERVICES_HERO_BG}')` }}
         ></div>
         <div className="absolute inset-0 bg-gradient-to-br from-teal-600/80 to-teal-700/80"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

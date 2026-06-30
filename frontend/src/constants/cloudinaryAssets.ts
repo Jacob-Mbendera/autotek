@@ -33,6 +33,10 @@ export const MARKETING_PUBLIC_IDS = {
     'autotek/marketing/Home/what we offer/high-angle-view-machine-part_76080-113905_yoxjff',
   offerCarServices: 'autotek/marketing/Home/what we offer/service_fun0xh',
   offerEasyShopping: 'autotek/marketing/Home/what we offer/delivery_krq2au',
+  /** Services page — hero background and bottom CTA. */
+  servicesAtHome: 'autotek/marketing/Home/what we offer/service_2_ulniay',
+  /** Services page — towing section feature image. */
+  servicesTowing: 'autotek/marketing/Home/what we offer/tow_kxyp4a',
 } as const;
 
 export type MarketingImageKey = keyof typeof MARKETING_PUBLIC_IDS;
