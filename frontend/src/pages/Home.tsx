@@ -8,6 +8,13 @@ import { TrustIndicators } from '../components/TrustIndicators';
 import { FeaturedCategories } from '../components/FeaturedCategories';
 import { HowItWorks } from '../components/HowItWorks';
 import { Testimonials } from '../components/Testimonials';
+import { marketingImageUrl } from '../constants/cloudinaryAssets';
+
+const HERO_HOME_BG = marketingImageUrl('heroHome');
+const HERO_HOME_FEATURE = marketingImageUrl('heroHomeFeature', 1200);
+const OFFER_SPARE_PARTS = marketingImageUrl('offerSpareParts', 800);
+const OFFER_CAR_SERVICES = marketingImageUrl('offerCarServices', 800);
+const OFFER_EASY_SHOPPING = marketingImageUrl('offerEasyShopping', 800);
 
 export const Home = () => {
   const [scrollY, setScrollY] = useState(0);
@@ -53,32 +60,37 @@ export const Home = () => {
       {/* Hero Section - Enhanced with animated backgrounds and improved design */}
       <section className="relative bg-gradient-to-br from-teal-50 via-white to-teal-50 overflow-hidden mb-16 animate-fade-in min-h-[90vh] flex items-center">
         {/* Enhanced decorative background pattern */}
-        <div className="absolute inset-0 geometric-pattern opacity-20"></div>
+        <div className="absolute inset-0 geometric-pattern opacity-10"></div>
         <div
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80')] bg-cover bg-center opacity-15"
-          style={!prefersReducedMotion ? {
-            transform: `translateY(${scrollY * 0.3}px)`,
-            transition: 'transform 0.1s ease-out'
-          } : undefined}
+          className="absolute inset-0 bg-cover bg-center opacity-25"
+          style={{
+            backgroundImage: `url('${HERO_HOME_BG}')`,
+            ...(!prefersReducedMotion
+              ? {
+                  transform: `translateY(${scrollY * 0.3}px)`,
+                  transition: 'transform 0.1s ease-out',
+                }
+              : {}),
+          }}
         ></div>
 
         {/* Animated blob backgrounds with parallax */}
         <div
-          className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"
+          className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"
           style={!prefersReducedMotion ? {
             transform: `translate(${scrollY * 0.15}px, ${scrollY * 0.2}px)`,
             transition: 'transform 0.1s ease-out'
           } : undefined}
         ></div>
         <div
-          className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"
+          className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"
           style={!prefersReducedMotion ? {
             transform: `translate(${-scrollY * 0.1}px, ${-scrollY * 0.25}px)`,
             transition: 'transform 0.1s ease-out'
           } : undefined}
         ></div>
         <div
-          className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-4000 transform -translate-x-1/2 -translate-y-1/2"
+          className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-[0.08] animate-blob animation-delay-4000 transform -translate-x-1/2 -translate-y-1/2"
           style={!prefersReducedMotion ? {
             transform: `translate(calc(-50% + ${scrollY * 0.05}px), calc(-50% + ${scrollY * 0.1}px))`,
             transition: 'transform 0.1s ease-out'
@@ -176,8 +188,8 @@ export const Home = () => {
                 
                 <div className="relative rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-all duration-500 border-4 border-white">
                   <img
-                    src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&q=80"
-                    alt="Automotive parts and services"
+                    src={HERO_HOME_FEATURE}
+                    alt="AutoTek car service and automotive care"
                     className="w-full h-[550px] object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-teal-900/40 via-transparent to-transparent"></div>
@@ -237,7 +249,7 @@ export const Home = () => {
               
               <div className="relative h-56 mb-6 overflow-hidden rounded-t-lg">
                 <img
-                  src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80"
+                  src={OFFER_SPARE_PARTS}
                   alt="Spare Parts"
                   className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700"
                 />
@@ -271,7 +283,7 @@ export const Home = () => {
               
               <div className="relative h-56 mb-6 overflow-hidden rounded-t-lg">
                 <img
-                  src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80"
+                  src={OFFER_CAR_SERVICES}
                   alt="Car Services"
                   className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700"
                 />
@@ -303,7 +315,7 @@ export const Home = () => {
               
               <div className="relative h-56 mb-6 overflow-hidden rounded-t-lg">
                 <img
-                  src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&q=80"
+                  src={OFFER_EASY_SHOPPING}
                   alt="Easy Shopping"
                   className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700"
                 />

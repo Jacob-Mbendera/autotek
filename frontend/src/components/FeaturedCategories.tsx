@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Cog, CircleStop, Filter, Zap } from 'lucide-react';
 import { Card } from './ui/Card';
 import { H2, H4, BodySmall } from './ui/Typography';
+import { marketingImageUrl } from '../constants/cloudinaryAssets';
 
 interface Category {
   id: string;
@@ -17,7 +18,7 @@ const categories: Category[] = [
   {
     id: 'engine',
     name: 'Engine Parts',
-    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+    image: marketingImageUrl('categoryEngine', 800),
     count: '150+ Products',
     href: '/products?category=Engine%20Parts',
     icon: Cog,
@@ -26,7 +27,7 @@ const categories: Category[] = [
   {
     id: 'brakes',
     name: 'Brake Parts',
-    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+    image: marketingImageUrl('categoryBrakes', 800),
     count: '80+ Products',
     href: '/products?category=Brake%20Parts',
     icon: CircleStop,
@@ -35,7 +36,7 @@ const categories: Category[] = [
   {
     id: 'filters',
     name: 'Filters',
-    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+    image: marketingImageUrl('categoryFilters', 800),
     count: '120+ Products',
     href: '/products?category=filters',
     icon: Filter,
@@ -44,7 +45,7 @@ const categories: Category[] = [
   {
     id: 'electrical',
     name: 'Electrical',
-    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+    image: marketingImageUrl('categoryElectrical', 800),
     count: '90+ Products',
     href: '/products?category=electrical',
     icon: Zap,
@@ -66,14 +67,14 @@ export const FeaturedCategories = () => {
           {categories.map((category, index) => {
             const Icon = category.icon;
             return (
-              <Link 
-                key={category.id} 
+              <Link
+                key={category.id}
                 to={category.href}
                 className="group block animate-slide-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <Card 
-                  variant="md" 
+                <Card
+                  variant="md"
                   className="h-full hover:shadow-2xl transition-all duration-500 overflow-hidden border-2 border-transparent hover:border-teal-200 bg-white group-hover:-translate-y-3"
                 >
                   <div className="relative h-56 mb-4 overflow-hidden rounded-t-lg">
@@ -82,35 +83,32 @@ export const FeaturedCategories = () => {
                       alt={category.name}
                       className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700"
                     />
-                    <div className={`absolute inset-0 bg-gradient-to-t from-${category.gradient.split(' ')[1]}/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300`}></div>
-                    
-                    {/* Category Icon Badge */}
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-t from-${category.gradient.split(' ')[1]}/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300`}
+                    ></div>
+
                     <div className="absolute top-4 left-4">
-                      <div className={`h-14 w-14 bg-gradient-to-br ${category.gradient} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
+                      <div
+                        className={`h-14 w-14 bg-gradient-to-br ${category.gradient} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}
+                      >
                         <Icon className="h-7 w-7 text-white" />
                       </div>
                     </div>
-                    
-                    {/* Product Count Badge */}
+
                     <div className="absolute bottom-4 right-4">
                       <div className="bg-white/95 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg">
                         <span className="text-xs font-bold text-gray-900">{category.count}</span>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="text-center p-6">
-                    <H4 className="mb-2 group-hover:text-teal-600 transition-colors duration-300 font-bold text-lg">
-                      {category.name}
-                    </H4>
-                    <div className="flex items-center justify-center text-teal-600 group-hover:text-teal-700 mt-4">
-                      <span className="text-sm font-semibold mr-2">Shop Now</span>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform duration-300" />
+
+                  <div className="p-4">
+                    <H4 className="mb-2 group-hover:text-teal-600 transition-colors">{category.name}</H4>
+                    <div className="flex items-center text-teal-600 font-semibold text-sm group-hover:gap-2 transition-all">
+                      Browse
+                      <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
-                  
-                  {/* Hover glow effect */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 pointer-events-none`}></div>
                 </Card>
               </Link>
             );

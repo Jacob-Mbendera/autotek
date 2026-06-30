@@ -59,7 +59,7 @@ export const OptimizedImage = ({
 
   // Extract base path and extension
   const getImageVariants = (imageSrc: string) => {
-    // Check if it's an external URL (Unsplash, etc.)
+    // Remote URLs (Cloudinary CDN, etc.)
     if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
       return {
         isExternal: true,
@@ -123,7 +123,7 @@ export const OptimizedImage = ({
     );
   }
 
-  // External images (Unsplash, etc.) - no optimization
+  // Remote CDN URLs — use as-is without local WebP variants
   if (variants.isExternal) {
     return (
       <div className="relative overflow-hidden w-full h-full min-h-0">

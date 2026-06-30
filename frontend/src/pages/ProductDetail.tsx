@@ -14,7 +14,7 @@ import { ShoppingCart, Zap, CheckCircle, Package, Heart } from 'lucide-react';
 import { ReviewList } from '../components/ReviewList';
 import { ReviewForm } from '../components/ReviewForm';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
-import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
+import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 
 export const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,24 +38,6 @@ export const ProductDetail = () => {
     setImageError(false);
     setSelectedImageIndex(0);
   }, [id, data?.product?._id]);
-
-  // Get placeholder image based on category
-  const getPlaceholderImage = (category?: string) => {
-    const cat = category?.toLowerCase() || '';
-    const placeholders: Record<string, string> = {
-      'engine parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'brake parts': 'https://images.unsplash.com/photo-1486262715619-67b35e0b08d3?w=600&q=80',
-      'braking system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
-      'electrical': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
-      'suspension': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
-      'filters': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'transmission': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
-      'cooling system': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'exhaust system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
-      'body parts': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
-    };
-    return placeholders[cat] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
-  };
 
   const handleAddToCart = () => {
     if (data?.product) {
@@ -157,10 +139,11 @@ export const ProductDetail = () => {
   const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
   const isInStock = !isOutOfStock && product.stock > 10;
 
-  // Determine display images
-  const firstImageUrl = getProductImageUrl(product.images?.[0]);
-  const hasValidImage = Boolean(firstImageUrl.trim());
-  const placeholderImage = getPlaceholderImage(product.category);
+  const { url: placeholderImage, isPlaceholder: usingPlaceholderOnly } = resolveProductDisplayImage(
+    product.images,
+    product.category
+  );
+  const hasValidImage = !usingPlaceholderOnly;
 
   let displayEntries: { url: string; blurDataUrl?: string }[];
   if (hasValidImage && product.images && product.images.length > 0 && !imageError) {
@@ -172,7 +155,7 @@ export const ProductDetail = () => {
     displayEntries = [{ url: placeholderImage }];
   }
 
-  const isPlaceholder = !hasValidImage || !product.images || product.images.length === 0 || imageError;
+  const isPlaceholder = usingPlaceholderOnly || imageError;
 
   const safeImageIndex = Math.min(selectedImageIndex, displayEntries.length - 1);
   const currentEntry =

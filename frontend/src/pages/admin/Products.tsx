@@ -32,7 +32,7 @@ import {
   Star,
 } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
-import { getPrimaryProductImage, getProductImageUrl } from '../../utils/productImage';
+import { getPrimaryProductImage, getProductImageUrl, hasValidProductImage, getProductPlaceholderUrl } from '../../utils/productImage';
 
 export const AdminProducts = () => {
   const dispatch = useAppDispatch();
@@ -41,6 +41,7 @@ export const AdminProducts = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'available' | 'out-of-stock' | ''>('');
+  const [missingImagesFilter, setMissingImagesFilter] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
@@ -78,6 +79,7 @@ export const AdminProducts = () => {
     search: searchTerm || undefined,
     category: categoryFilter || undefined,
     status: statusFilter || undefined,
+    missingImages: missingImagesFilter || undefined,
   });
   const { data: categoriesData } = useGetCategoriesQuery();
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
@@ -89,7 +91,7 @@ export const AdminProducts = () => {
   // Clear image errors when products change (page, filters, etc.)
   useEffect(() => {
     imageErrorsRef.current.clear();
-  }, [data?.products, page, searchTerm, categoryFilter, statusFilter]);
+  }, [data?.products, page, searchTerm, categoryFilter, statusFilter, missingImagesFilter]);
 
   useEffect(() => {
     setImagePreviewUrls((prev) => {
@@ -104,23 +106,8 @@ export const AdminProducts = () => {
     };
   }, [formData.images]);
 
-  // Get placeholder image based on category
-  const getPlaceholderImage = (category?: string) => {
-    const cat = category?.toLowerCase() || '';
-    const placeholders: Record<string, string> = {
-      'engine parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'brake parts': 'https://images.unsplash.com/photo-1486262715619-67b35e0b08d3?w=600&q=80',
-      'braking system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
-      'electrical': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
-      'suspension': 'https://images.unsplash.com/photo-1581092336000-3e3b3b3b3b3b?w=600&q=80',
-      'filters': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'transmission': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
-      'cooling system': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'exhaust system': 'https://images.unsplash.com/photo-1593642532400-26709d8ae933?w=600&q=80',
-      'body parts': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
-    };
-    return placeholders[cat] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
-  };
+  // Get placeholder image based on category (Cloudinary managed defaults)
+  const getPlaceholderImage = (category?: string) => getProductPlaceholderUrl(category, 200);
 
   const handleOpenModal = (product?: Product) => {
     if (product) {
@@ -344,11 +331,12 @@ export const AdminProducts = () => {
     setSearchTerm('');
     setCategoryFilter('');
     setStatusFilter('');
+    setMissingImagesFilter(false);
     setPage(1);
   };
 
   const filteredProducts = data?.products || [];
-  const hasActiveFilters = searchTerm || categoryFilter || statusFilter;
+  const hasActiveFilters = searchTerm || categoryFilter || statusFilter || missingImagesFilter;
 
   return (
     <div>
@@ -418,7 +406,27 @@ export const AdminProducts = () => {
               <option value="out-of-stock">Out of Stock</option>
             </select>
           </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 cursor-pointer px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 w-full">
+              <input
+                type="checkbox"
+                checked={missingImagesFilter}
+                onChange={(e) => {
+                  setMissingImagesFilter(e.target.checked);
+                  setPage(1);
+                }}
+                className="rounded border-gray-600 text-teal-500 focus:ring-teal-500"
+              />
+              <span className="text-sm font-medium text-gray-300">Missing image</span>
+            </label>
+          </div>
         </div>
+        {missingImagesFilter && data?.pagination && (
+          <Body className="text-amber-400 text-sm mt-3">
+            {data.pagination.total} product{data.pagination.total !== 1 ? 's' : ''} missing uploaded
+            images
+          </Body>
+        )}
         {hasActiveFilters && (
           <div className="mt-4 flex items-center justify-end">
             <Button
@@ -474,26 +482,22 @@ export const AdminProducts = () => {
                   <tbody>
                     {filteredProducts.map((product) => {
                       const firstImageUrl = getProductImageUrl(getPrimaryProductImage(product.images));
-                      const hasValidImage = firstImageUrl.trim() !== '';
+                      const hasValidImage = hasValidProductImage(product.images);
                       const hasErrored = imageErrorsRef.current.has(product._id);
-                      const displayImage = (hasValidImage && !hasErrored) ? firstImageUrl : getPlaceholderImage(product.category);
+                      const placeholder = getPlaceholderImage(product.category);
+                      const displayImage = (hasValidImage && !hasErrored) ? firstImageUrl : placeholder;
 
                       const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                         const target = e.target as HTMLImageElement;
-                        const placeholder = getPlaceholderImage(product.category);
-                        
-                        // If we're already showing the placeholder and it failed, use a data URL as ultimate fallback
-                        if (target.src === placeholder || target.src.includes('unsplash.com')) {
-                          // Use a simple 1x1 transparent pixel as ultimate fallback
+
+                        if (target.src === placeholder) {
                           target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="40" height="40" fill="%23334155"/%3E%3C/svg%3E';
                           imageErrorsRef.current.add(product._id);
                           return;
                         }
-                        
-                        // Only handle error once per product to prevent flickering
+
                         if (!imageErrorsRef.current.has(product._id)) {
                           imageErrorsRef.current.add(product._id);
-                          // Only update if current src is not already the placeholder
                           if (target.src !== placeholder) {
                             target.src = placeholder;
                           }
@@ -513,7 +517,14 @@ export const AdminProducts = () => {
                                 />
                               </div>
                               <div>
-                                <Body className="font-medium text-gray-50">{product.name}</Body>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Body className="font-medium text-gray-50">{product.name}</Body>
+                                  {!hasValidImage && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-900/50 text-amber-300 border border-amber-700/50">
+                                      No image
+                                    </span>
+                                  )}
+                                </div>
                                 <Body className="text-sm text-gray-400 line-clamp-1">
                                   {product.description}
                                 </Body>
@@ -622,6 +633,15 @@ export const AdminProducts = () => {
                 <X className="h-5 w-5" />
               </Button>
             </div>
+
+            {editingProduct && !hasValidProductImage(editingProduct.images) && (
+              <div className="mb-4 p-4 rounded-lg border border-amber-700/50 bg-amber-900/20">
+                <Body className="text-sm text-amber-200">
+                  This product has no uploaded images. Upload new files or assign from the media
+                  library below.
+                </Body>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input

@@ -497,11 +497,32 @@ curl -sS -X POST "$BASE/api/products/$PRODUCT_ID/assign-media" \
 
 ## Future Improvements
 
-1. Image cropping before upload
-2. Blur-up placeholders (LQIP)
-3. Batch upload interface
-4. Image compression settings
-5. Replace Unsplash placeholders
+1. Image cropping before upload — **Done (Milestone 1)**
+2. Blur-up placeholders (LQIP) — **Done (Milestone 2)**
+3. Admin media library — **Done (Milestone 3)**
+4. Image compression settings — Milestone 4
+5. Replace Unsplash placeholders — **Done (Milestone 5)**
+
+---
+
+## Milestone 5: Placeholder and missing-image API tests
+
+```bash
+API=http://localhost:5000/api
+
+# All products
+curl -s "$API/products?limit=5" | jq '.pagination, (.products | length)'
+
+# Products missing uploaded images
+curl -s "$API/products?missingImages=true&limit=20" | jq '.pagination, (.products[].images)'
+
+# Combined with category
+curl -s "$API/products?missingImages=true&category=Engine%20Parts&limit=10"
+```
+
+**Expected:** `missingImages=true` returns only products with empty or no valid image URLs.
+
+**Verified:** 2026-06-25 — `missingImages=true` returns products with `images: []`; products with Cloudinary URLs excluded.
 
 ---
 

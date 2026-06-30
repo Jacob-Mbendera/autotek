@@ -24,6 +24,10 @@ import {
   Car,
   Phone,
 } from 'lucide-react';
+import { marketingImageUrl } from '../constants/cloudinaryAssets';
+
+const HERO_SERVICES_BG = marketingImageUrl('heroServices');
+const TOWING_SECTION_BG = marketingImageUrl('categoryDefault', 800);
 
 // Service type definitions for display
 const serviceTypeInfo: Record<string, { name: string; icon: any; gradient: string; bgGradient: string; description: string }> = {
@@ -139,7 +143,10 @@ export const Services = () => {
         }`}
       >
         <div className="absolute inset-0 geometric-pattern opacity-20"></div>
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80')] bg-cover bg-center opacity-15"></div>
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-15"
+          style={{ backgroundImage: `url('${HERO_SERVICES_BG}')` }}
+        ></div>
 
         <div className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
@@ -359,7 +366,10 @@ export const Services = () => {
                 </Button>
               </div>
               <div className="relative bg-gradient-to-br from-teal-100 to-teal-200 rounded-2xl overflow-hidden flex items-center justify-center p-8 min-h-[400px]">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80')] bg-cover bg-center opacity-40"></div>
+                <div
+                  className="absolute inset-0 bg-cover bg-center opacity-40"
+                  style={{ backgroundImage: `url('${TOWING_SECTION_BG}')` }}
+                ></div>
                 <div className="absolute inset-0 bg-gradient-to-br from-teal-100/60 to-teal-200/60"></div>
                 <Truck className="h-48 w-48 text-teal-600 opacity-90 relative z-10" />
                 <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 border border-teal-200">
@@ -511,7 +521,10 @@ export const Services = () => {
 
       {/* CTA Section */}
       <section className="py-16 bg-gradient-to-br from-teal-600 to-teal-700 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80')] bg-cover bg-center opacity-20"></div>
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-20"
+          style={{ backgroundImage: `url('${HERO_SERVICES_BG}')` }}
+        ></div>
         <div className="absolute inset-0 bg-gradient-to-br from-teal-600/80 to-teal-700/80"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <H2 className="text-4xl font-bold mb-4">Ready to Get Started?</H2>

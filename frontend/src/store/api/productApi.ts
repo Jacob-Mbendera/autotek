@@ -46,6 +46,7 @@ interface ProductsQueryParams {
   stockStatus?: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
   sortBy?: 'price' | 'name' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
+  missingImages?: boolean;
 }
 
 interface CreateProductRequest {
@@ -109,6 +110,7 @@ export const productApi = baseApi.injectEndpoints({
         if (params.stockStatus) searchParams.append('stockStatus', params.stockStatus);
         if (params.sortBy) searchParams.append('sortBy', params.sortBy);
         if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
+        if (params.missingImages) searchParams.append('missingImages', 'true');
 
         return {
           url: `/products?${searchParams.toString()}`,

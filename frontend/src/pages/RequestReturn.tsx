@@ -5,7 +5,7 @@ import { useCreateReturnMutation } from '../store/api/returnApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
-import { getProductImageUrl } from '../utils/productImage';
+import { resolveProductDisplayImage } from '../utils/productImage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -86,7 +86,7 @@ export const RequestReturn = () => {
       newSelected.set(item.product._id, {
         productId: item.product._id,
         productName: item.product.name,
-        productImage: getProductImageUrl(item.product.images?.[0]) || '',
+        productImage: resolveProductDisplayImage(item.product.images, item.product.category, 100).url,
         maxQuantity: item.quantity,
         quantity: item.quantity,
         reason: 'defective',
@@ -353,7 +353,7 @@ export const RequestReturn = () => {
                       disabled={!eligible}
                     />
                     <img
-                      src={getProductImageUrl(item.product.images?.[0]) || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=100&q=80'}
+                      src={resolveProductDisplayImage(item.product.images, item.product.category, 100).url}
                       alt={item.product.name}
                       className="w-16 h-16 object-cover rounded"
                     />

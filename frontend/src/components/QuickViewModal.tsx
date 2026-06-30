@@ -7,7 +7,7 @@ import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
 import { H2, H4, Body } from './ui/Typography';
 import { OptimizedImage } from './ui/OptimizedImage';
-import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
+import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 
 interface QuickViewModalProps {
   product: Product | null;
@@ -41,9 +41,9 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
   const images = product.images && product.images.length > 0 ? product.images : [];
   const hasMultipleImages = images.length > 1;
   const currentEntry = images[currentImageIndex];
-  const currentImageUrl = currentEntry
-    ? getProductImageUrl(currentEntry)
-    : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+  const { url: currentImageUrl } = currentEntry
+    ? { url: getProductImageUrl(currentEntry), isPlaceholder: false }
+    : resolveProductDisplayImage(product.images, product.category);
   const currentBlur = currentEntry ? getProductImageBlur(currentEntry) : undefined;
 
   const handleAddToCart = () => {

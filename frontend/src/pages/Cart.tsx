@@ -12,7 +12,7 @@ import { Input } from '../components/ui/Input';
 import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
-import { getProductImageUrl } from '../utils/productImage';
+import { getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import type { ProductImageField } from '../store/api/productApi';
 import {
   ShoppingCart, Plus, Minus, Trash2, ArrowRight, Package, X, AlertCircle,
@@ -186,9 +186,11 @@ export const Cart = () => {
 
   // Get display image for a cart item
   const getDisplayImage = (item: typeof cart.items[0]) => {
-    const url = getProductImageUrl(item.image as ProductImageField);
-    const hasValidImage = url.trim() !== '';
-    return hasValidImage ? url : 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
+    return resolveProductDisplayImage(
+      item.image ? [item.image as ProductImageField] : [],
+      undefined,
+      600
+    ).url;
   };
 
   // Calculate statistics

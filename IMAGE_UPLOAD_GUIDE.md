@@ -9,8 +9,10 @@ AutoTek uses Cloudinary for cloud-based image storage and the OptimizedImage com
 ## System Architecture
 
 ### Backend (Cloudinary Storage)
-- **Storage Location**: `autotek/products` folder in Cloudinary
+- **Storage Location**: `autotek/products` folder in Cloudinary (user uploads)
+- **Static brand assets**: `autotek/placeholders/` and `autotek/marketing/` (managed defaults)
 - **Upload Handler**: `backend/src/controllers/productController.ts`
+- **Static asset upload**: `npm run upload:static-assets` (backend)
 - **Image Utilities**: `backend/src/config/cloudinary.ts`
 - **Data Model**: URLs stored in Product model `images` array
 
@@ -316,6 +318,45 @@ autotek/
 - [ ] Correct image sizes loaded (400w on mobile, etc.)
 - [ ] No layout shift during image load
 - [ ] Lazy loading reduces initial bundle
+
+---
+
+## Placeholder and Marketing Images (Cloudinary)
+
+When a product has no uploaded image (`images: []`), the storefront shows a **category-aware placeholder** from Cloudinary (`autotek/placeholders/*`), not external stock photos.
+
+### Folder layout
+
+| Cloudinary folder | Purpose |
+|-------------------|---------|
+| `autotek/products/` | Admin/user product uploads |
+| `autotek/placeholders/` | default, engine, brakes, electrical, filters |
+| `autotek/marketing/` | hero-home, hero-services, category-default |
+
+### One-time upload (per environment)
+
+```bash
+cd backend
+npm run generate:static-assets   # creates source PNG/JPG under backend/assets/static/
+npm run upload:static-assets     # uploads to Cloudinary with fixed public_ids
+```
+
+Requires `CLOUDINARY_*` in `backend/.env`.
+
+### Frontend configuration
+
+Set in `frontend/.env`:
+
+```
+VITE_CLOUDINARY_CLOUD_NAME=<same as CLOUDINARY_CLOUD_NAME>
+```
+
+Helpers: `frontend/src/constants/cloudinaryAssets.ts`, `frontend/src/utils/productImage.ts`.
+
+### Admin: products missing images
+
+- Filter: **Missing image** on `/admin/products`
+- API: `GET /api/products?missingImages=true`
 
 ---
 

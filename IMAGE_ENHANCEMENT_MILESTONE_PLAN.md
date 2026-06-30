@@ -128,17 +128,22 @@ Admin-configurable quality settings (60-100) and optimization behavior.
 
 ---
 
-## Milestone 5 (Later): Unsplash Placeholder Replacement
+## Milestone 5: Unsplash Placeholder Replacement — **Completed**
 
 ### Objective
 Remove hardcoded Unsplash placeholders and replace with managed defaults + admin prompts.
 
-### Notes
-- Audit all placeholder URLs and replace with centralized fallback strategy.
-- Add admin visibility for products missing uploaded images.
+### Delivered
+- Cloudinary folders: `autotek/placeholders/` and `autotek/marketing/` with upload script (`npm run upload:static-assets`).
+- Centralized frontend helpers: `cloudinaryAssets.ts`, extended `productImage.ts` (`resolveProductDisplayImage`, etc.).
+- All product UI and marketing pages use Cloudinary URLs (zero Unsplash in `frontend/src`).
+- Admin: "Missing image" filter, table badge, edit-modal callout.
+- Backend: `GET /api/products?missingImages=true` filter.
 
-### Mandatory Gate
-- Backend curl tests for any migration/audit endpoints before completion.
+### Exit Criteria
+- Products without uploads show Cloudinary category placeholders on storefront.
+- Admin can filter and identify products missing images.
+- Curl tests for `missingImages` pass.
 
 ---
 
@@ -157,4 +162,6 @@ For each milestone:
 - Record milestone test results in a dedicated test log file when executed.
 
 ## Ready-to-Start Next Step
-Start Milestone 1 implementation (crop modal + ratio presets + cropped upload), then run backend curl gate before moving to Milestone 2.
+Start Milestone 4 (admin compression controls), then run backend curl gate before completion.
+
+---

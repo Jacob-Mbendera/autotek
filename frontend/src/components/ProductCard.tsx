@@ -8,7 +8,7 @@ import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { addToComparison } from '../store/slices/comparisonSlice';
 import type { Product } from '../store/api/productApi';
-import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
+import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { Button } from './ui/Button';
 import { OptimizedImage } from './ui/OptimizedImage';
 
@@ -43,26 +43,10 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
     }
   }, [isInWishlistFromAPI, optimisticWishlistState]);
 
-  // Check if product has valid images - more lenient check
-  const firstImageUrl = getProductImageUrl(product.images?.[0]);
-  const hasValidImage = Boolean(firstImageUrl.trim());
-
-  // Default placeholder image based on category
-  const getPlaceholderImage = () => {
-    const category = product.category?.toLowerCase() || '';
-    const placeholders: Record<string, string> = {
-      'engine parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'brake parts': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'braking system': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'filters': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'electrical': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-      'suspension': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
-    };
-    return placeholders[category] || 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80';
-  };
-
-  const displayImage = hasValidImage ? firstImageUrl : getPlaceholderImage();
-  const isPlaceholder = !hasValidImage;
+  const { url: displayImage, isPlaceholder } = resolveProductDisplayImage(
+    product.images,
+    product.category
+  );
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -187,7 +171,7 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
         <div className={`group-hover:scale-125 transition-transform duration-700 ${isPlaceholder ? 'opacity-80' : ''}`}>
           <OptimizedImage
             src={displayImage}
-            blurDataUrl={hasValidImage ? getProductImageBlur(product.images?.[0]) : undefined}
+            blurDataUrl={!isPlaceholder ? getProductImageBlur(product.images?.[0]) : undefined}
             alt={product.name}
             width={400}
             height={400}

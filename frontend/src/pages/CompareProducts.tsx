@@ -6,7 +6,7 @@ import { addItem } from '../store/slices/cartSlice';
 import { Button } from '../components/ui/Button';
 import { H1, H2, H4, Body } from '../components/ui/Typography';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
-import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
+import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { X, ShoppingCart, Package, Check, XCircle } from 'lucide-react';
 
 export const CompareProducts = () => {
@@ -107,23 +107,37 @@ export const CompareProducts = () => {
                       <X className="h-4 w-4 text-gray-600" />
                     </button>
                     
-                    {getProductImageUrl(product.images?.[0]) ? (
-                      <div className="mx-auto mb-3">
-                        <OptimizedImage
-                          src={getProductImageUrl(product.images[0])}
-                          blurDataUrl={getProductImageBlur(product.images[0])}
-                          alt={product.name}
-                          width={128}
-                          height={128}
-                          className="w-32 h-32 object-cover rounded-lg"
-                          priority={false}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-32 h-32 bg-gray-200 rounded-lg mx-auto mb-3 flex items-center justify-center">
-                        <Package className="h-8 w-8 text-gray-400" />
-                      </div>
-                    )}
+                    {(() => {
+                      const { url, isPlaceholder } = resolveProductDisplayImage(
+                        product.images,
+                        product.category,
+                        128
+                      );
+                      return isPlaceholder ? (
+                        <div className="mx-auto mb-3">
+                          <OptimizedImage
+                            src={url}
+                            alt={product.name}
+                            width={128}
+                            height={128}
+                            className="w-32 h-32 object-cover rounded-lg opacity-90"
+                            priority={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="mx-auto mb-3">
+                          <OptimizedImage
+                            src={url}
+                            blurDataUrl={getProductImageBlur(product.images?.[0])}
+                            alt={product.name}
+                            width={128}
+                            height={128}
+                            className="w-32 h-32 object-cover rounded-lg"
+                            priority={false}
+                          />
+                        </div>
+                      );
+                    })()}
                     
                     <H4 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
                       {product.name}

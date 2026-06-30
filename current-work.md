@@ -1,6 +1,21 @@
 # Current Work - AutoTek Development
 
-## Latest Update (April 16, 2026) - UI Improvements Phase 1 & 2 Complete
+## Latest Update (June 25, 2026) - Image Milestone 5 Complete
+
+### Unsplash Placeholder Replacement
+**Status**: Completed
+
+- Cloudinary static assets: `autotek/placeholders/*`, `autotek/marketing/*` via `upload:static-assets` script
+- Centralized `cloudinaryAssets.ts` + extended `productImage.ts` helpers
+- Removed all Unsplash URLs from frontend product and marketing UI
+- Admin missing-image filter, badge, and edit-modal prompt
+- Backend `GET /api/products?missingImages=true`
+
+**Next:** Milestone 4 (compression controls)
+
+---
+
+## Previous Update (April 16, 2026) - UI Improvements Phase 1 & 2 Complete
 
 ### UI Enhancement Implementation - Production Ready (UI Rating: 🟢 9.0/10)
 **Status**: ✅ PHASES 1 & 2 COMPLETED - Significant Quality Improvement
