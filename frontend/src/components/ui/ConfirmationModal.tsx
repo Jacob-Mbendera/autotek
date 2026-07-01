@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from './Button';
 import { H2, Body } from './Typography';
 import { AdminCard } from './AdminCard';
@@ -62,10 +62,20 @@ export const ConfirmationModal = ({
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
+    if (isLoading) return;
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
+
+  const confirmButtonContent = isLoading ? (
+    <>
+      <Loader2 className="h-4 w-4 animate-spin" />
+      Processing...
+    </>
+  ) : (
+    confirmText
+  );
 
   if (dark) {
     return (
@@ -89,9 +99,13 @@ export const ConfirmationModal = ({
               type="button"
               onClick={onConfirm}
               disabled={isLoading}
-              className={cn(getConfirmButtonVariant(), 'focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900')}
+              className={cn(
+                getConfirmButtonVariant(),
+                'focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900',
+                isLoading && 'inline-flex items-center gap-2'
+              )}
             >
-              {isLoading ? 'Processing...' : confirmText}
+              {confirmButtonContent}
             </Button>
           </div>
         </AdminCard>
@@ -120,9 +134,13 @@ export const ConfirmationModal = ({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={cn(getConfirmButtonVariant(), 'focus:ring-2 focus:ring-offset-2')}
+            className={cn(
+              getConfirmButtonVariant(),
+              'focus:ring-2 focus:ring-offset-2',
+              isLoading && 'inline-flex items-center gap-2'
+            )}
           >
-            {isLoading ? 'Processing...' : confirmText}
+            {confirmButtonContent}
           </Button>
         </div>
       </div>

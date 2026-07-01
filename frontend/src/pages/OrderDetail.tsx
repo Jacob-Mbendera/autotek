@@ -915,6 +915,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         confirmText="Update Status"
         cancelText="Cancel"
         variant="info"
+        isLoading={isUpdatingStatus}
       />
     </div>
   );
