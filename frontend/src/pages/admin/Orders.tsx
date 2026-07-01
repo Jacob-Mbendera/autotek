@@ -31,12 +31,29 @@ export const AdminOrders = () => {
         return 'bg-amber-500/20 text-amber-500';
       case OrderStatus.PROCESSING:
         return 'bg-blue-500/20 text-blue-500';
+      case OrderStatus.DISPATCHED:
+        return 'bg-indigo-500/20 text-indigo-400';
+      case OrderStatus.READY_FOR_COLLECTION:
+        return 'bg-purple-500/20 text-purple-400';
       case OrderStatus.COMPLETED:
         return 'bg-green-500/20 text-green-500';
       case OrderStatus.CANCELLED:
         return 'bg-red-500/20 text-red-500';
       default:
         return 'bg-gray-500/20 text-gray-400';
+    }
+  };
+
+  const getStatusLabel = (status: OrderStatus) => {
+    switch (status) {
+      case OrderStatus.DISPATCHED:
+        return 'Dispatched';
+      case OrderStatus.READY_FOR_COLLECTION:
+        return 'Ready for collection';
+      case OrderStatus.COMPLETED:
+        return 'Collected';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
 
@@ -103,7 +120,9 @@ export const AdminOrders = () => {
               <option value="">All Statuses</option>
               <option value={OrderStatus.PENDING}>Pending</option>
               <option value={OrderStatus.PROCESSING}>Processing</option>
-              <option value={OrderStatus.COMPLETED}>Completed</option>
+              <option value={OrderStatus.DISPATCHED}>Dispatched</option>
+              <option value={OrderStatus.READY_FOR_COLLECTION}>Ready for collection</option>
+              <option value={OrderStatus.COMPLETED}>Collected</option>
               <option value={OrderStatus.CANCELLED}>Cancelled</option>
             </select>
           </div>
@@ -218,7 +237,7 @@ export const AdminOrders = () => {
                             order.status
                           )}`}
                         >
-                          {order.status}
+                          {getStatusLabel(order.status)}
                         </span>
                       </td>
                       <td className="py-3 px-4">

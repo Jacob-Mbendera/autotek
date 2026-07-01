@@ -152,6 +152,7 @@ export const adminApi = baseApi.injectEndpoints({
         'Admin',
         { type: 'Admin', id },
         'Order',
+        { type: 'Order', id },
       ],
     }),
     getCustomOrder: builder.query<{ customOrder: unknown }, string>({

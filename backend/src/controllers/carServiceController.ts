@@ -534,6 +534,9 @@ export const updateCarService = async (
       return;
     }
 
+    const previousStatus = carService.status;
+    const previousEstimatedArrivalAt = carService.estimatedArrivalAt;
+
     // Only admin can update status and assign mechanic
     if (req.user!.role === 'admin') {
       if (status && !Object.values(ServiceStatus).includes(status)) {
@@ -600,6 +603,22 @@ export const updateCarService = async (
 
     await carService.save();
     const updated = await CarService.findById(carService._id).populate(populateAssignedMechanic).lean();
+
+    try {
+      const user = await User.findById(carService.user);
+      if (user && updated) {
+        await emailService.sendServiceStatusUpdate({
+          kind: 'car-service',
+          service: updated as unknown as Record<string, unknown>,
+          user,
+          previousStatus,
+          previousEstimatedArrivalAt,
+        });
+      }
+    } catch (emailError) {
+      // Don't fail the update if email fails
+    }
+
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to update car service' });

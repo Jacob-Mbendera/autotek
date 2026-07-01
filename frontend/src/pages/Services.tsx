@@ -23,6 +23,8 @@ import {
   Gauge,
   Car,
   Phone,
+  Mail,
+  Handshake,
 } from 'lucide-react';
 import { marketingImageUrl } from '../constants/cloudinaryAssets';
 
@@ -526,6 +528,69 @@ export const Services = () => {
               })}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Partner with AutoTek */}
+      <section className="py-16 bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Card variant="lg" className="border-2 border-teal-100 bg-teal-50/40 overflow-hidden">
+            <div className="p-8 sm:p-10">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="h-14 w-14 bg-teal-100 rounded-2xl flex items-center justify-center shrink-0">
+                  <Handshake className="h-7 w-7 text-teal-600" />
+                </div>
+                <div>
+                  <H2 className="text-3xl font-bold text-gray-900 mb-2">Partner with AutoTek</H2>
+                  <Body className="text-gray-600 text-lg leading-relaxed">
+                    Mechanics, garages, and towing partners are welcome to join our network. We connect
+                    verified providers with customers across Malawi.
+                  </Body>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <H3 className="text-lg font-bold text-gray-900 mb-3">What to include in your application</H3>
+                  <ul className="space-y-2">
+                    {[
+                      'Garage or business name',
+                      'Town / area you serve',
+                      'Services offered (mechanic, towing, etc.)',
+                      'Phone and WhatsApp number',
+                    ].map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-gray-700">
+                        <CheckCircle className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-4">
+                  <H3 className="text-lg font-bold text-gray-900">Get in touch</H3>
+                  <a
+                    href="mailto:support@autotek.mw?subject=Partner%20application"
+                    className="flex items-center gap-3 p-4 bg-white rounded-xl border border-teal-100 hover:border-teal-300 transition-colors group"
+                  >
+                    <div className="h-10 w-10 bg-teal-50 rounded-lg flex items-center justify-center">
+                      <Mail className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <Body className="font-semibold text-gray-900 group-hover:text-teal-700">
+                        support@autotek.mw
+                      </Body>
+                      <Body className="text-sm text-gray-500">Subject: Partner application</Body>
+                    </div>
+                  </a>
+                  <Body className="text-sm text-gray-600">
+                    Email us with the details above and our team will review your application. Approved
+                    partners are onboarded through Admin.
+                  </Body>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
       </section>
 

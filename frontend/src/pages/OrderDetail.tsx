@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGetOrderQuery, useCancelOrderMutation } from '../store/api/orderApi';
 import type { ShippingAddress } from '../store/api/orderApi';
@@ -53,6 +53,7 @@ import {
   Copy,
   ExternalLink,
   RefreshCw,
+  Store,
 } from 'lucide-react';
 import { OrderStatus, PaymentStatus } from '@shared/types';
 
@@ -63,6 +64,10 @@ const getStatusBadgeColor = (status: OrderStatus) => {
       return 'bg-amber-100 text-amber-700';
     case 'processing':
       return 'bg-blue-100 text-blue-700';
+    case 'dispatched':
+      return 'bg-indigo-100 text-indigo-700';
+    case 'ready_for_collection':
+      return 'bg-purple-100 text-purple-700';
     case 'completed':
       return 'bg-green-100 text-green-700';
     case 'cancelled':
@@ -71,6 +76,42 @@ const getStatusBadgeColor = (status: OrderStatus) => {
       return 'bg-gray-100 text-gray-700';
   }
 };
+
+const getStatusLabel = (status: OrderStatus) => {
+  switch (status) {
+    case OrderStatus.DISPATCHED:
+      return 'Dispatched';
+    case OrderStatus.READY_FOR_COLLECTION:
+      return 'Ready for collection';
+    case OrderStatus.COMPLETED:
+      return 'Collected';
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+};
+
+const ORDER_STATUS_RANK: Record<OrderStatus, number> = {
+  [OrderStatus.PENDING]: 0,
+  [OrderStatus.PROCESSING]: 1,
+  [OrderStatus.DISPATCHED]: 2,
+  [OrderStatus.READY_FOR_COLLECTION]: 3,
+  [OrderStatus.COMPLETED]: 4,
+  [OrderStatus.CANCELLED]: -1,
+};
+
+const isAtOrPastStatus = (current: OrderStatus, step: OrderStatus) => {
+  if (current === OrderStatus.CANCELLED) {
+    return step === OrderStatus.PENDING;
+  }
+  return ORDER_STATUS_RANK[current] >= ORDER_STATUS_RANK[step];
+};
+
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.PROCESSING,
+  OrderStatus.DISPATCHED,
+  OrderStatus.READY_FOR_COLLECTION,
+];
 
 const getPaymentStatusBadgeColor = (status: PaymentStatus) => {
   switch (status) {
@@ -158,9 +199,33 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     id: id || '',
     email: guestEmail && !isAuthenticated ? guestEmail : undefined
   };
+
+  const [customerOrderPollMs, setCustomerOrderPollMs] = useState(0);
+  const customerPollTargetRef = useRef(0);
+  const customerOrderQueryOpts = useMemo(
+    () => ({
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      pollingInterval: customerOrderPollMs,
+    }),
+    [customerOrderPollMs]
+  );
+
   const userQueryResult = useGetOrderQuery(orderQueryArg, {
-    skip: shouldSkipUser, // Must be true when isAdmin is true
+    skip: shouldSkipUser,
+    ...customerOrderQueryOpts,
   });
+
+  useEffect(() => {
+    if (isAdmin) return;
+    const status = userQueryResult.data?.order?.status;
+    const needPoll = status != null && ACTIVE_ORDER_STATUSES.includes(status);
+    const next = needPoll ? 30000 : 0;
+    if (customerPollTargetRef.current !== next) {
+      customerPollTargetRef.current = next;
+      setCustomerOrderPollMs(next);
+    }
+  }, [isAdmin, userQueryResult.data?.order?.status]);
 
   // Determine which data to use based on isAdmin
   // Only use the query result that should be active
@@ -213,9 +278,13 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   const getProgressPercentage = () => {
     switch (order.status) {
       case OrderStatus.PENDING:
-        return 25;
+        return 20;
       case OrderStatus.PROCESSING:
+        return 40;
+      case OrderStatus.DISPATCHED:
         return 60;
+      case OrderStatus.READY_FOR_COLLECTION:
+        return 80;
       case OrderStatus.COMPLETED:
         return 100;
       case OrderStatus.CANCELLED:
@@ -225,18 +294,28 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     }
   };
 
-  // Calculate estimated delivery date
-  const getEstimatedDelivery = () => {
+  const pickupLocationText = formatShippingAddress(order.shippingAddress);
+
+  // Estimate when order will be ready for pickup
+  const getEstimatedPickup = () => {
     if (order.status === OrderStatus.COMPLETED) {
-      return 'Delivered';
+      return 'Collected';
     }
-    const days = order.status === OrderStatus.PROCESSING ? 2 : 5;
+    if (order.status === OrderStatus.READY_FOR_COLLECTION) {
+      return 'Ready now';
+    }
+    const days =
+      order.status === OrderStatus.DISPATCHED
+        ? 1
+        : order.status === OrderStatus.PROCESSING
+          ? 2
+          : 5;
     const date = new Date(order.createdAt);
     date.setDate(date.getDate() + days);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  // Order timeline steps with enhanced information
+  // Order timeline steps with pickup milestones
   const getOrderTimeline = () => {
     const steps = [
       {
@@ -244,26 +323,53 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         label: 'Order Placed',
         description: 'Your order has been received and confirmed',
         icon: Package,
-        completed: true,
+        completed: isAtOrPastStatus(order.status, OrderStatus.PENDING),
+        active: order.status === OrderStatus.PENDING,
         date: order.createdAt,
         estimatedDate: null,
       },
       {
         status: OrderStatus.PROCESSING,
         label: 'Processing',
-        description: 'Your order is being prepared for shipment',
+        description: "We're preparing your order",
         icon: Loader2,
-        completed: order.status === OrderStatus.PROCESSING || order.status === OrderStatus.COMPLETED,
+        completed: isAtOrPastStatus(order.status, OrderStatus.PROCESSING),
         active: order.status === OrderStatus.PROCESSING,
-        date: order.status !== OrderStatus.PENDING ? order.updatedAt : null,
-        estimatedDate: order.status === OrderStatus.PROCESSING ? getEstimatedDelivery() : null,
+        date: isAtOrPastStatus(order.status, OrderStatus.PROCESSING) ? order.updatedAt : null,
+        estimatedDate:
+          order.status === OrderStatus.PROCESSING ? getEstimatedPickup() : null,
+      },
+      {
+        status: OrderStatus.DISPATCHED,
+        label: 'On the Way',
+        description: `Your order is on the way to ${pickupLocationText} for pickup`,
+        icon: Truck,
+        completed: isAtOrPastStatus(order.status, OrderStatus.DISPATCHED),
+        active: order.status === OrderStatus.DISPATCHED,
+        date: isAtOrPastStatus(order.status, OrderStatus.DISPATCHED) ? order.updatedAt : null,
+        estimatedDate:
+          order.status === OrderStatus.DISPATCHED ? getEstimatedPickup() : null,
+      },
+      {
+        status: OrderStatus.READY_FOR_COLLECTION,
+        label: 'Ready for Collection',
+        description: `Your order is ready for collection at ${pickupLocationText}`,
+        icon: Store,
+        completed: isAtOrPastStatus(order.status, OrderStatus.READY_FOR_COLLECTION),
+        active: order.status === OrderStatus.READY_FOR_COLLECTION,
+        date: isAtOrPastStatus(order.status, OrderStatus.READY_FOR_COLLECTION)
+          ? order.updatedAt
+          : null,
+        estimatedDate:
+          order.status === OrderStatus.READY_FOR_COLLECTION ? 'Ready now' : null,
       },
       {
         status: OrderStatus.COMPLETED,
-        label: 'Completed',
-        description: 'Your order has been delivered',
+        label: 'Collected',
+        description: 'Your order has been collected. Thank you!',
         icon: CheckCircle,
         completed: order.status === OrderStatus.COMPLETED,
+        active: false,
         date: order.status === OrderStatus.COMPLETED ? order.updatedAt : null,
         estimatedDate: null,
       },
@@ -365,6 +471,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         message: 'Order status updated successfully!',
         type: 'success',
       }));
+      await adminQueryResult.refetch();
     } catch (error: any) {
       setShowStatusUpdateModal(false);
       const errorInfo = getErrorInfo(error, 'Failed to update order status');
@@ -455,7 +562,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
             {order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED && (
               <div className="flex items-center gap-2 text-teal-600">
                 <Truck className="h-4 w-4" />
-                <Body className="text-sm font-medium">Est. delivery: {getEstimatedDelivery()}</Body>
+                <Body className="text-sm font-medium">Est. ready for pickup: {getEstimatedPickup()}</Body>
               </div>
             )}
           </div>
@@ -466,7 +573,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
               order.status
             )}`}
           >
-            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            {getStatusLabel(order.status)}
           </span>
           <span
             className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium ${getPaymentStatusBadgeColor(
@@ -773,9 +880,15 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                     <option value="">Select new status...</option>
                     <option value={OrderStatus.PENDING}>Pending</option>
                     <option value={OrderStatus.PROCESSING}>Processing</option>
-                    <option value={OrderStatus.COMPLETED}>Completed</option>
+                    <option value={OrderStatus.DISPATCHED}>Dispatched (on the way to pickup)</option>
+                    <option value={OrderStatus.READY_FOR_COLLECTION}>Ready for collection</option>
+                    <option value={OrderStatus.COMPLETED}>Collected / case closed</option>
                     <option value={OrderStatus.CANCELLED}>Cancelled</option>
                   </select>
+                  <Body className="text-xs text-gray-500 mt-2">
+                    Use Dispatched when the order is en route to the pickup landmark, Ready for collection when
+                    it has arrived, and Collected when the customer has picked it up.
+                  </Body>
                 </div>
                 <Button
                   variant="primary"
@@ -911,7 +1024,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         onClose={() => setShowStatusUpdateModal(false)}
         onConfirm={handleStatusUpdateConfirm}
         title="Update Order Status"
-        message={`Are you sure you want to change the order status from "${order.status.toUpperCase()}" to "${selectedStatus.toUpperCase()}"?`}
+        message={`Are you sure you want to change the order status from "${getStatusLabel(order.status)}" to "${selectedStatus ? getStatusLabel(selectedStatus as OrderStatus) : ''}"?`}
         confirmText="Update Status"
         cancelText="Cancel"
         variant="info"

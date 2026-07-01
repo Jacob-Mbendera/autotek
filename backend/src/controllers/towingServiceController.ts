@@ -445,6 +445,9 @@ export const updateTowingService = async (
       return;
     }
 
+    const previousStatus = towingService.status;
+    const previousEstimatedArrivalAt = towingService.estimatedArrivalAt;
+
     // Only admin can update status and assign driver
     if (req.user!.role === 'admin') {
       if (status && !Object.values(ServiceStatus).includes(status)) {
@@ -488,6 +491,22 @@ export const updateTowingService = async (
 
     await towingService.save();
     const updated = await TowingService.findById(towingService._id).populate(populateAssignedDriver).lean();
+
+    try {
+      const user = await User.findById(towingService.user);
+      if (user && updated) {
+        await emailService.sendServiceStatusUpdate({
+          kind: 'towing',
+          service: updated as unknown as Record<string, unknown>,
+          user,
+          previousStatus,
+          previousEstimatedArrivalAt,
+        });
+      }
+    } catch (emailError) {
+      // Don't fail the update if email fails
+    }
+
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to update towing service' });

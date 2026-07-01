@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetOrdersQuery } from '../store/api/orderApi';
 import { Card } from '../components/ui/Card';
@@ -22,12 +22,29 @@ const getStatusBadgeColor = (status: OrderStatus) => {
       return 'bg-amber-100 text-amber-700 border-amber-300';
     case 'processing':
       return 'bg-blue-100 text-blue-700 border-blue-300';
+    case 'dispatched':
+      return 'bg-indigo-100 text-indigo-700 border-indigo-300';
+    case 'ready_for_collection':
+      return 'bg-purple-100 text-purple-700 border-purple-300';
     case 'completed':
       return 'bg-green-100 text-green-700 border-green-300';
     case 'cancelled':
       return 'bg-red-100 text-red-700 border-red-300';
     default:
       return 'bg-gray-100 text-gray-700 border-gray-300';
+  }
+};
+
+const getStatusLabel = (status: OrderStatus) => {
+  switch (status) {
+    case 'dispatched':
+      return 'Dispatched';
+    case 'ready_for_collection':
+      return 'Ready for collection';
+    case 'completed':
+      return 'Collected';
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
   }
 };
 
@@ -54,6 +71,13 @@ const orderNeedsPayment = (order: { status: OrderStatus; paymentStatus: string }
   order.status !== 'cancelled' &&
   (order.paymentStatus === 'pending' || order.paymentStatus === 'failed');
 
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
+  'pending',
+  'processing',
+  'dispatched',
+  'ready_for_collection',
+];
+
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'status';
 type ViewMode = 'grid' | 'table';
 
@@ -67,12 +91,33 @@ export const Orders = () => {
   const [showDateFilter, setShowDateFilter] = useState<boolean>(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [ordersPollMs, setOrdersPollMs] = useState(0);
+  const pollTargetRef = useRef(0);
+
+  const ordersQueryOpts = useMemo(
+    () => ({
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      pollingInterval: ordersPollMs,
+    }),
+    [ordersPollMs]
+  );
 
   const { data, isLoading, error } = useGetOrdersQuery(
-    statusFilter ? { status: statusFilter } : undefined
+    statusFilter ? { status: statusFilter } : undefined,
+    ordersQueryOpts
   );
 
   const allOrders = data?.orders || [];
+
+  useEffect(() => {
+    const needPoll = allOrders.some((order) => ACTIVE_ORDER_STATUSES.includes(order.status));
+    const next = needPoll ? 30000 : 0;
+    if (pollTargetRef.current !== next) {
+      pollTargetRef.current = next;
+      setOrdersPollMs(next);
+    }
+  }, [allOrders]);
 
   // Calculate statistics
   const totalSpent = allOrders.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0);
@@ -430,7 +475,7 @@ export const Orders = () => {
             <div className="flex items-center gap-2 flex-wrap">
               <Filter className="h-5 w-5 text-gray-600" />
               <span className="text-sm font-medium text-gray-700">Status:</span>
-              {(['pending', 'processing', 'completed', 'cancelled'] as OrderStatus[]).map((status) => (
+              {(['pending', 'processing', 'dispatched', 'ready_for_collection', 'completed', 'cancelled'] as OrderStatus[]).map((status) => (
                 <Button
                   key={status}
                   variant={selectedStatuses.has(status) ? 'primary' : 'ghost'}
@@ -439,7 +484,7 @@ export const Orders = () => {
                   className="capitalize"
                 >
                   {selectedStatuses.has(status) && <CheckSquare className="h-3 w-3 mr-1" />}
-                  {status}
+                  {getStatusLabel(status)}
                 </Button>
               ))}
               {selectedStatuses.size > 0 && (
@@ -592,7 +637,7 @@ export const Orders = () => {
                           order.status
                         )}`}
                       >
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        {getStatusLabel(order.status)}
                       </span>
                     </div>
 
@@ -730,7 +775,7 @@ export const Orders = () => {
                           order.status
                         )}`}
                       >
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        {getStatusLabel(order.status)}
                       </span>
                     </td>
                     <td className="py-4 px-4">

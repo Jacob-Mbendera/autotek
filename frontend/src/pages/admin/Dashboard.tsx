@@ -31,6 +31,10 @@ const getStatusBadgeColor = (status: OrderStatus | string) => {
       return 'bg-amber-100 text-amber-700';
     case 'processing':
       return 'bg-blue-100 text-blue-700';
+    case 'dispatched':
+      return 'bg-indigo-100 text-indigo-700';
+    case 'ready_for_collection':
+      return 'bg-purple-100 text-purple-700';
     case 'completed':
       return 'bg-green-100 text-green-700';
     case 'cancelled':

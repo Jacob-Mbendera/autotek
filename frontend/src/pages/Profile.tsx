@@ -73,6 +73,8 @@ export const Profile = () => {
   // Fetch user orders and services
   const { data: ordersData, isLoading: isLoadingOrders } = useGetOrdersQuery(undefined, {
     skip: !authUser,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
   const { data: towingData, isLoading: isLoadingTowing } = useGetTowingServicesQuery(
     {},

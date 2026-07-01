@@ -12,6 +12,8 @@ var OrderStatus;
 (function (OrderStatus) {
     OrderStatus["PENDING"] = "pending";
     OrderStatus["PROCESSING"] = "processing";
+    OrderStatus["DISPATCHED"] = "dispatched";
+    OrderStatus["READY_FOR_COLLECTION"] = "ready_for_collection";
     OrderStatus["COMPLETED"] = "completed";
     OrderStatus["CANCELLED"] = "cancelled";
 })(OrderStatus || (exports.OrderStatus = OrderStatus = {}));

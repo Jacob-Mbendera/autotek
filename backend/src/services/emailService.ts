@@ -1,7 +1,8 @@
 import nodemailer from 'nodemailer';
-import Order, { IOrder } from '../models/Order';
+import { IOrder, IShippingAddress } from '../models/Order';
 import User, { IUser } from '../models/User';
 import { sendPasswordResetEmail } from '../utils/email';
+import { ServiceStatus } from '../types/shared';
 
 interface EmailOptions {
   to: string;
@@ -16,6 +17,79 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function formatPickupLocation(address: IShippingAddress | string): string {
+  if (typeof address === 'string') {
+    return address;
+  }
+  if (address.customAddress) {
+    return address.town ? `${address.town} - ${address.customAddress}` : address.customAddress;
+  }
+  if (address.legacyAddress) {
+    return address.legacyAddress;
+  }
+  if (address.town && address.landmark) {
+    return `${address.town}, ${address.landmark}`;
+  }
+  if (address.landmark) {
+    return address.landmark;
+  }
+  if (address.town) {
+    return address.town;
+  }
+  return 'your pickup location';
+}
+
+type ServiceStatusEmailTrigger = 'assigned' | 'on_the_way' | 'in_progress' | 'completed' | 'cancelled';
+
+interface ServiceStatusUpdateParams {
+  kind: 'towing' | 'car-service';
+  service: Record<string, unknown>;
+  user: IUser;
+  previousStatus: ServiceStatus;
+  previousEstimatedArrivalAt?: Date;
+}
+
+function assigneeDisplay(service: Record<string, unknown>): { name: string; garage?: string } | null {
+  const assignee = (service.assignedDriver || service.assignedMechanic) as
+    | { name?: string; garage?: { name?: string } | string }
+    | undefined;
+  if (!assignee || typeof assignee !== 'object' || !assignee.name) {
+    return null;
+  }
+  const garage =
+    typeof assignee.garage === 'object' && assignee.garage && 'name' in assignee.garage
+      ? String(assignee.garage.name || '')
+      : undefined;
+  return { name: assignee.name, garage: garage || undefined };
+}
+
+function determineServiceEmailTrigger(
+  previousStatus: ServiceStatus,
+  newStatus: ServiceStatus,
+  previousEta: Date | undefined,
+  newEta: Date | undefined
+): ServiceStatusEmailTrigger | null {
+  if (newStatus === ServiceStatus.CANCELLED && previousStatus !== ServiceStatus.CANCELLED) {
+    return 'cancelled';
+  }
+  if (newStatus === ServiceStatus.COMPLETED && previousStatus !== ServiceStatus.COMPLETED) {
+    return 'completed';
+  }
+  if (newStatus === ServiceStatus.IN_PROGRESS && previousStatus !== ServiceStatus.IN_PROGRESS) {
+    return 'in_progress';
+  }
+
+  const etaChanged = (previousEta?.getTime() ?? null) !== (newEta?.getTime() ?? null);
+  if (newStatus === ServiceStatus.ASSIGNED && etaChanged && newEta) {
+    return 'on_the_way';
+  }
+  if (newStatus === ServiceStatus.ASSIGNED && previousStatus !== ServiceStatus.ASSIGNED) {
+    return 'assigned';
+  }
+
+  return null;
 }
 
 class EmailService {
@@ -233,14 +307,24 @@ class EmailService {
       ? `${frontendUrl}/orders/${order._id}`
       : `${frontendUrl}/orders/${order._id}?email=${encodeURIComponent(email)}`;
 
+    const pickupLocation = formatPickupLocation(order.shippingAddress);
+
     const statusMessages: Record<string, { subject: string; message: string }> = {
       processing: {
-        subject: `Your Order #${orderId} is Being Processed`,
-        message: 'Your order is now being processed and will be prepared for shipment soon.',
+        subject: `Your Order #${orderId} is Being Prepared`,
+        message: "We're preparing your order.",
+      },
+      dispatched: {
+        subject: `Your Order #${orderId} is On the Way for Pickup`,
+        message: `Your order is on the way to <strong>${escapeHtml(pickupLocation)}</strong> for pickup.`,
+      },
+      ready_for_collection: {
+        subject: `Your Order #${orderId} is Ready for Collection`,
+        message: `Your order is <strong>ready for collection</strong> at <strong>${escapeHtml(pickupLocation)}</strong>.`,
       },
       completed: {
-        subject: `Your Order #${orderId} Has Been Delivered`,
-        message: 'Your order has been delivered! We hope you enjoy your purchase.',
+        subject: `Your Order #${orderId} Has Been Collected`,
+        message: 'Your order has been collected. Thank you for shopping with AutoTek!',
       },
       cancelled: {
         subject: `Your Order #${orderId} Has Been Cancelled`,
@@ -267,12 +351,13 @@ class EmailService {
         </div>
         <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
           <h2 style="color: #1f2937; margin-top: 0;">Order Status Update</h2>
-          <p>Hello ${userName},</p>
+          <p>Hello ${escapeHtml(userName)},</p>
           <p>${statusInfo.message}</p>
           
           <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
             <h3 style="color: #14b8a6; margin-top: 0;">Order #${orderId}</h3>
-            <p style="margin: 5px 0;"><strong>Status:</strong> ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}</p>
+            <p style="margin: 5px 0;"><strong>Status:</strong> ${escapeHtml(order.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))}</p>
+            <p style="margin: 5px 0;"><strong>Pickup location:</strong> ${escapeHtml(pickupLocation)}</p>
             <p style="margin: 5px 0;"><strong>Total Amount:</strong> MWK ${order.totalAmount.toLocaleString()}</p>
           </div>
 
@@ -290,6 +375,99 @@ class EmailService {
     `;
 
     await this.sendEmail({ to: email, subject: statusInfo.subject, html });
+  }
+
+  async sendServiceStatusUpdate(params: ServiceStatusUpdateParams): Promise<void> {
+    const { kind, service, user, previousStatus, previousEstimatedArrivalAt } = params;
+    const newStatus = service.status as ServiceStatus;
+    const newEta = service.estimatedArrivalAt
+      ? new Date(String(service.estimatedArrivalAt))
+      : undefined;
+
+    const trigger = determineServiceEmailTrigger(
+      previousStatus,
+      newStatus,
+      previousEstimatedArrivalAt,
+      newEta && !Number.isNaN(newEta.getTime()) ? newEta : undefined
+    );
+    if (!trigger) return;
+
+    const serviceRef = String(service._id || '').slice(-6).toUpperCase();
+    const serviceLabel = kind === 'towing' ? 'Towing service' : 'Car service';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const myServicesUrl = `${frontendUrl}/my-services`;
+    const provider = assigneeDisplay(service);
+    const providerLine = provider
+      ? `${escapeHtml(provider.name)}${provider.garage ? ` (${escapeHtml(provider.garage)})` : ''}`
+      : 'Your provider';
+    const etaLine =
+      newEta && !Number.isNaN(newEta.getTime())
+        ? newEta.toLocaleString('en-MW', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '';
+
+    const messages: Record<ServiceStatusEmailTrigger, { subject: string; body: string }> = {
+      assigned: {
+        subject: `${serviceLabel} update — provider assigned (#${serviceRef})`,
+        body: `<p>A provider has been assigned to your ${escapeHtml(serviceLabel.toLowerCase())}: <strong>${providerLine}</strong>.</p>
+               <p>We will confirm when they are on the way.</p>`,
+      },
+      on_the_way: {
+        subject: `${serviceLabel} update — provider on the way (#${serviceRef})`,
+        body: `<p><strong>${providerLine}</strong> is on the way${
+          etaLine ? `.</p><p>Estimated arrival: <strong>${escapeHtml(etaLine)}</strong>.` : '.'
+        }</p>`,
+      },
+      in_progress: {
+        subject: `${serviceLabel} update — work started (#${serviceRef})`,
+        body: `<p>Your provider has started the job.</p>`,
+      },
+      completed: {
+        subject: `${serviceLabel} complete (#${serviceRef})`,
+        body: `<p>Your service is complete. Thank you for using AutoTek!</p>`,
+      },
+      cancelled: {
+        subject: `${serviceLabel} cancelled (#${serviceRef})`,
+        body: `<p>Your ${escapeHtml(serviceLabel.toLowerCase())} request has been cancelled.</p>
+               <p>If you have questions, please contact our support team.</p>`,
+      },
+    };
+
+    const statusInfo = messages[trigger];
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Service Status Update</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Service Status Update</h2>
+          <p>Hello ${escapeHtml(user.name)},</p>
+          ${statusInfo.body}
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${myServicesUrl}" style="background: #14b8a6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">View My Services</a>
+          </div>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+            © ${new Date().getFullYear()} AutoTek. All rights reserved.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: user.email, subject: statusInfo.subject, html });
   }
 
   async sendServiceConfirmation(service: any, user: IUser): Promise<void> {

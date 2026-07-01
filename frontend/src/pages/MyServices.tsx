@@ -141,16 +141,31 @@ function assigneeFromApi(
   return null;
 }
 
-function statusGuidance(status: ServiceStatus): string | null {
-  switch (status) {
+function statusGuidance(
+  service: TowingService | CarService,
+  isTowing: boolean
+): string | null {
+  const assigned = isTowing
+    ? assigneeFromApi((service as TowingService).assignedDriver)
+    : assigneeFromApi((service as CarService).assignedMechanic);
+
+  switch (service.status) {
     case 'pending':
-      return 'We will assign a provider shortly.';
+      return "We're finding a provider for you.";
     case 'assigned':
-      return 'A provider has been assigned. They may contact you before arrival.';
+      if (service.estimatedArrivalAt) {
+        const name = assigned?.name || 'Your provider';
+        return `${name} is on the way. Estimated arrival: ${formatDateTime(service.estimatedArrivalAt)}.`;
+      }
+      if (assigned) {
+        const garage = assigned.garageName ? ` (${assigned.garageName})` : '';
+        return `Provider assigned: ${assigned.name}${garage}. We'll confirm when they're on the way.`;
+      }
+      return "Provider assigned. We'll confirm when they're on the way.";
     case 'in-progress':
-      return 'Service is in progress.';
+      return 'Your provider has started the job.';
     case 'completed':
-      return 'This service is complete. Thank you for using AutoTek.';
+      return 'Your service is complete.';
     default:
       return null;
   }
@@ -728,9 +743,9 @@ export const MyServices = () => {
                             </div>
                           )}
 
-                        {statusGuidance(service.status) && service.status !== 'cancelled' && (
+                        {statusGuidance(service, isTowing) && service.status !== 'cancelled' && (
                           <p className="text-sm text-teal-900 bg-teal-50 border border-teal-100 rounded-md px-3 py-2 mb-2">
-                            {statusGuidance(service.status)}
+                            {statusGuidance(service, isTowing)}
                           </p>
                         )}
 

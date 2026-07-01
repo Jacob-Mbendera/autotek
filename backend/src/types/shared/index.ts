@@ -9,6 +9,8 @@ export enum UserRole {
 export enum OrderStatus {
   PENDING = 'pending',
   PROCESSING = 'processing',
+  DISPATCHED = 'dispatched',
+  READY_FOR_COLLECTION = 'ready_for_collection',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }
