@@ -283,18 +283,18 @@ export const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
 
         {/* Hero Section */}
         <div className="mt-8 mb-8">
-          <Card variant="lg" className="bg-gradient-to-br from-teal-600 via-teal-500 to-teal-700 text-white border-0 shadow-2xl">
+          <Card variant="lg" className="bg-teal-600 text-white border-0 shadow-sm">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-6">
                 {/* Avatar */}
                 <div className="relative">
-                  <div className="h-24 w-24 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center text-3xl font-bold shadow-xl">
+                  <div className="h-24 w-24 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center text-3xl font-bold">
                     {getInitials(user.name)}
                   </div>
                   <div className="absolute -bottom-2 -right-2 bg-green-500 border-4 border-white rounded-full p-1.5">
@@ -342,7 +342,7 @@ export const Profile = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Spent */}
-          <Card variant="md" className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-teal-50 border-teal-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Total Spent</Body>
@@ -359,7 +359,7 @@ export const Profile = () => {
           </Card>
 
           {/* Total Orders */}
-          <Card variant="md" className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-blue-50 border-blue-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Total Orders</Body>
@@ -384,7 +384,7 @@ export const Profile = () => {
           </Card>
 
           {/* Services */}
-          <Card variant="md" className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-purple-50 border-purple-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Services</Body>
@@ -403,7 +403,7 @@ export const Profile = () => {
           </Card>
 
           {/* Member Status */}
-          <Card variant="md" className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-amber-50 border-amber-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Member For</Body>
@@ -421,7 +421,7 @@ export const Profile = () => {
           {/* Left Column - Profile Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Personal Information */}
-            <Card variant="lg" className="shadow-lg">
+            <Card variant="lg">
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
                 <H2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                   <User className="h-5 w-5 text-teal-600" />
@@ -531,7 +531,7 @@ export const Profile = () => {
             </Card>
 
             {/* Change Password */}
-            <Card variant="lg" className="shadow-lg">
+            <Card variant="lg">
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
                 <H2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                   <Lock className="h-5 w-5 text-teal-600" />
@@ -611,7 +611,7 @@ export const Profile = () => {
 
             {/* Recent Activity Timeline */}
             {recentActivity.length > 0 && (
-              <Card variant="lg" className="shadow-lg">
+              <Card variant="lg">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
                   <H2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                     <Activity className="h-5 w-5 text-teal-600" />
@@ -670,7 +670,7 @@ export const Profile = () => {
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
             {/* Quick Stats */}
-            <Card variant="md" className="shadow-lg">
+            <Card variant="md">
               <H2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-teal-600" />
                 Quick Stats
@@ -717,7 +717,7 @@ export const Profile = () => {
             </Card>
 
             {/* Account Information */}
-            <Card variant="md" className="shadow-lg">
+            <Card variant="md">
               <H2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-teal-600" />
                 Account Details
@@ -745,7 +745,7 @@ export const Profile = () => {
 
             {/* Recent Orders */}
             {orders.length > 0 && (
-              <Card variant="md" className="shadow-lg">
+              <Card variant="md">
                 <div className="flex items-center justify-between mb-4">
                   <H2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <Package className="h-5 w-5 text-teal-600" />
@@ -787,7 +787,7 @@ export const Profile = () => {
             )}
 
             {/* Quick Links */}
-            <Card variant="md" className="shadow-lg">
+            <Card variant="md">
               <H2 className="text-lg font-semibold text-gray-900 mb-4">Quick Links</H2>
               <div className="space-y-2">
                 <Link to="/orders" className="block">

@@ -30,47 +30,56 @@ const SERVICES_HERO_BG = marketingImageUrl('servicesAtHome');
 const SERVICES_TOWING_BG = marketingImageUrl('servicesTowing', 800);
 
 // Service type definitions for display
-const serviceTypeInfo: Record<string, { name: string; icon: any; gradient: string; bgGradient: string; description: string }> = {
+const serviceTypeInfo: Record<
+  string,
+  { name: string; icon: typeof Droplet; iconBg: string; iconColor: string; cardBorder: string; description: string }
+> = {
   'oil-change': {
     name: 'Oil Change',
     icon: Droplet,
-    gradient: 'from-blue-500 to-blue-600',
-    bgGradient: 'from-blue-50 to-blue-100',
+    iconBg: 'bg-blue-50',
+    iconColor: 'text-blue-600',
+    cardBorder: 'border-blue-100 hover:border-blue-200',
     description: 'Professional engine oil change service at your location.',
   },
   'brake-pads': {
     name: 'Brake Pads Replacement',
     icon: Settings,
-    gradient: 'from-red-500 to-red-600',
-    bgGradient: 'from-red-50 to-red-100',
+    iconBg: 'bg-rose-50',
+    iconColor: 'text-rose-600',
+    cardBorder: 'border-rose-100 hover:border-rose-200',
     description: 'Replace worn brake pads for safe driving.',
   },
   'spark-plugs': {
     name: 'Spark Plugs Replacement',
     icon: Zap,
-    gradient: 'from-yellow-500 to-yellow-600',
-    bgGradient: 'from-yellow-50 to-yellow-100',
+    iconBg: 'bg-amber-50',
+    iconColor: 'text-amber-600',
+    cardBorder: 'border-amber-100 hover:border-amber-200',
     description: 'Replace spark plugs for better engine performance.',
   },
   'air-filter': {
     name: 'Air Filter Replacement',
     icon: Gauge,
-    gradient: 'from-green-500 to-green-600',
-    bgGradient: 'from-green-50 to-green-100',
+    iconBg: 'bg-green-50',
+    iconColor: 'text-green-600',
+    cardBorder: 'border-green-100 hover:border-green-200',
     description: 'Replace air filter for cleaner engine air intake.',
   },
   'battery': {
     name: 'Battery Replacement',
     icon: Battery,
-    gradient: 'from-purple-500 to-purple-600',
-    bgGradient: 'from-purple-50 to-purple-100',
+    iconBg: 'bg-purple-50',
+    iconColor: 'text-purple-600',
+    cardBorder: 'border-purple-100 hover:border-purple-200',
     description: 'Replace car battery with professional installation.',
   },
   'tire-rotation': {
     name: 'Tire Rotation',
     icon: Car,
-    gradient: 'from-indigo-500 to-indigo-600',
-    bgGradient: 'from-indigo-50 to-indigo-100',
+    iconBg: 'bg-indigo-50',
+    iconColor: 'text-indigo-600',
+    cardBorder: 'border-indigo-100 hover:border-indigo-200',
     description: 'Rotate tires for even wear and longer lifespan.',
   },
 };
@@ -394,8 +403,8 @@ export const Services = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-3 mb-4">
-              <div className="h-12 w-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <Wrench className="h-6 w-6 text-white" />
+              <div className="h-12 w-12 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-center">
+                <Wrench className="h-6 w-6 text-teal-600" />
               </div>
               <H2 className="text-4xl font-bold text-gray-900">Car Services</H2>
             </div>
@@ -412,19 +421,20 @@ export const Services = () => {
                 <Card
                   key={type}
                   variant="md"
-                  className={`group hover:shadow-2xl transition-all duration-500 hover:-translate-y-3 border-2 border-transparent hover:border-teal-200 overflow-hidden relative bg-gradient-to-br ${info.bgGradient}`}
+                  className={`group hover:shadow-md transition-all duration-300 hover:-translate-y-1 border-2 bg-white overflow-hidden ${info.cardBorder}`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent"></div>
-                  <div className="relative p-6">
+                  <div className="p-6">
                     <div className="mb-4">
-                      <div className={`h-16 w-16 bg-gradient-to-br ${info.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                        <Icon className="h-8 w-8 text-white" />
+                      <div
+                        className={`h-16 w-16 ${info.iconBg} rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300`}
+                      >
+                        <Icon className={`h-8 w-8 ${info.iconColor}`} />
                       </div>
                     </div>
-                    <H3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-teal-600 transition-colors">
+                    <H3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-teal-700 transition-colors">
                       {info.name}
                     </H3>
-                    <Body className="text-gray-700 mb-6 text-sm leading-relaxed">
+                    <Body className="text-gray-600 mb-6 text-sm leading-relaxed">
                       {info.description}
                     </Body>
                     <Button

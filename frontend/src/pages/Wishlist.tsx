@@ -133,21 +133,21 @@ export const Wishlist = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
 
         {/* Hero Section */}
         <div className="mt-8 mb-8">
-          <Card variant="lg" className="bg-gradient-to-br from-red-600 via-pink-500 to-rose-600 text-white border-0 shadow-2xl">
+          <Card variant="lg" className="bg-rose-50 border border-rose-100 shadow-sm">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center shadow-xl">
-                  <Heart className="h-10 w-10 text-white fill-white" />
+                <div className="h-20 w-20 rounded-full bg-rose-100 border-2 border-rose-200 flex items-center justify-center">
+                  <Heart className="h-10 w-10 text-rose-500 fill-rose-500" />
                 </div>
                 <div>
-                  <H1 className="text-3xl font-bold mb-2 text-white">My Wishlist</H1>
-                  <Body className="text-white/90">
+                  <H1 className="text-3xl font-bold mb-2 text-gray-900">My Wishlist</H1>
+                  <Body className="text-gray-600">
                     {products.length} item{products.length !== 1 ? 's' : ''} saved • MWK {totalValue.toLocaleString()} total value
                   </Body>
                 </div>
@@ -155,11 +155,10 @@ export const Wishlist = () => {
               {products.length > 0 && (
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    variant="secondary"
+                    variant="primary"
                     size="default"
                     onClick={handleMoveAllToCart}
                     disabled={movingAllToCart}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
                   >
                     {movingAllToCart ? (
                       <>
@@ -174,9 +173,8 @@ export const Wishlist = () => {
                     )}
                   </Button>
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     onClick={() => setShowClearModal(true)}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Clear All
@@ -191,41 +189,41 @@ export const Wishlist = () => {
         {products.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Total Value */}
-            <Card variant="md" className="bg-gradient-to-br from-red-50 to-pink-100 border-red-200 hover:shadow-lg transition-shadow">
+            <Card variant="md" className="bg-rose-50/80 border-rose-100">
               <div className="flex items-center justify-between">
                 <div>
                   <Body className="text-gray-600 text-sm mb-1">Total Value</Body>
                   <H2 className="text-2xl font-bold text-gray-900">MWK {totalValue.toLocaleString()}</H2>
                   <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-4 w-4 text-red-600" />
-                    <Body className="text-sm text-red-600 font-medium">{products.length} items</Body>
+                    <TrendingUp className="h-4 w-4 text-rose-500" />
+                    <Body className="text-sm text-rose-600 font-medium">{products.length} items</Body>
                   </div>
                 </div>
-                <div className="h-16 w-16 bg-red-500/20 rounded-full flex items-center justify-center">
-                  <Banknote className="h-8 w-8 text-red-600" />
+                <div className="h-16 w-16 bg-rose-100 rounded-full flex items-center justify-center">
+                  <Banknote className="h-8 w-8 text-rose-500" />
                 </div>
               </div>
             </Card>
 
             {/* Items Count */}
-            <Card variant="md" className="bg-gradient-to-br from-pink-50 to-rose-100 border-pink-200 hover:shadow-lg transition-shadow">
+            <Card variant="md" className="bg-gray-50 border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
                   <Body className="text-gray-600 text-sm mb-1">Saved Items</Body>
                   <H2 className="text-2xl font-bold text-gray-900">{products.length}</H2>
                   <div className="flex items-center gap-1 mt-2">
-                    <Heart className="h-4 w-4 text-pink-600 fill-pink-600" />
-                    <Body className="text-sm text-pink-600 font-medium">In wishlist</Body>
+                    <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
+                    <Body className="text-sm text-gray-600 font-medium">In wishlist</Body>
                   </div>
                 </div>
-                <div className="h-16 w-16 bg-pink-500/20 rounded-full flex items-center justify-center">
-                  <Heart className="h-8 w-8 text-pink-600 fill-pink-600" />
+                <div className="h-16 w-16 bg-rose-50 rounded-full flex items-center justify-center">
+                  <Heart className="h-8 w-8 text-rose-400 fill-rose-400" />
                 </div>
               </div>
             </Card>
 
             {/* In Stock */}
-            <Card variant="md" className="bg-gradient-to-br from-green-50 to-emerald-100 border-green-200 hover:shadow-lg transition-shadow">
+            <Card variant="md" className="bg-green-50 border-green-200">
               <div className="flex items-center justify-between">
                 <div>
                   <Body className="text-gray-600 text-sm mb-1">In Stock</Body>
@@ -242,7 +240,7 @@ export const Wishlist = () => {
             </Card>
 
             {/* Average Price */}
-            <Card variant="md" className="bg-gradient-to-br from-purple-50 to-violet-100 border-purple-200 hover:shadow-lg transition-shadow">
+            <Card variant="md" className="bg-purple-50 border-purple-200">
               <div className="flex items-center justify-between">
                 <div>
                   <Body className="text-gray-600 text-sm mb-1">Avg. Price</Body>
@@ -263,11 +261,11 @@ export const Wishlist = () => {
         {/* Content */}
         {isLoading ? (
           <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-200 border-t-red-600 mb-4"></div>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-rose-100 border-t-rose-500 mb-4"></div>
             <Body className="text-gray-600 text-lg">Loading wishlist...</Body>
           </div>
         ) : error ? (
-          <Card variant="md" className="text-center py-16 shadow-lg">
+          <Card variant="md" className="text-center py-16">
             <div className="h-24 w-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Heart className="h-12 w-12 text-red-500" />
             </div>
@@ -275,8 +273,8 @@ export const Wishlist = () => {
             <Body className="text-red-500">Please try again later</Body>
           </Card>
         ) : products.length === 0 ? (
-          <Card variant="md" className="text-center py-16 shadow-lg">
-            <div className="h-24 w-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Card variant="md" className="text-center py-16">
+            <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Heart className="h-12 w-12 text-gray-400" />
             </div>
             <H2 className="text-gray-700 text-2xl font-bold mb-2">Your wishlist is empty</H2>
@@ -304,7 +302,7 @@ export const Wishlist = () => {
                         handleAddToCart(product);
                       }}
                       disabled={addingToCart === product._id || product.status === 'out-of-stock' || product.stock === 0}
-                      className="bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-xl hover:bg-teal-50 hover:text-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200"
+                      className="bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-sm hover:bg-teal-50 hover:text-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200"
                       aria-label="Move to cart"
                       title="Move to cart"
                     >
@@ -320,7 +318,7 @@ export const Wishlist = () => {
                         e.stopPropagation();
                         handleRemove(product._id);
                       }}
-                      className="bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-xl hover:bg-red-50 hover:text-red-600 transition-all border-2 border-gray-200"
+                      className="bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-sm hover:bg-red-50 hover:text-red-600 transition-all border-2 border-gray-200"
                       aria-label="Remove from wishlist"
                       title="Remove from wishlist"
                     >

@@ -87,7 +87,7 @@ export const ResetPassword = () => {
 
   if (isVerifying || isVerifyingToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-teal-50/30 px-4 py-12">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
         <Card variant="lg" className="shadow-2xl border-2 border-gray-200 text-center py-12">
           <div className="flex justify-center mb-6">
             <BrandLogo variant="auth" to="/" imgClassName="h-9 w-auto max-w-[220px]" />
@@ -101,7 +101,7 @@ export const ResetPassword = () => {
 
   if (!isTokenValid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-teal-50/30 px-4 py-12">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
         <Card variant="lg" className="shadow-2xl border-2 border-gray-200">
           <div className="flex justify-center mb-6">
             <BrandLogo variant="auth" to="/" imgClassName="h-9 w-auto max-w-[220px]" />
@@ -134,7 +134,7 @@ export const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-teal-50/30 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
       <div className="w-full max-w-md">
         <Card variant="lg" className="shadow-2xl border-2 border-gray-200">
           <div className="flex justify-center mb-6">

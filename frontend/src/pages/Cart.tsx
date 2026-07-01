@@ -205,12 +205,12 @@ export const Cart = () => {
   // Empty cart state
   if (cart.items.length === 0 && savedForLater.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
+      <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Breadcrumb items={breadcrumbItems} />
-          <Card variant="md" className="text-center py-16 mt-8 shadow-lg">
+          <Card variant="md" className="text-center py-16 mt-8">
             <div className="flex flex-col items-center">
-              <div className="h-24 w-24 bg-gradient-to-br from-teal-100 to-teal-200 rounded-full flex items-center justify-center mb-6">
+              <div className="h-24 w-24 bg-teal-100 rounded-full flex items-center justify-center mb-6">
                 <ShoppingCart className="h-12 w-12 text-teal-600" />
               </div>
               <H1 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</H1>
@@ -231,7 +231,7 @@ export const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
 
@@ -265,10 +265,10 @@ export const Cart = () => {
 
         {/* Hero Section */}
         <div className="mt-8 mb-8">
-          <Card variant="lg" className="bg-gradient-to-br from-teal-600 via-teal-500 to-teal-700 text-white border-0 shadow-2xl">
+          <Card variant="lg" className="bg-teal-600 text-white border-0 shadow-sm">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center shadow-xl">
+                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center">
                   <ShoppingCart className="h-10 w-10 text-white" />
                 </div>
                 <div>
@@ -291,7 +291,7 @@ export const Cart = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Total Amount */}
-          <Card variant="md" className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-teal-50 border-teal-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Cart Total</Body>
@@ -308,7 +308,7 @@ export const Cart = () => {
           </Card>
 
           {/* Items Count */}
-          <Card variant="md" className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-blue-50 border-blue-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Items in Cart</Body>
@@ -327,7 +327,7 @@ export const Cart = () => {
           </Card>
 
           {/* Average Price */}
-          <Card variant="md" className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-purple-50 border-purple-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Avg. Item Price</Body>
@@ -354,7 +354,7 @@ export const Cart = () => {
                 <Card 
                   key={item.productId} 
                   variant="md" 
-                  className="transition-all duration-300 hover:shadow-xl border-2 border-gray-200 hover:border-teal-300"
+                  className="transition-all duration-300 hover:shadow-md border-2 border-gray-200 hover:border-teal-300"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex flex-col sm:flex-row gap-4">
@@ -519,7 +519,7 @@ export const Cart = () => {
               <div className="mt-6">
                 <button
                   onClick={() => setShowSavedItems(!showSavedItems)}
-                  className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-gray-100 hover:to-gray-200 transition-all border-2 border-gray-200"
+                  className="flex items-center justify-between w-full p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
                 >
                   <div className="flex items-center gap-2">
                     <BookmarkCheck className="h-5 w-5 text-teal-600" />
@@ -591,7 +591,7 @@ export const Cart = () => {
 
           {/* Cart Summary - Right Column (1/3 width) - Sticky */}
           <div className="lg:col-span-1">
-            <Card variant="md" className="lg:sticky lg:top-24 shadow-xl border-2 border-gray-200">
+            <Card variant="md" className="lg:sticky lg:top-24 border-2 border-gray-200 shadow-sm">
               <H1 className="text-xl font-bold text-gray-900 mb-6">Order Summary</H1>
 
               {/* Promo Code Section */}
@@ -653,7 +653,7 @@ export const Cart = () => {
               </div>
 
               {/* Estimated Delivery */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-lg border-2 border-teal-200">
+              <div className="mb-6 p-4 bg-teal-50 rounded-lg border-2 border-teal-200">
                 <div className="flex items-center gap-2 text-sm text-teal-700">
                   <Calendar className="h-5 w-5" />
                   <Body className="text-sm font-medium">
@@ -697,7 +697,7 @@ export const Cart = () => {
               <Button
                 variant="primary"
                 size="default"
-                className="w-full flex items-center justify-center mb-4 shadow-lg"
+                className="w-full flex items-center justify-center mb-4"
                 onClick={handleProceedToCheckout}
               >
                 Proceed to Checkout
@@ -723,7 +723,7 @@ export const Cart = () => {
         {/* Remove Confirmation Modal */}
         {removingItemId && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <Card variant="md" className="w-full max-w-md shadow-2xl">
+            <Card variant="md" className="w-full max-w-md shadow-md">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
                   <AlertCircle className="h-6 w-6 text-red-600" />

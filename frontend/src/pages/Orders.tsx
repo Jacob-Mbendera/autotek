@@ -212,16 +212,16 @@ export const Orders = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50/30">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
 
         {/* Hero Section */}
         <div className="mt-8 mb-8">
-          <Card variant="lg" className="bg-gradient-to-br from-teal-600 via-teal-500 to-teal-700 text-white border-0 shadow-2xl">
+          <Card variant="lg" className="bg-teal-600 text-white border-0 shadow-sm">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center shadow-xl">
+                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center">
                   <Package className="h-10 w-10 text-white" />
                 </div>
                 <div>
@@ -260,7 +260,7 @@ export const Orders = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Spent */}
-          <Card variant="md" className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-teal-50 border-teal-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Total Spent</Body>
@@ -277,7 +277,7 @@ export const Orders = () => {
           </Card>
 
           {/* Completed Orders */}
-          <Card variant="md" className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-green-50 border-green-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Completed</Body>
@@ -296,7 +296,7 @@ export const Orders = () => {
           </Card>
 
           {/* Pending Orders */}
-          <Card variant="md" className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-amber-50 border-amber-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Pending</Body>
@@ -313,7 +313,7 @@ export const Orders = () => {
           </Card>
 
           {/* Average Order Value */}
-          <Card variant="md" className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow">
+          <Card variant="md" className="bg-blue-50 border-blue-200">
             <div className="flex items-center justify-between">
               <div>
                 <Body className="text-gray-600 text-sm mb-1">Avg. Order Value</Body>
@@ -331,7 +331,7 @@ export const Orders = () => {
         </div>
 
         {/* Search and Filters */}
-        <Card variant="lg" className="mb-6 shadow-lg">
+        <Card variant="lg" className="mb-6">
           {/* Search Bar */}
           <div className="mb-6">
             <div className="relative">
@@ -496,7 +496,7 @@ export const Orders = () => {
 
         {/* Bulk Actions */}
         {selectedOrders.size > 0 && (
-          <Card variant="md" className="mb-4 bg-teal-50 border-teal-200 shadow-lg">
+          <Card variant="md" className="mb-4 bg-teal-50 border-teal-200">
             <div className="flex items-center justify-between">
               <Body className="text-sm font-medium text-gray-900">
                 {selectedOrders.size} order{selectedOrders.size !== 1 ? 's' : ''} selected
@@ -524,7 +524,7 @@ export const Orders = () => {
 
         {/* Empty State */}
         {!isLoading && !error && filteredAndSortedOrders.length === 0 && (
-          <Card variant="md" className="text-center py-16 shadow-lg">
+          <Card variant="md" className="text-center py-16">
             <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Package className="h-12 w-12 text-gray-400" />
             </div>
@@ -564,7 +564,7 @@ export const Orders = () => {
                 {selectedOrders.size > 0 && (
                   <button
                     onClick={() => handleSelectOrder(order._id)}
-                    className="absolute top-3 left-3 z-10 p-1 bg-white rounded-full border-2 border-gray-300 hover:border-teal-500 transition-colors shadow-lg"
+                    className="absolute top-3 left-3 z-10 p-1 bg-white rounded-full border-2 border-gray-300 hover:border-teal-500 transition-colors shadow-sm"
                   >
                     {selectedOrders.has(order._id) ? (
                       <CheckSquare className="h-5 w-5 text-teal-600" />
@@ -576,7 +576,7 @@ export const Orders = () => {
                 <Link to={`/orders/${order._id}`}>
                   <Card
                     variant="md"
-                    className={`hover:shadow-xl transition-all cursor-pointer h-full border-2 ${
+                    className={`hover:shadow-md transition-all cursor-pointer h-full border-2 ${
                       selectedOrders.has(order._id) ? 'border-teal-500 ring-2 ring-teal-200' : 'border-gray-200 hover:border-teal-300'
                     }`}
                   >
@@ -663,7 +663,7 @@ export const Orders = () => {
 
         {/* Orders List - Table View */}
         {!isLoading && !error && filteredAndSortedOrders.length > 0 && viewMode === 'table' && (
-          <Card variant="md" className="overflow-x-auto shadow-lg">
+          <Card variant="md" className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b-2 border-gray-200 bg-gray-50">

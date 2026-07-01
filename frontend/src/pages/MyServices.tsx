@@ -458,7 +458,7 @@ export const MyServices = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         {/* Breadcrumb */}
         <Breadcrumb
@@ -481,7 +481,7 @@ export const MyServices = () => {
         <div className="mb-8 mt-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <H1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent mb-2">
+              <H1 className="text-4xl font-bold text-gray-900 mb-2">
                 My Services
               </H1>
               <Body className="text-gray-600">
@@ -492,7 +492,7 @@ export const MyServices = () => {
 
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card className="p-4 border-2 border-teal-100 bg-gradient-to-br from-teal-50 to-white">
+            <Card className="p-4 border-2 border-teal-100 bg-teal-50">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium">Total Services</p>
@@ -502,7 +502,7 @@ export const MyServices = () => {
               </div>
             </Card>
 
-            <Card className="p-4 border-2 border-amber-100 bg-gradient-to-br from-amber-50 to-white">
+            <Card className="p-4 border-2 border-amber-100 bg-amber-50">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium">Pending</p>
@@ -512,7 +512,7 @@ export const MyServices = () => {
               </div>
             </Card>
 
-            <Card className="p-4 border-2 border-green-100 bg-gradient-to-br from-green-50 to-white">
+            <Card className="p-4 border-2 border-green-100 bg-green-50">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium">Completed</p>
@@ -522,7 +522,7 @@ export const MyServices = () => {
               </div>
             </Card>
 
-            <Card className="p-4 border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-white">
+            <Card className="p-4 border-2 border-blue-100 bg-blue-50">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium">Total Spent</p>
@@ -617,7 +617,7 @@ export const MyServices = () => {
                   : 'Selected town and landmark';
 
               return (
-                <Card key={service._id} className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
+                <Card key={service._id} className="p-4 sm:p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 w-full items-start gap-3 sm:gap-4 sm:flex-1">
                       {/* Icon */}
