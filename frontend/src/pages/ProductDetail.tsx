@@ -14,6 +14,7 @@ import { ShoppingCart, Zap, CheckCircle, Package, Heart } from 'lucide-react';
 import { ReviewList } from '../components/ReviewList';
 import { ReviewForm } from '../components/ReviewForm';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 
 export const ProductDetail = () => {
@@ -139,7 +140,7 @@ export const ProductDetail = () => {
   const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
   const isInStock = !isOutOfStock && product.stock > 10;
 
-  const { url: placeholderImage, isPlaceholder: usingPlaceholderOnly } = resolveProductDisplayImage(
+  const { isPlaceholder: usingPlaceholderOnly } = resolveProductDisplayImage(
     product.images,
     product.category
   );
@@ -152,14 +153,13 @@ export const ProductDetail = () => {
       blurDataUrl: getProductImageBlur(img),
     }));
   } else {
-    displayEntries = [{ url: placeholderImage }];
+    displayEntries = [];
   }
 
   const isPlaceholder = usingPlaceholderOnly || imageError;
 
-  const safeImageIndex = Math.min(selectedImageIndex, displayEntries.length - 1);
-  const currentEntry =
-    displayEntries[safeImageIndex] || displayEntries[0] || { url: placeholderImage };
+  const safeImageIndex = Math.min(selectedImageIndex, Math.max(displayEntries.length - 1, 0));
+  const currentEntry = displayEntries[safeImageIndex];
 
   // Generate SKU from product ID
   const generateSKU = (productId: string, category: string) => {
@@ -252,7 +252,14 @@ export const ProductDetail = () => {
         {/* Product Images */}
         <div className="space-y-4">
           <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ minHeight: '500px' }}>
-            {currentEntry.url ? (
+            {isPlaceholder ? (
+              <ProductPlaceholderImage
+                productName={product.name}
+                category={product.category}
+                size="lg"
+                className="h-[500px] w-full rounded-lg"
+              />
+            ) : currentEntry?.url ? (
               <OptimizedImage
                 key={`${product._id}-${currentEntry.url}`}
                 src={currentEntry.url}

@@ -8,6 +8,7 @@ import { Button } from './ui/Button';
 import { H2, H4, Body } from './ui/Typography';
 import { OptimizedImage } from './ui/OptimizedImage';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
+import { ProductPlaceholderImage } from './ProductPlaceholderImage';
 
 interface QuickViewModalProps {
   product: Product | null;
@@ -41,9 +42,11 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
   const images = product.images && product.images.length > 0 ? product.images : [];
   const hasMultipleImages = images.length > 1;
   const currentEntry = images[currentImageIndex];
-  const { url: currentImageUrl } = currentEntry
+  const resolvedImage = currentEntry
     ? { url: getProductImageUrl(currentEntry), isPlaceholder: false }
     : resolveProductDisplayImage(product.images, product.category);
+  const showPlaceholder = resolvedImage.isPlaceholder;
+  const currentImageUrl = resolvedImage.url;
   const currentBlur = currentEntry ? getProductImageBlur(currentEntry) : undefined;
 
   const handleAddToCart = () => {
@@ -106,15 +109,24 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
           {/* Image Section */}
           <div className="relative bg-gray-100 rounded-t-xl lg:rounded-l-xl lg:rounded-tr-none overflow-hidden">
             <div className="relative aspect-square">
-              <OptimizedImage
-                src={currentImageUrl}
-                blurDataUrl={currentBlur}
-                alt={product.name}
-                width={600}
-                height={600}
-                className="w-full h-full object-cover"
-                priority={true}
-              />
+              {showPlaceholder ? (
+                <ProductPlaceholderImage
+                  productName={product.name}
+                  category={product.category}
+                  size="lg"
+                  className="aspect-square w-full"
+                />
+              ) : (
+                <OptimizedImage
+                  src={currentImageUrl}
+                  blurDataUrl={currentBlur}
+                  alt={product.name}
+                  width={600}
+                  height={600}
+                  className="w-full h-full object-cover"
+                  priority={true}
+                />
+              )}
               
               {/* Image Navigation */}
               {hasMultipleImages && (

@@ -11,6 +11,7 @@ import type { Product } from '../store/api/productApi';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { Button } from './ui/Button';
 import { OptimizedImage } from './ui/OptimizedImage';
+import { ProductPlaceholderImage } from './ProductPlaceholderImage';
 
 interface ProductCardProps {
   product: Product;
@@ -43,7 +44,7 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
     }
   }, [isInWishlistFromAPI, optimisticWishlistState]);
 
-  const { url: displayImage, isPlaceholder } = resolveProductDisplayImage(
+  const { isPlaceholder } = resolveProductDisplayImage(
     product.images,
     product.category
   );
@@ -168,16 +169,25 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
       
       {/* Image container with enhanced effects */}
       <div className="relative aspect-w-1 aspect-h-1 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-        <div className={`group-hover:scale-125 transition-transform duration-700 ${isPlaceholder ? 'opacity-80' : ''}`}>
-          <OptimizedImage
-            src={displayImage}
-            blurDataUrl={!isPlaceholder ? getProductImageBlur(product.images?.[0]) : undefined}
-            alt={product.name}
-            width={400}
-            height={400}
-            className="w-full h-56 object-cover"
-            priority={false}
-          />
+        <div className="group-hover:scale-125 transition-transform duration-700">
+          {isPlaceholder ? (
+            <ProductPlaceholderImage
+              productName={product.name}
+              category={product.category}
+              size="md"
+              className="h-56 w-full"
+            />
+          ) : (
+            <OptimizedImage
+              src={getProductImageUrl(product.images?.[0])}
+              blurDataUrl={getProductImageBlur(product.images?.[0])}
+              alt={product.name}
+              width={400}
+              height={400}
+              className="w-full h-56 object-cover"
+              priority={false}
+            />
+          )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent group-hover:from-black/30 transition-opacity duration-500"></div>
         

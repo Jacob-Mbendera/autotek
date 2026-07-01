@@ -6,6 +6,7 @@ import { addItem } from '../store/slices/cartSlice';
 import { Button } from '../components/ui/Button';
 import { H1, H2, H4, Body } from '../components/ui/Typography';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { X, ShoppingCart, Package, Check, XCircle } from 'lucide-react';
 
@@ -108,33 +109,31 @@ export const CompareProducts = () => {
                     </button>
                     
                     {(() => {
-                      const { url, isPlaceholder } = resolveProductDisplayImage(
+                      const { url, isPlaceholder, placeholderCategory } = resolveProductDisplayImage(
                         product.images,
                         product.category,
                         128
                       );
-                      return isPlaceholder ? (
-                        <div className="mx-auto mb-3">
-                          <OptimizedImage
-                            src={url}
-                            alt={product.name}
-                            width={128}
-                            height={128}
-                            className="w-32 h-32 object-cover rounded-lg opacity-90"
-                            priority={false}
-                          />
-                        </div>
-                      ) : (
-                        <div className="mx-auto mb-3">
-                          <OptimizedImage
-                            src={url}
-                            blurDataUrl={getProductImageBlur(product.images?.[0])}
-                            alt={product.name}
-                            width={128}
-                            height={128}
-                            className="w-32 h-32 object-cover rounded-lg"
-                            priority={false}
-                          />
+                      return (
+                        <div className="mx-auto mb-3 w-32 h-32 rounded-lg overflow-hidden">
+                          {isPlaceholder ? (
+                            <ProductPlaceholderImage
+                              productName={product.name}
+                              category={placeholderCategory ?? product.category}
+                              size="sm"
+                              className="h-full w-full"
+                            />
+                          ) : (
+                            <OptimizedImage
+                              src={url}
+                              blurDataUrl={getProductImageBlur(product.images?.[0])}
+                              alt={product.name}
+                              width={128}
+                              height={128}
+                              className="w-32 h-32 object-cover rounded-lg"
+                              priority={false}
+                            />
+                          )}
                         </div>
                       );
                     })()}

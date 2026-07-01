@@ -12,6 +12,7 @@ import { Input } from '../components/ui/Input';
 import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
+import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
 import { getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import type { ProductImageField } from '../store/api/productApi';
 import {
@@ -184,14 +185,12 @@ export const Cart = () => {
   // Calculate final total with discount
   const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
 
-  // Get display image for a cart item
-  const getDisplayImage = (item: typeof cart.items[0]) => {
-    return resolveProductDisplayImage(
+  const getCartItemImage = (item: typeof cart.items[0]) =>
+    resolveProductDisplayImage(
       item.image ? [item.image as ProductImageField] : [],
       undefined,
       600
-    ).url;
-  };
+    );
 
   // Calculate statistics
   const averageItemPrice = cart.items.length > 0 ? cart.totalAmount / cart.totalItems : 0;
@@ -350,6 +349,7 @@ export const Cart = () => {
             {cart.items.map((item, index) => {
               const stockStatus = getStockStatus(item);
               const StatusIcon = stockStatus.icon;
+              const cartImage = getCartItemImage(item);
               return (
                 <Card 
                   key={item.productId} 
@@ -363,14 +363,22 @@ export const Cart = () => {
                       to={`/products/${item.productId}`}
                       className="flex-shrink-0 w-full sm:w-32 h-32 md:h-36 bg-gray-100 rounded-lg overflow-hidden group relative block"
                     >
-                      <OptimizedImage
-                        src={getDisplayImage(item)}
-                        alt={item.productName}
-                        width={150}
-                        height={150}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        priority={false}
-                      />
+                      {cartImage.isPlaceholder ? (
+                        <ProductPlaceholderImage
+                          productName={item.productName}
+                          size="sm"
+                          className="w-full h-full"
+                        />
+                      ) : (
+                        <OptimizedImage
+                          src={cartImage.url}
+                          alt={item.productName}
+                          width={150}
+                          height={150}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          priority={false}
+                        />
+                      )}
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity pointer-events-none" />
                     </Link>
 
@@ -535,21 +543,31 @@ export const Cart = () => {
                 </button>
                 {showSavedItems && (
                   <div className="mt-3 space-y-3">
-                    {savedForLater.map((item) => (
+                    {savedForLater.map((item) => {
+                      const cartImage = getCartItemImage(item);
+                      return (
                       <Card key={item.productId} variant="md" className="bg-gray-50 border-2 border-gray-200">
                         <div className="flex gap-4">
                           <Link
                             to={`/products/${item.productId}`}
                             className="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg overflow-hidden relative block"
                           >
-                            <OptimizedImage
-                              src={getDisplayImage(item)}
-                              alt={item.productName}
-                              width={80}
-                              height={80}
-                              className="w-full h-full object-cover"
-                              priority={false}
-                            />
+                            {cartImage.isPlaceholder ? (
+                              <ProductPlaceholderImage
+                                productName={item.productName}
+                                size="sm"
+                                className="w-full h-full"
+                              />
+                            ) : (
+                              <OptimizedImage
+                                src={cartImage.url}
+                                alt={item.productName}
+                                width={80}
+                                height={80}
+                                className="w-full h-full object-cover"
+                                priority={false}
+                              />
+                            )}
                           </Link>
                           <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div className="flex-1">
@@ -582,7 +600,8 @@ export const Cart = () => {
                           </div>
                         </div>
                       </Card>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

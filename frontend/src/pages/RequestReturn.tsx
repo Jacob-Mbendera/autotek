@@ -5,7 +5,8 @@ import { useCreateReturnMutation } from '../store/api/returnApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
-import { resolveProductDisplayImage } from '../utils/productImage';
+import { getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
+import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -86,7 +87,7 @@ export const RequestReturn = () => {
       newSelected.set(item.product._id, {
         productId: item.product._id,
         productName: item.product.name,
-        productImage: resolveProductDisplayImage(item.product.images, item.product.category, 100).url,
+        productImage: getProductImageUrl(item.product.images?.[0]) || '',
         maxQuantity: item.quantity,
         quantity: item.quantity,
         reason: 'defective',
@@ -352,11 +353,27 @@ export const RequestReturn = () => {
                       className="mt-1 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
                       disabled={!eligible}
                     />
-                    <img
-                      src={resolveProductDisplayImage(item.product.images, item.product.category, 100).url}
-                      alt={item.product.name}
-                      className="w-16 h-16 object-cover rounded"
-                    />
+                    {(() => {
+                      const { isPlaceholder, placeholderCategory } = resolveProductDisplayImage(
+                        item.product.images,
+                        item.product.category,
+                        100
+                      );
+                      return isPlaceholder ? (
+                        <ProductPlaceholderImage
+                          productName={item.product.name}
+                          category={placeholderCategory ?? item.product.category}
+                          size="sm"
+                          className="w-16 h-16 rounded flex-shrink-0"
+                        />
+                      ) : (
+                        <img
+                          src={getProductImageUrl(item.product.images?.[0])}
+                          alt={item.product.name}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                      );
+                    })()}
                     <div className="flex-1">
                       <Body className="font-medium">{item.product.name}</Body>
                       <Body className="text-sm text-gray-600 mt-1">

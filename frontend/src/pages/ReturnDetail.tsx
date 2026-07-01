@@ -10,7 +10,8 @@ import {
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
-import { resolveProductDisplayImage } from '../utils/productImage';
+import { getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
+import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -408,15 +409,28 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
             <ul className="divide-y divide-gray-100">
               {returnDoc.items.map((item, index) => (
                 <li key={index} className="py-4 first:pt-0 flex gap-4">
-                  <img
-                    src={resolveProductDisplayImage(
+                  {(() => {
+                    const productName = item.product?.name || 'Product';
+                    const { isPlaceholder, placeholderCategory } = resolveProductDisplayImage(
                       item.product?.images,
                       item.product?.category,
                       100
-                    ).url}
-                    alt={item.product?.name || 'Product'}
-                    className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border border-gray-100 flex-shrink-0"
-                  />
+                    );
+                    return isPlaceholder ? (
+                      <ProductPlaceholderImage
+                        productName={productName}
+                        category={placeholderCategory ?? item.product?.category}
+                        size="sm"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg border border-gray-100 flex-shrink-0"
+                      />
+                    ) : (
+                      <img
+                        src={getProductImageUrl(item.product?.images?.[0])}
+                        alt={productName}
+                        className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border border-gray-100 flex-shrink-0"
+                      />
+                    );
+                  })()}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-gray-900">{item.product?.name || 'Product'}</p>
                     <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
