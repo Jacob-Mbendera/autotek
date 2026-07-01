@@ -29,58 +29,7 @@ export const Products = () => {
   
   const dispatch = useAppDispatch();
   const { filters, pagination, viewMode } = useAppSelector((state) => state.product);
-  
-  // Initialize filters from URL params on mount only
-  useEffect(() => {
-    const urlCategory = searchParams.get('category');
-    const urlSearch = searchParams.get('search');
-    const urlMinPrice = searchParams.get('minPrice');
-    const urlMaxPrice = searchParams.get('maxPrice');
-    const urlStockStatus = searchParams.get('stockStatus');
-    const urlPage = searchParams.get('page');
-    const urlLimit = searchParams.get('limit');
-    
-    const urlFilters: any = {};
-    if (urlCategory) urlFilters.category = urlCategory;
-    if (urlSearch) urlFilters.search = urlSearch;
-    if (urlMinPrice) urlFilters.minPrice = Number(urlMinPrice);
-    if (urlMaxPrice) urlFilters.maxPrice = Number(urlMaxPrice);
-    if (urlStockStatus) urlFilters.stockStatus = urlStockStatus;
-    
-    if (Object.keys(urlFilters).length > 0) {
-      dispatch(setFilters(urlFilters));
-    }
-    
-    if (urlPage) {
-      dispatch(setPagination({ page: Number(urlPage) }));
-    }
-    if (urlLimit) {
-      dispatch(setPagination({ limit: Number(urlLimit) }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  
-  // Sync filters to URL (but avoid infinite loop)
-  useEffect(() => {
-    const params = new URLSearchParams();
-    
-    if (filters.category) params.set('category', filters.category);
-    if (filters.search) params.set('search', filters.search);
-    if (filters.minPrice !== undefined) params.set('minPrice', filters.minPrice.toString());
-    if (filters.maxPrice !== undefined) params.set('maxPrice', filters.maxPrice.toString());
-    if (filters.stockStatus) params.set('stockStatus', filters.stockStatus);
-    if (pagination.page > 1) params.set('page', pagination.page.toString());
-    if (pagination.limit !== 12) params.set('limit', pagination.limit.toString());
-    
-    const currentParams = searchParams.toString();
-    const newParams = params.toString();
-    
-    // Only update if different to avoid loops
-    if (currentParams !== newParams) {
-      setSearchParams(params, { replace: true });
-    }
-  }, [filters, pagination.page, pagination.limit, searchParams, setSearchParams]);
-  
+
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [showFilters, setShowFilters] = useState(true);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
@@ -90,6 +39,74 @@ export const Products = () => {
   });
   const [quickViewProduct, setQuickViewProduct] = useState<{ _id: string; name: string; description: string; category: string; price: number; stock: number; images: string[]; supplier?: string; status: 'available' | 'out-of-stock'; createdAt: string; updatedAt: string } | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Sync URL search params -> Redux (back/forward, external links)
+  useEffect(() => {
+    const category = searchParams.get('category') || undefined;
+    const search = searchParams.get('search') || undefined;
+    const minPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined;
+    const maxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined;
+    const stockStatus = searchParams.get('stockStatus') || undefined;
+    const urlPage = searchParams.get('page');
+    const urlLimit = searchParams.get('limit');
+
+    const filtersDiffer =
+      filters.category !== category ||
+      filters.search !== search ||
+      filters.minPrice !== minPrice ||
+      filters.maxPrice !== maxPrice ||
+      (filters as { stockStatus?: string }).stockStatus !== stockStatus;
+
+    if (filtersDiffer) {
+      dispatch(
+        setFilters({
+          category,
+          search,
+          minPrice,
+          maxPrice,
+          stockStatus: stockStatus as 'all' | 'in-stock' | 'low-stock' | 'out-of-stock' | undefined,
+        })
+      );
+      if (search !== undefined) {
+        setSearchTerm(search);
+      } else if (filters.search && !search) {
+        setSearchTerm('');
+      }
+    }
+
+    const page = urlPage ? Number(urlPage) : 1;
+    const limit = urlLimit ? Number(urlLimit) : undefined;
+
+    if (pagination.page !== page) {
+      dispatch(setPagination({ page }));
+    }
+    if (limit !== undefined && pagination.limit !== limit) {
+      dispatch(setPagination({ limit }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Sync Redux filters -> URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (filters.category) params.set('category', filters.category);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.minPrice !== undefined) params.set('minPrice', filters.minPrice.toString());
+    if (filters.maxPrice !== undefined) params.set('maxPrice', filters.maxPrice.toString());
+    if ((filters as { stockStatus?: string }).stockStatus) {
+      params.set('stockStatus', (filters as { stockStatus?: string }).stockStatus!);
+    }
+    if (pagination.page > 1) params.set('page', pagination.page.toString());
+    if (pagination.limit !== 12) params.set('limit', pagination.limit.toString());
+
+    const newParams = params.toString();
+
+    setSearchParams((current) => {
+      if (current.toString() === newParams) return current;
+      return params;
+    }, { replace: true });
+  }, [filters, pagination.page, pagination.limit, setSearchParams]);
 
   const { data, isLoading, error } = useGetProductsQuery(
     {
@@ -230,9 +247,12 @@ export const Products = () => {
                 const categoryName = typeof cat === 'string' ? cat : cat.name;
                 if (!categoryName) return null;
                 return (
-                  <Link
+                  <button
                     key={categoryName}
-                    to={`/products?category=${encodeURIComponent(categoryName)}`}
+                    type="button"
+                    onClick={() =>
+                      handleCategoryChange(filters.category === categoryName ? '' : categoryName)
+                    }
                     className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
                       filters.category === categoryName
                         ? 'bg-teal-600 text-white shadow-lg'
@@ -240,7 +260,7 @@ export const Products = () => {
                     }`}
                   >
                     <span>{categoryName}</span>
-                  </Link>
+                  </button>
                 );
               })}
             </div>
