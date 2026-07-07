@@ -11,6 +11,7 @@ import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Users, Phone, Mail, Banknote, Save, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { ServiceStatus } from '@shared/types';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 const formatCarServiceTypes = (service: any): string => {
   const types = Array.isArray(service.serviceTypes) && service.serviceTypes.length > 0
@@ -59,13 +60,38 @@ function assigneeIdFromSelectedService(s: { type?: string; assignedDriver?: unkn
   return typeof a === 'object' && a !== null && '_id' in a ? String((a as { _id: string })._id) : String(a);
 }
 
-function toDatetimeLocalValue(iso: string | undefined) {
+function isoToDateValue(iso: string | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+function isoToTimeValue(iso: string | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function combineDateAndTimeToIso(date: string, time: string): string | null {
+  if (!date && !time) return null;
+  if (date && !time) return null;
+  const useDate = date || isoToDateValue(new Date().toISOString());
+  const d = new Date(`${useDate}T${time || '09:00'}`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function etaPresetFromNow(minutesFromNow: number): { date: string; time: string } {
+  const d = new Date(Date.now() + minutesFromNow * 60 * 1000);
+  return { date: isoToDateValue(d.toISOString()), time: isoToTimeValue(d.toISOString()) };
+}
+
+const etaFieldClassName =
+  'w-full px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none';
 
 export const AdminServices = () => {
   const dispatch = useAppDispatch();
@@ -79,10 +105,13 @@ export const AdminServices = () => {
   const [priceMwInput, setPriceMwInput] = useState('');
   const [carServicePriceInputs, setCarServicePriceInputs] = useState<Record<string, string>>({});
   const [providerPickId, setProviderPickId] = useState('');
-  const [etaInput, setEtaInput] = useState('');
+  const [etaDateInput, setEtaDateInput] = useState('');
+  const [etaTimeInput, setEtaTimeInput] = useState('');
 
   const [updateTowingService, { isLoading: isUpdatingTowing }] = useUpdateTowingServiceMutation();
   const [updateCarService, { isLoading: isUpdatingCar }] = useUpdateCarServiceMutation();
+
+  const adminListQueryOptions = useAdminListQueryOptions();
 
   const { data, isLoading, refetch } = useGetAllServicesQuery(
     {
@@ -92,7 +121,7 @@ export const AdminServices = () => {
       type: typeFilter || undefined,
       search: searchTerm || undefined,
     },
-    { refetchOnFocus: true, refetchOnReconnect: true }
+    adminListQueryOptions
   );
 
   useEffect(() => {
@@ -113,7 +142,19 @@ export const AdminServices = () => {
     setPriceMwInput(p != null && p > 0 ? String(Math.round(Number(p))) : '');
     setCarServicePriceInputs(toPricingInputMap(service));
     setProviderPickId(assigneeIdFromSelectedService(service));
-    setEtaInput(toDatetimeLocalValue(service.estimatedArrivalAt));
+    setEtaDateInput(isoToDateValue(service.estimatedArrivalAt));
+    setEtaTimeInput(isoToTimeValue(service.estimatedArrivalAt));
+  };
+
+  const applyEtaPreset = (minutesFromNow: number) => {
+    const preset = etaPresetFromNow(minutesFromNow);
+    setEtaDateInput(preset.date);
+    setEtaTimeInput(preset.time);
+  };
+
+  const clearEtaInputs = () => {
+    setEtaDateInput('');
+    setEtaTimeInput('');
   };
 
   const providerTypeForAssign =
@@ -125,8 +166,17 @@ export const AdminServices = () => {
 
   const handleSaveAssignmentEta = async () => {
     if (!selectedService) return;
+    if (etaDateInput && !etaTimeInput) {
+      dispatch(
+        showNotification({
+          message: 'Please pick an arrival time, or use a quick preset.',
+          type: 'warning',
+        })
+      );
+      return;
+    }
     try {
-      const etaIso = etaInput ? new Date(etaInput).toISOString() : null;
+      const etaIso = combineDateAndTimeToIso(etaDateInput, etaTimeInput);
       if (selectedService.type === 'towing') {
         const updated = await updateTowingService({
           id: selectedService._id,
@@ -609,17 +659,76 @@ export const AdminServices = () => {
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="admin-service-eta" className="block text-xs text-gray-400 mb-1 flex items-center gap-1">
+                    <span className="block text-xs text-gray-400 mb-1 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       Estimated arrival (optional)
-                    </label>
-                    <input
-                      id="admin-service-eta"
-                      type="datetime-local"
-                      value={etaInput}
-                      onChange={(e) => setEtaInput(e.target.value)}
-                      className="w-full px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
-                    />
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="admin-service-eta-date" className="block text-xs text-gray-500 mb-1">
+                          Date
+                        </label>
+                        <input
+                          id="admin-service-eta-date"
+                          type="date"
+                          value={etaDateInput}
+                          onChange={(e) => setEtaDateInput(e.target.value)}
+                          className={etaFieldClassName}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-service-eta-time" className="block text-xs text-gray-500 mb-1">
+                          Time
+                        </label>
+                        <input
+                          id="admin-service-eta-time"
+                          type="time"
+                          value={etaTimeInput}
+                          onChange={(e) => setEtaTimeInput(e.target.value)}
+                          className={etaFieldClassName}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        dark
+                        type="button"
+                        onClick={() => applyEtaPreset(30)}
+                      >
+                        In 30 min
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        dark
+                        type="button"
+                        onClick={() => applyEtaPreset(60)}
+                      >
+                        In 1 hour
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        dark
+                        type="button"
+                        onClick={() => applyEtaPreset(120)}
+                      >
+                        In 2 hours
+                      </Button>
+                      {(etaDateInput || etaTimeInput) && (
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          dark
+                          type="button"
+                          onClick={clearEtaInputs}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <Button
                     variant="primary"

@@ -11,6 +11,7 @@ import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, FileText, Package, X, User, Phone, Mail, Calendar, Banknote, Tag, Save, ArrowLeft, ArrowRight } from 'lucide-react';
 import { CustomOrderStatus } from '@shared/types';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 export const AdminCustomOrders = () => {
   const dispatch = useAppDispatch();
@@ -23,12 +24,17 @@ export const AdminCustomOrders = () => {
 
   const [updateCustomOrder, { isLoading: isUpdating }] = useUpdateCustomOrderMutation();
 
-  const { data, isLoading, refetch } = useGetAllCustomOrdersQuery({
-    page,
-    limit,
-    status: statusFilter || undefined,
-    search: searchTerm || undefined,
-  });
+  const adminListQueryOptions = useAdminListQueryOptions();
+
+  const { data, isLoading, refetch } = useGetAllCustomOrdersQuery(
+    {
+      page,
+      limit,
+      status: statusFilter || undefined,
+      search: searchTerm || undefined,
+    },
+    adminListQueryOptions
+  );
 
   const getStatusColor = (status: CustomOrderStatus) => {
     switch (status) {

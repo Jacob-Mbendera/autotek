@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { H1, H2, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, Users, Mail, Phone, MapPin, Calendar, Shield, ChevronLeft, X } from 'lucide-react';
 import { UserRole } from '@shared/types';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 export const AdminUsers = () => {
   const dispatch = useAppDispatch();
@@ -20,12 +21,17 @@ export const AdminUsers = () => {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [newRole, setNewRole] = useState<UserRole>(UserRole.CUSTOMER);
 
-  const { data, isLoading, refetch } = useGetAllUsersQuery({
-    page,
-    limit,
-    role: roleFilter || undefined,
-    search: searchTerm || undefined,
-  });
+  const adminListQueryOptions = useAdminListQueryOptions();
+
+  const { data, isLoading, refetch } = useGetAllUsersQuery(
+    {
+      page,
+      limit,
+      role: roleFilter || undefined,
+      search: searchTerm || undefined,
+    },
+    adminListQueryOptions
+  );
 
   const { data: userData, isLoading: isLoadingUser, refetch: refetchUser } = useGetUserQuery(
     selectedUserId || '',

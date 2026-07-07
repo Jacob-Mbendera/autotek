@@ -40,7 +40,7 @@ export const paymentApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Payment'],
+      invalidatesTags: ['Payment', 'Order', 'Admin'],
     }),
     getPayment: builder.query<{ payment: Payment }, string>({
       query: (id) => `/payments/${id}`,
@@ -56,7 +56,12 @@ export const paymentApi = baseApi.injectEndpoints({
         method: 'POST',
         body: { paymentId: id },
       }),
-      invalidatesTags: (_result, _error, id) => [{ type: 'Payment', id }],
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Payment', id },
+        'Payment',
+        'Order',
+        'Admin',
+      ],
     }),
   }),
 });

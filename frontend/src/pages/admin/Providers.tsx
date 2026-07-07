@@ -18,6 +18,7 @@ import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
 import { Building2, Loader2, Save, Users, Wrench, Truck, Banknote, CheckCircle } from 'lucide-react';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 type Tab = 'garages' | 'drivers' | 'mechanics' | 'payouts';
 
@@ -43,18 +44,32 @@ export const AdminProviders = () => {
     certificationNote: '',
   });
 
-  const { data: garagesData, refetch: refetchGarages } = useGetGaragesQuery({ limit: 100 });
-  const { data: driversData, refetch: refetchDrivers } = useGetServiceProvidersQuery({
-    providerType: 'driver',
-    includeWorkload: true,
-    limit: 100,
-  });
-  const { data: mechanicsData, refetch: refetchMechanics } = useGetServiceProvidersQuery({
-    providerType: 'mechanic',
-    includeWorkload: true,
-    limit: 100,
-  });
-  const { data: payoutsData, refetch: refetchPayouts } = useGetServicePayoutsQuery({ limit: 50 });
+  const adminListQueryOptions = useAdminListQueryOptions();
+
+  const { data: garagesData, refetch: refetchGarages } = useGetGaragesQuery(
+    { limit: 100 },
+    adminListQueryOptions
+  );
+  const { data: driversData, refetch: refetchDrivers } = useGetServiceProvidersQuery(
+    {
+      providerType: 'driver',
+      includeWorkload: true,
+      limit: 100,
+    },
+    adminListQueryOptions
+  );
+  const { data: mechanicsData, refetch: refetchMechanics } = useGetServiceProvidersQuery(
+    {
+      providerType: 'mechanic',
+      includeWorkload: true,
+      limit: 100,
+    },
+    adminListQueryOptions
+  );
+  const { data: payoutsData, refetch: refetchPayouts } = useGetServicePayoutsQuery(
+    { limit: 50 },
+    adminListQueryOptions
+  );
 
   const [createGarage, { isLoading: creatingG }] = useCreateGarageMutation();
   const [createProvider, { isLoading: creatingP }] = useCreateServiceProviderMutation();

@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { H1, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, Package, Calendar, ArrowLeft, ArrowRight } from 'lucide-react';
 import { OrderStatus } from '@shared/types';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 export const AdminOrders = () => {
   const navigate = useNavigate();
@@ -17,13 +18,18 @@ export const AdminOrders = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const { data, isLoading } = useGetAllOrdersQuery({
-    page,
-    limit,
-    status: statusFilter || undefined,
-    startDate: startDate || undefined,
-    endDate: endDate || undefined,
-  });
+  const adminListQueryOptions = useAdminListQueryOptions();
+
+  const { data, isLoading } = useGetAllOrdersQuery(
+    {
+      page,
+      limit,
+      status: statusFilter || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    },
+    adminListQueryOptions
+  );
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {

@@ -12,6 +12,7 @@ import { hashPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { processPayChanguRefund } from '../utils/paymentRefunds';
 import { log } from '../utils/logger';
+import { assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
 
 // Helper function to format address for display
 const formatShippingAddress = (address: IShippingAddress | string): string => {
@@ -482,6 +483,16 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     const order = await Order.findById(req.params.id);
     if (!order) {
       res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+
+    const transition = assertValidOrderStatusTransition(
+      order.status,
+      status,
+      order.paymentStatus
+    );
+    if (!transition.ok) {
+      res.status(400).json({ message: transition.message });
       return;
     }
 

@@ -78,7 +78,7 @@ export const orderApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Order'],
+      invalidatesTags: ['Order', 'Admin'],
     }),
     getOrders: builder.query<OrdersResponse, OrdersQueryParams | void>({
       query: (params) => {
@@ -112,7 +112,7 @@ export const orderApi = baseApi.injectEndpoints({
           method: 'PUT',
         };
       },
-      invalidatesTags: (_result, _error, { id }) => [{ type: 'Order', id }, 'Order'],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Order', id }, 'Order', 'Admin'],
     }),
   }),
 });

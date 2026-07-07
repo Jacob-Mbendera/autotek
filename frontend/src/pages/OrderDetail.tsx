@@ -56,6 +56,11 @@ import {
   Store,
 } from 'lucide-react';
 import { OrderStatus, PaymentStatus } from '@shared/types';
+import {
+  assertValidOrderStatusTransition,
+  getAllowedNextOrderStatuses,
+  getOrderStatusLabel,
+} from '@shared/utils/orderStatusTransitions';
 
 // Helper function to get status badge colors
 const getStatusBadgeColor = (status: OrderStatus) => {
@@ -74,6 +79,19 @@ const getStatusBadgeColor = (status: OrderStatus) => {
       return 'bg-red-100 text-red-700';
     default:
       return 'bg-gray-100 text-gray-700';
+  }
+};
+
+const getAdminStatusOptionLabel = (status: OrderStatus): string => {
+  switch (status) {
+    case OrderStatus.DISPATCHED:
+      return 'Dispatched (on the way to pickup)';
+    case OrderStatus.READY_FOR_COLLECTION:
+      return 'Ready for collection';
+    case OrderStatus.COMPLETED:
+      return 'Collected / case closed';
+    default:
+      return getOrderStatusLabel(status);
   }
 };
 
@@ -227,6 +245,16 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     }
   }, [isAdmin, userQueryResult.data?.order?.status]);
 
+  useEffect(() => {
+    if (!isAdmin || !selectedStatus) return;
+    const o = adminQueryResult.data?.order;
+    if (!o) return;
+    const allowed = getAllowedNextOrderStatuses(o.status, o.paymentStatus);
+    if (!allowed.includes(selectedStatus)) {
+      setSelectedStatus('');
+    }
+  }, [isAdmin, selectedStatus, adminQueryResult.data?.order]);
+
   // Determine which data to use based on isAdmin
   // Only use the query result that should be active
   const activeQuery = isAdmin ? adminQueryResult : userQueryResult;
@@ -267,6 +295,10 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   }
 
   const order = data.order;
+
+  const allowedNextOrderStatuses = isAdmin
+    ? getAllowedNextOrderStatuses(order.status, order.paymentStatus)
+    : [];
 
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
@@ -454,6 +486,18 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
       dispatch(showNotification({
         message: 'Please select a status',
         type: 'warning',
+      }));
+      return;
+    }
+    const transition = assertValidOrderStatusTransition(
+      order.status,
+      selectedStatus as OrderStatus,
+      order.paymentStatus
+    );
+    if (!transition.ok) {
+      dispatch(showNotification({
+        message: transition.message,
+        type: 'error',
       }));
       return;
     }
@@ -876,25 +920,37 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value as OrderStatus)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                    disabled={allowedNextOrderStatuses.length === 0}
                   >
                     <option value="">Select new status...</option>
-                    <option value={OrderStatus.PENDING}>Pending</option>
-                    <option value={OrderStatus.PROCESSING}>Processing</option>
-                    <option value={OrderStatus.DISPATCHED}>Dispatched (on the way to pickup)</option>
-                    <option value={OrderStatus.READY_FOR_COLLECTION}>Ready for collection</option>
-                    <option value={OrderStatus.COMPLETED}>Collected / case closed</option>
-                    <option value={OrderStatus.CANCELLED}>Cancelled</option>
+                    {allowedNextOrderStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {getAdminStatusOptionLabel(status)}
+                      </option>
+                    ))}
                   </select>
-                  <Body className="text-xs text-gray-500 mt-2">
-                    Use Dispatched when the order is en route to the pickup landmark, Ready for collection when
-                    it has arrived, and Collected when the customer has picked it up.
-                  </Body>
+                  {order.paymentStatus !== PaymentStatus.COMPLETED && (
+                    <Body className="text-xs text-amber-800 mt-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                      Payment is not complete. You can cancel this order or wait until payment clears
+                      before moving to Processing or any later pickup step.
+                    </Body>
+                  )}
+                  {allowedNextOrderStatuses.length === 0 ? (
+                    <Body className="text-xs text-gray-500 mt-2">
+                      No further status changes are available for this order.
+                    </Body>
+                  ) : (
+                    <Body className="text-xs text-gray-500 mt-2">
+                      Advance one step at a time: Processing → Dispatched → Ready for collection →
+                      Collected. Cancel is allowed until the order is collected.
+                    </Body>
+                  )}
                 </div>
                 <Button
                   variant="primary"
                   className="w-full"
                   onClick={handleStatusUpdateClick}
-                  disabled={!selectedStatus || isUpdatingStatus}
+                  disabled={!selectedStatus || isUpdatingStatus || allowedNextOrderStatuses.length === 0}
                 >
                   {isUpdatingStatus ? (
                     <>

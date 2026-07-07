@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { ReturnStatus } from '@shared/types';
 import { format } from 'date-fns';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 const getStatusBadgeColor = (status: ReturnStatus) => {
   switch (status) {
@@ -78,13 +79,18 @@ export const AdminReturns = () => {
   const [rejectNotes, setRejectNotes] = useState('');
   const [refundAmount, setRefundAmount] = useState<string>('');
 
-  const { data, isLoading, refetch } = useGetAllReturnsQuery({
-    status: statusFilter,
-    startDate: startDate || undefined,
-    endDate: endDate || undefined,
-    page,
-    limit,
-  });
+  const adminListQueryOptions = useAdminListQueryOptions();
+
+  const { data, isLoading, refetch } = useGetAllReturnsQuery(
+    {
+      status: statusFilter,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit,
+    },
+    adminListQueryOptions
+  );
 
   const [approveReturn, { isLoading: isApproving }] = useApproveReturnMutation();
   const [rejectReturn, { isLoading: isRejecting }] = useRejectReturnMutation();

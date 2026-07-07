@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { OrderStatus } from '@shared/types';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 // Helper function to get status badge colors
 const getStatusBadgeColor = (status: OrderStatus | string) => {
@@ -45,10 +46,24 @@ const getStatusBadgeColor = (status: OrderStatus | string) => {
 };
 
 export const AdminDashboard = () => {
-  const { data: statsData, isLoading: statsLoading, error: statsError } = useGetStatsQuery();
-  const { data: ordersData } = useGetAllOrdersQuery({ limit: 5, status: 'pending' });
-  const { data: customOrdersData } = useGetAllCustomOrdersQuery({ limit: 5, status: 'pending' });
-  const { data: servicesData } = useGetAllServicesQuery({ limit: 5, status: 'pending' });
+  const adminListQueryOptions = useAdminListQueryOptions();
+
+  const { data: statsData, isLoading: statsLoading, error: statsError } = useGetStatsQuery(
+    undefined,
+    adminListQueryOptions
+  );
+  const { data: ordersData } = useGetAllOrdersQuery(
+    { limit: 5, status: 'pending' },
+    adminListQueryOptions
+  );
+  const { data: customOrdersData } = useGetAllCustomOrdersQuery(
+    { limit: 5, status: 'pending' },
+    adminListQueryOptions
+  );
+  const { data: servicesData } = useGetAllServicesQuery(
+    { limit: 5, status: 'pending' },
+    adminListQueryOptions
+  );
   
   // State to track if containers are ready for charts
   const [chartsReady, setChartsReady] = useState(false);
