@@ -36,6 +36,35 @@ function requiresPayment(status: OrderStatus): boolean {
   return STATUSES_REQUIRING_PAYMENT.has(status);
 }
 
+const CUSTOMER_CANCELLABLE_STATUSES = new Set<OrderStatus>([
+  OrderStatus.PENDING,
+  OrderStatus.PROCESSING,
+]);
+
+export function canCustomerCancelOrder(status: OrderStatus): boolean {
+  return CUSTOMER_CANCELLABLE_STATUSES.has(status);
+}
+
+export function getCustomerCancelBlockMessage(status: OrderStatus): string {
+  if (status === OrderStatus.DISPATCHED || status === OrderStatus.READY_FOR_COLLECTION) {
+    return 'This order has already been dispatched and cannot be cancelled online. Please contact support for assistance.';
+  }
+  if (status === OrderStatus.COMPLETED) {
+    return 'Collected orders cannot be cancelled.';
+  }
+  if (status === OrderStatus.CANCELLED) {
+    return 'This order has already been cancelled.';
+  }
+  return 'This order cannot be cancelled online. Please contact support for assistance.';
+}
+
+export function assertCustomerCanCancelOrder(status: OrderStatus): OrderStatusTransitionResult {
+  if (canCustomerCancelOrder(status)) {
+    return { ok: true };
+  }
+  return { ok: false, message: getCustomerCancelBlockMessage(status) };
+}
+
 export function getOrderStatusLabel(status: OrderStatus): string {
   return STATUS_LABELS[status] ?? status;
 }

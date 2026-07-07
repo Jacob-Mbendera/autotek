@@ -57,8 +57,11 @@ import {
 } from 'lucide-react';
 import { OrderStatus, PaymentStatus } from '@shared/types';
 import {
+  assertCustomerCanCancelOrder,
   assertValidOrderStatusTransition,
+  canCustomerCancelOrder,
   getAllowedNextOrderStatuses,
+  getCustomerCancelBlockMessage,
   getOrderStatusLabel,
 } from '@shared/utils/orderStatusTransitions';
 
@@ -439,6 +442,14 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   };
 
   const handleCancelOrder = () => {
+    const cancelCheck = assertCustomerCanCancelOrder(order.status);
+    if (!cancelCheck.ok) {
+      dispatch(showNotification({
+        message: cancelCheck.message,
+        type: 'error',
+      }));
+      return;
+    }
     setShowCancelModal(true);
   };
 
@@ -555,6 +566,13 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     order.status !== OrderStatus.CANCELLED &&
     (order.paymentStatus === PaymentStatus.PENDING ||
       order.paymentStatus === PaymentStatus.FAILED);
+
+  const customerCanCancel = !isAdmin && canCustomerCancelOrder(order.status);
+  const customerCancelBlockedMessage = !isAdmin && !canCustomerCancelOrder(order.status)
+    && order.status !== OrderStatus.CANCELLED
+    && order.status !== OrderStatus.COMPLETED
+    ? getCustomerCancelBlockMessage(order.status)
+    : null;
 
   const handleCompletePayment = () => {
     const emailForPayment = isAuthenticated
@@ -992,15 +1010,30 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   )}
                 </Button>
               )}
-              {order.status !== OrderStatus.CANCELLED && order.status !== OrderStatus.COMPLETED && (
+              {customerCanCancel && (
                 <Button
                   variant="secondary"
                   className="w-full flex items-center justify-center"
                   onClick={handleCancelOrder}
+                  disabled={isCancelling}
                 >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Cancel Order
+                  {isCancelling ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel Order
+                    </>
+                  )}
                 </Button>
+              )}
+              {customerCancelBlockedMessage && (
+                <Body className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  {customerCancelBlockedMessage}
+                </Body>
               )}
               {order.status === OrderStatus.COMPLETED && isEligibleForReturn() && !hasExistingReturn() && (
                 <Button

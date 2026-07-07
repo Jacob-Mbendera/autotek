@@ -12,7 +12,7 @@ import { hashPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { processPayChanguRefund } from '../utils/paymentRefunds';
 import { log } from '../utils/logger';
-import { assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
+import { assertCustomerCanCancelOrder, assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
 
 // Helper function to format address for display
 const formatShippingAddress = (address: IShippingAddress | string): string => {
@@ -380,9 +380,10 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Only allow cancellation if order is pending or processing
-    if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.CANCELLED) {
-      res.status(400).json({ message: 'Order cannot be cancelled' });
+    // Customer cancel only while pending or processing (before dispatch)
+    const cancelCheck = assertCustomerCanCancelOrder(order.status);
+    if (!cancelCheck.ok) {
+      res.status(400).json({ message: cancelCheck.message });
       return;
     }
 

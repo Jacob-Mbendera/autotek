@@ -84,7 +84,7 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `done` |
 | **Problem** | Customer can cancel through `processing` and new pickup statuses (`dispatched`, `ready_for_collection`); UI shows Cancel for all non-completed orders. |
 | **Rules** | |
 | | • Customer cancel allowed only: `pending`, `processing` (and unpaid — align with BR-01) |
@@ -311,6 +311,7 @@ For each BR item:
 | 2026-07-07 | — | Created `BUSINESS_RULES_TODO.md`; backlog defined, no items started |
 | 2026-07-07 | BR-01 | Order status transitions + payment gating (shared util, API 400, admin dropdown) |
 | 2026-07-07 | BR-02 | Service status + provider gating (shared util, car/towing controllers, admin Services dropdown) |
+| 2026-07-07 | BR-04 | Restrict customer order cancel after dispatch (shared util, cancelOrder API, OrderDetail UI) |
 
 ---
 
@@ -322,4 +323,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-04** when ready (say “start BR-04” in Agent mode).*
+*Next step: Start **BR-03** when ready (say “start BR-03” in Agent mode).*
