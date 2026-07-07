@@ -51,7 +51,7 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `done` |
 | **Problem** | `assigned`, `in-progress`, `completed` can be set without `assignedDriver` / `assignedMechanic`. |
 | **Rules** | |
 | | • `assigned`, `in-progress`, `completed` require provider assigned |
@@ -310,6 +310,7 @@ For each BR item:
 |------|------|-------|
 | 2026-07-07 | — | Created `BUSINESS_RULES_TODO.md`; backlog defined, no items started |
 | 2026-07-07 | BR-01 | Order status transitions + payment gating (shared util, API 400, admin dropdown) |
+| 2026-07-07 | BR-02 | Service status + provider gating (shared util, car/towing controllers, admin Services dropdown) |
 
 ---
 
@@ -321,4 +322,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-02** when ready (say “start BR-02” in Agent mode).*
+*Next step: Start **BR-04** when ready (say “start BR-04” in Agent mode).*

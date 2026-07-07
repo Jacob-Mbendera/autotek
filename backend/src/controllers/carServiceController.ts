@@ -4,6 +4,8 @@ import CarService from '../models/CarService';
 import User from '../models/User';
 import { ProviderType, ServiceStatus, ServiceType, UserRole } from '../types/shared';
 import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
+import { assertValidServiceStatusTransition } from '../utils/serviceStatusTransitions';
+import { hasCarServiceProvider } from '../utils/serviceProviderOnRecord';
 import { populateAssignedMechanic } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
 import { resolveCoordsForAddress } from '../utils/geocoding';
@@ -544,7 +546,6 @@ export const updateCarService = async (
         return;
       }
 
-      if (status) carService.status = status;
       if (assignedMechanic !== undefined) {
         if (assignedMechanic === null || assignedMechanic === '') {
           carService.set('assignedMechanic', undefined);
@@ -594,6 +595,19 @@ export const updateCarService = async (
           carService.estimatedArrivalAt = d;
           carService.etaUpdatedAt = new Date();
         }
+      }
+
+      if (status) {
+        const transition = assertValidServiceStatusTransition(
+          previousStatus,
+          status,
+          hasCarServiceProvider(carService)
+        );
+        if (!transition.ok) {
+          res.status(400).json({ message: transition.message });
+          return;
+        }
+        carService.status = status;
       }
     } else {
       // Users should use /cancel endpoint instead

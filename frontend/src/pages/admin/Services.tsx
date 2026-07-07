@@ -11,6 +11,11 @@ import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
 import { Search, Filter, Eye, Loader2, Wrench, Truck, Package, X, MapPin, Calendar, User, Users, Phone, Mail, Banknote, Save, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { ServiceStatus } from '@shared/types';
+import {
+  assertValidServiceStatusTransition,
+  getAllowedNextServiceStatuses,
+  getServiceStatusLabel,
+} from '@shared/utils/serviceStatusTransitions';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 const formatCarServiceTypes = (service: any): string => {
@@ -58,6 +63,14 @@ function assigneeIdFromSelectedService(s: { type?: string; assignedDriver?: unkn
   const a = s.assignedMechanic;
   if (!a) return '';
   return typeof a === 'object' && a !== null && '_id' in a ? String((a as { _id: string })._id) : String(a);
+}
+
+function hasProviderOnService(
+  s: { type?: string; assignedDriver?: unknown; assignedMechanic?: unknown },
+  providerPickId?: string
+): boolean {
+  if (providerPickId?.trim()) return true;
+  return Boolean(assigneeIdFromSelectedService(s));
 }
 
 function isoToDateValue(iso: string | undefined): string {
@@ -137,7 +150,7 @@ export const AdminServices = () => {
   // Set newStatus when service is selected
   const handleServiceSelect = (service: any) => {
     setSelectedService(service);
-    setNewStatus(service.status);
+    setNewStatus('');
     const p = service.price;
     setPriceMwInput(p != null && p > 0 ? String(Math.round(Number(p))) : '');
     setCarServicePriceInputs(toPricingInputMap(service));
@@ -163,6 +176,22 @@ export const AdminServices = () => {
     { providerType: providerTypeForAssign },
     { skip: !selectedService }
   );
+
+  const serviceHasProvider = selectedService
+    ? hasProviderOnService(selectedService, providerPickId)
+    : false;
+  const allowedNextServiceStatuses = selectedService
+    ? getAllowedNextServiceStatuses(selectedService.status, serviceHasProvider)
+    : [];
+
+  useEffect(() => {
+    if (!selectedService || !newStatus) return;
+    const hasProvider = hasProviderOnService(selectedService, providerPickId);
+    const allowed = getAllowedNextServiceStatuses(selectedService.status, hasProvider);
+    if (!allowed.includes(newStatus)) {
+      setNewStatus('');
+    }
+  }, [selectedService, newStatus, providerPickId]);
 
   const handleSaveAssignmentEta = async () => {
     if (!selectedService) return;
@@ -201,7 +230,17 @@ export const AdminServices = () => {
   };
 
   const handleStatusUpdate = async () => {
-    if (!selectedService || !newStatus || newStatus === selectedService.status) {
+    if (!selectedService || !newStatus) {
+      return;
+    }
+
+    const transition = assertValidServiceStatusTransition(
+      selectedService.status,
+      newStatus as ServiceStatus,
+      serviceHasProvider
+    );
+    if (!transition.ok) {
+      dispatch(showNotification({ message: transition.message, type: 'error' }));
       return;
     }
 
@@ -220,8 +259,8 @@ export const AdminServices = () => {
 
       dispatch(showNotification({ message: 'Service status updated successfully!', type: 'success' }));
       await refetch();
-      // Update the selected service with new status
       setSelectedService({ ...selectedService, status: newStatus });
+      setNewStatus('');
     } catch (error: any) {
       const errorInfo = getErrorInfo(error, 'Failed to update service status');
       dispatch(showNotification({ 
@@ -567,25 +606,37 @@ export const AdminServices = () => {
             <div className="space-y-6">
               {/* Status Update */}
               <div>
-                <Body className="text-sm text-gray-400 mb-2">Status</Body>
+                <Body className="text-sm text-gray-400 mb-2">
+                  Status — current:{' '}
+                  <span className="font-semibold text-gray-200">
+                    {getServiceStatusLabel(selectedService.status)}
+                  </span>
+                </Body>
                 <div className="flex items-center gap-3">
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value as ServiceStatus)}
                     className="flex-1 px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                    disabled={allowedNextServiceStatuses.length === 0}
                   >
-                    <option value={ServiceStatus.PENDING}>Pending</option>
-                    <option value={ServiceStatus.ASSIGNED}>Assigned</option>
-                    <option value={ServiceStatus.IN_PROGRESS}>In Progress</option>
-                    <option value={ServiceStatus.COMPLETED}>Completed</option>
-                    <option value={ServiceStatus.CANCELLED}>Cancelled</option>
+                    <option value="">Select new status...</option>
+                    {allowedNextServiceStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {getServiceStatusLabel(status)}
+                      </option>
+                    ))}
                   </select>
                   <Button
                     variant="primary"
                     size="small"
                     dark
                     onClick={handleStatusUpdate}
-                    disabled={newStatus === selectedService.status || isUpdatingTowing || isUpdatingCar}
+                    disabled={
+                      !newStatus ||
+                      isUpdatingTowing ||
+                      isUpdatingCar ||
+                      allowedNextServiceStatuses.length === 0
+                    }
                     className="gap-2"
                   >
                     {isUpdatingTowing || isUpdatingCar ? (
@@ -596,9 +647,20 @@ export const AdminServices = () => {
                     Update Status
                   </Button>
                 </div>
-                {newStatus !== selectedService.status && (
-                  <Body className="text-xs text-amber-400 mt-2">
-                    Status will change from {selectedService.status} to {newStatus}
+                {!serviceHasProvider && selectedService.status !== ServiceStatus.CANCELLED && (
+                  <Body className="text-xs text-amber-400 mt-2 bg-amber-950/40 border border-amber-800/50 rounded-md px-3 py-2">
+                    No driver or mechanic assigned. Assign a provider before moving to Assigned or
+                    any later step.
+                  </Body>
+                )}
+                {allowedNextServiceStatuses.length === 0 ? (
+                  <Body className="text-xs text-gray-500 mt-2">
+                    No further status changes are available for this service.
+                  </Body>
+                ) : (
+                  <Body className="text-xs text-gray-500 mt-2">
+                    Advance one step at a time: Assigned → In Progress → Completed. Cancel is
+                    allowed until the job is completed.
                   </Body>
                 )}
               </div>

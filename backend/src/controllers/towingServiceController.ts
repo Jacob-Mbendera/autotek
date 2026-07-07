@@ -4,6 +4,8 @@ import TowingService from '../models/TowingService';
 import User from '../models/User';
 import { ProviderType, ServiceStatus, UserRole } from '../types/shared';
 import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
+import { assertValidServiceStatusTransition } from '../utils/serviceStatusTransitions';
+import { hasTowingServiceProvider } from '../utils/serviceProviderOnRecord';
 import { populateAssignedDriver } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
 import { resolveCoordsForAddress } from '../utils/geocoding';
@@ -455,7 +457,6 @@ export const updateTowingService = async (
         return;
       }
 
-      if (status) towingService.status = status;
       if (assignedDriver !== undefined) {
         if (assignedDriver === null || assignedDriver === '') {
           towingService.set('assignedDriver', undefined);
@@ -482,6 +483,19 @@ export const updateTowingService = async (
           towingService.estimatedArrivalAt = d;
           towingService.etaUpdatedAt = new Date();
         }
+      }
+
+      if (status) {
+        const transition = assertValidServiceStatusTransition(
+          previousStatus,
+          status,
+          hasTowingServiceProvider(towingService)
+        );
+        if (!transition.ok) {
+          res.status(400).json({ message: transition.message });
+          return;
+        }
+        towingService.status = status;
       }
     } else {
       // Users should use /cancel endpoint instead
