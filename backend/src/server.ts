@@ -9,6 +9,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 // import mongoSanitize from 'express-mongo-sanitize'; // Disabled due to Express 4.x compatibility issue
 import connectDB from './config/database';
+import { startStaleOrderCleanupScheduler } from './jobs/staleOrderCleanupScheduler';
 import { errorHandler } from './middleware/errorHandler';
 import { generalLimiter, authLimiter } from './middleware/rateLimiter';
 import authRoutes from './routes/authRoutes';
@@ -78,6 +79,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Connect to MongoDB
 connectDB();
+startStaleOrderCleanupScheduler();
 
 // Apply general rate limiter to all API routes
 app.use('/api/', generalLimiter);

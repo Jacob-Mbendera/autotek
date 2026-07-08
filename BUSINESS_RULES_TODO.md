@@ -214,11 +214,11 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `deferred` |
+| **Status** | `done` |
 | **Problem** | `paymentStatus: pending` orders can sit forever with stock reserved (until BR-03). |
 | **Rules** | Cron or scheduled job: auto-cancel unpaid orders after N hours; release stock; optional email |
-| **Backend** | New script or scheduler |
-| **Acceptance** | Orders unpaid > 24–48h auto-cancelled (N configurable) |
+| **Backend** | [`backend/src/jobs/expireStaleUnpaidOrders.ts`](backend/src/jobs/expireStaleUnpaidOrders.ts), scheduler in [`server.ts`](backend/src/server.ts), CLI `npm run jobs:expire-stale-orders` |
+| **Acceptance** | Orders unpaid > 24–48h auto-cancelled (N configurable via `STALE_UNPAID_ORDER_HOURS`) |
 | **Depends on** | BR-03 |
 
 ---
@@ -313,12 +313,13 @@ For each BR item:
 | 2026-07-07 | BR-02 | Service status + provider gating (shared util, car/towing controllers, admin Services dropdown) |
 | 2026-07-07 | BR-04 | Restrict customer order cancel after dispatch (shared util, cancelOrder API, OrderDetail UI) |
 | 2026-07-07 | BR-03 | Stock restore on cancel — Option B (deduct on create, restore on allowed cancel) |
+| 2026-07-08 | BR-13 | Auto-cancel stale unpaid orders (scheduler + CLI, stock restore, optional email) |
 
 ---
 
 ## Open decisions (resolve before or during BR-01 / BR-03 / BR-07)
 
-1. **Stock policy:** Option B in place; Option A (reserve on create, deduct on payment) deferred unless inventory issues arise
+1. **Stock policy:** Option B + BR-13 auto-cancel unpaid orders after `STALE_UNPAID_ORDER_HOURS` (default 48h); Option A deferred unless inventory issues arise
 2. **Service pay timing:** Must customer pay before `in-progress`, or only before `completed`? (BR-07)
 3. **Offline payment:** Will admin ever mark bank transfer paid manually before dispatch? If yes, need `paymentStatus` override workflow.
 
