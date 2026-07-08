@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
 import { getPrimaryProductImage, getProductImageUrl, hasValidProductImage, getProductPlaceholderUrl } from '../../utils/productImage';
+import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 export const AdminProducts = () => {
   const dispatch = useAppDispatch();
@@ -73,14 +74,19 @@ export const AdminProducts = () => {
   const cropQueueIndexRef = useRef(0);
   const croppedResultsRef = useRef<File[]>([]);
 
-  const { data, isLoading } = useGetProductsQuery({
-    page,
-    limit,
-    search: searchTerm || undefined,
-    category: categoryFilter || undefined,
-    status: statusFilter || undefined,
-    missingImages: missingImagesFilter || undefined,
-  });
+  const adminListQueryOptions = useAdminListQueryOptions();
+
+  const { data, isLoading } = useGetProductsQuery(
+    {
+      page,
+      limit,
+      search: searchTerm || undefined,
+      category: categoryFilter || undefined,
+      status: statusFilter || undefined,
+      missingImages: missingImagesFilter || undefined,
+    },
+    adminListQueryOptions
+  );
   const { data: categoriesData } = useGetCategoriesQuery();
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();

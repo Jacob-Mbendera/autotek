@@ -61,6 +61,8 @@ export const paymentApi = baseApi.injectEndpoints({
         'Payment',
         'Order',
         'Admin',
+        'Product',
+        { type: 'Product', id: 'LIST' },
       ],
     }),
   }),

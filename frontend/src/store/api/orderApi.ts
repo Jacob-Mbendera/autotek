@@ -70,6 +70,26 @@ interface OrdersQueryParams {
   status?: OrderStatus;
 }
 
+function productIdFromOrderItem(item: {
+  product: OrderItem['product'] | string | null | undefined;
+}): string | null {
+  const { product } = item;
+  if (!product) return null;
+  if (typeof product === 'string') return product;
+  if (typeof product === 'object' && '_id' in product && product._id) {
+    return product._id;
+  }
+  return null;
+}
+
+function productInvalidationTags(productIds: string[]) {
+  const uniqueIds = [...new Set(productIds.filter(Boolean))];
+  return [
+    { type: 'Product' as const, id: 'LIST' },
+    ...uniqueIds.map((id) => ({ type: 'Product' as const, id })),
+  ];
+}
+
 export const orderApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createOrder: builder.mutation<{ order: Order; token?: string; user?: any }, CreateOrderRequest>({
@@ -78,7 +98,11 @@ export const orderApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Order', 'Admin'],
+      invalidatesTags: (_result, _error, arg) => [
+        'Order',
+        'Admin',
+        ...productInvalidationTags(arg.items.map((item) => item.productId)),
+      ],
     }),
     getOrders: builder.query<OrdersResponse, OrdersQueryParams | void>({
       query: (params) => {
@@ -112,7 +136,18 @@ export const orderApi = baseApi.injectEndpoints({
           method: 'PUT',
         };
       },
-      invalidatesTags: (_result, _error, { id }) => [{ type: 'Order', id }, 'Order', 'Admin'],
+      invalidatesTags: (result, _error, { id }) => {
+        const productIds =
+          result?.order?.items
+            ?.map((item) => productIdFromOrderItem(item))
+            .filter((productId): productId is string => Boolean(productId)) ?? [];
+        return [
+          { type: 'Order', id },
+          'Order',
+          'Admin',
+          ...productInvalidationTags(productIds),
+        ];
+      },
     }),
   }),
 });

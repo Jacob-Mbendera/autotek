@@ -67,12 +67,12 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `done` |
 | **Problem** | Stock decremented at order **create** ([`orderController.ts`](backend/src/controllers/orderController.ts) ~L124); never restored on cancel; unpaid orders hold inventory. |
 | **Rules** | |
 | | • **Option A (recommended):** Soft-reserve on create, hard deduct on `paymentStatus === completed`; release reserve on cancel/timeout |
 | | • **Option B (simpler MVP):** Keep deduct on create but **restore stock** on cancel when order not yet `dispatched` |
-| | • Pick one approach and document in code comment |
+| | • **Implemented:** Option B in [`backend/src/utils/orderStock.ts`](backend/src/utils/orderStock.ts) |
 | **Backend** | `orderController` create/cancel; `paymentController` on payment success |
 | **Frontend** | None required if API enforces; optional admin note on cancel |
 | **Acceptance** | Cancelling unpaid `pending` order restores stock; paid + dispatched cancel policy aligned with BR-04 |
@@ -312,15 +312,16 @@ For each BR item:
 | 2026-07-07 | BR-01 | Order status transitions + payment gating (shared util, API 400, admin dropdown) |
 | 2026-07-07 | BR-02 | Service status + provider gating (shared util, car/towing controllers, admin Services dropdown) |
 | 2026-07-07 | BR-04 | Restrict customer order cancel after dispatch (shared util, cancelOrder API, OrderDetail UI) |
+| 2026-07-07 | BR-03 | Stock restore on cancel — Option B (deduct on create, restore on allowed cancel) |
 
 ---
 
 ## Open decisions (resolve before or during BR-01 / BR-03 / BR-07)
 
-1. **Stock policy:** Reserve on create vs deduct only on payment? (BR-03 Option A vs B)
+1. **Stock policy:** Option B in place; Option A (reserve on create, deduct on payment) deferred unless inventory issues arise
 2. **Service pay timing:** Must customer pay before `in-progress`, or only before `completed`? (BR-07)
 3. **Offline payment:** Will admin ever mark bank transfer paid manually before dispatch? If yes, need `paymentStatus` override workflow.
 
 ---
 
-*Next step: Start **BR-03** when ready (say “start BR-03” in Agent mode).*
+*Next step: Start **BR-09** when ready (say “start BR-09” in Agent mode).*

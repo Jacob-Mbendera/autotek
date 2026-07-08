@@ -1,7 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Order, { IShippingAddress } from '../models/Order';
-import Product from '../models/Product';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
 import Payment from '../models/Payment';
@@ -13,6 +12,14 @@ import { generateToken } from '../utils/jwt';
 import { processPayChanguRefund } from '../utils/paymentRefunds';
 import { log } from '../utils/logger';
 import { assertCustomerCanCancelOrder, assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
+import {
+  assertSufficientStock,
+  deductStockForOrderItem,
+  InsufficientStockError,
+  loadProductForStockCheck,
+  restoreStockForOrderItems,
+} from '../utils/orderStock';
+import mongoose from 'mongoose';
 
 // Helper function to format address for display
 const formatShippingAddress = (address: IShippingAddress | string): string => {
@@ -100,17 +107,20 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     const orderItems = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      const product = await loadProductForStockCheck(item.productId);
       if (!product) {
         res.status(400).json({ message: `Product ${item.productId} not found` });
         return;
       }
 
-      if (product.stock < item.quantity) {
-        res.status(400).json({
-          message: `Insufficient stock for ${product.name}. Available: ${product.stock}`,
-        });
-        return;
+      try {
+        assertSufficientStock(product, item.quantity);
+      } catch (error) {
+        if (error instanceof InsufficientStockError) {
+          res.status(400).json({ message: error.message });
+          return;
+        }
+        throw error;
       }
 
       const itemTotal = product.price * item.quantity;
@@ -122,12 +132,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         price: product.price,
       });
 
-      // Update stock
-      product.stock -= item.quantity;
-      if (product.stock === 0) {
-        product.status = 'out-of-stock';
-      }
-      await product.save();
+      await deductStockForOrderItem(product, item.quantity);
     }
 
     // Apply coupon if provided
@@ -387,9 +392,20 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Update order status to cancelled
-    order.status = OrderStatus.CANCELLED;
-    await order.save();
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      order.status = OrderStatus.CANCELLED;
+      await order.save({ session });
+      await restoreStockForOrderItems(order.items, session);
+      await session.commitTransaction();
+    } catch (stockError) {
+      await session.abortTransaction();
+      throw stockError;
+    } finally {
+      session.endSession();
+    }
 
     // Process refund if payment was completed
     let refundResult = null;
