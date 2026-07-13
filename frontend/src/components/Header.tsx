@@ -15,9 +15,8 @@ export const Header = () => {
   const cart = useAppSelector((state) => state.cart);
   const { data: wishlistData } = useGetWishlistQuery(undefined, {
     skip: !isAuthenticated,
-    // Optimistic updates handle freshness, so we don't need aggressive refetching
-    refetchOnMountOrArgChange: false,
-    refetchOnFocus: false,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
   const dispatch = useAppDispatch();
   const navigate = useNavigate();

@@ -11,6 +11,7 @@ import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
 import { ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
+import { getSafeRedirectPath } from '../utils/safeRedirectPath';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -34,8 +35,7 @@ export const Login = () => {
       const result = await login(formData).unwrap();
       dispatch(setUser({ user: result.user, token: result.token }));
       dispatch(showNotification({ message: 'Login successful', type: 'success' }));
-      // Redirect to returnUrl if provided, otherwise to home
-      const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
+      const redirectTo = getSafeRedirectPath(returnUrl, '/');
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
       const errorInfo = getErrorInfo(err);

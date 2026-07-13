@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, ShoppingCart, Package, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAppDispatch } from '../store/types';
-import { addItem } from '../store/slices/cartSlice';
+import { useGuardedAddToCart } from '../hooks/useGuardedAddToCart';
 import type { Product } from '../store/api/productApi';
 import { Button } from './ui/Button';
 import { H2, H4, Body } from './ui/Typography';
@@ -17,7 +16,7 @@ interface QuickViewModalProps {
 }
 
 export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps) => {
-  const dispatch = useAppDispatch();
+  const { guardedAddToCart } = useGuardedAddToCart();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
@@ -50,15 +49,13 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
   const currentBlur = currentEntry ? getProductImageBlur(currentEntry) : undefined;
 
   const handleAddToCart = () => {
-    dispatch(
-      addItem({
-        productId: product._id,
-        productName: product.name,
-        price: product.price,
-        quantity: 1,
-        image: getProductImageUrl(product.images?.[0]),
-      })
-    );
+    guardedAddToCart({
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      quantity: 1,
+      image: getProductImageUrl(product.images?.[0]),
+    });
   };
 
   const handlePreviousImage = () => {

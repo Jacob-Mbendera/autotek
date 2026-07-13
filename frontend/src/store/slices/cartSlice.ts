@@ -19,7 +19,7 @@ interface AppliedCoupon {
   value: number;
 }
 
-interface CartState {
+export interface CartState {
   items: CartItem[];
   savedForLater: CartItem[];
   totalAmount: number;
@@ -107,7 +107,12 @@ const cartSlice = createSlice({
       }
       const item = state.savedForLater.find((item) => item.productId === action.payload);
       if (item) {
-        state.items.push(item);
+        const existingInCart = state.items.find((cartItem) => cartItem.productId === item.productId);
+        if (existingInCart) {
+          existingInCart.quantity += item.quantity;
+        } else {
+          state.items.push(item);
+        }
         state.savedForLater = state.savedForLater.filter((item) => item.productId !== action.payload);
         const { totalAmount, totalItems } = calculateTotals(state.items);
         state.totalAmount = totalAmount;
@@ -143,8 +148,28 @@ const cartSlice = createSlice({
       state.appliedCoupon = undefined;
       state.discount = 0;
     },
+    replaceCartState: (state, action: PayloadAction<CartState>) => {
+      state.items = action.payload.items ?? [];
+      state.savedForLater = action.payload.savedForLater ?? [];
+      state.totalAmount = action.payload.totalAmount ?? 0;
+      state.totalItems = action.payload.totalItems ?? 0;
+      state.appliedCoupon = action.payload.appliedCoupon;
+      state.discount = action.payload.discount ?? 0;
+    },
   },
 });
 
-export const { addItem, removeItem, updateQuantity, clearCart, saveForLater, moveToCart, updateItemNote, removeFromSaved, applyCoupon, removeCoupon } = cartSlice.actions;
+export const {
+  addItem,
+  removeItem,
+  updateQuantity,
+  clearCart,
+  saveForLater,
+  moveToCart,
+  updateItemNote,
+  removeFromSaved,
+  applyCoupon,
+  removeCoupon,
+  replaceCartState,
+} = cartSlice.actions;
 export default cartSlice.reducer;

@@ -1,6 +1,12 @@
 import { baseApi } from './baseApi';
 import type { OrderStatus, PaymentMethod, PaymentStatus } from '../../../../shared/types';
 import type { ProductImageField } from './productApi';
+import { broadcastClientSync } from '../../utils/crossTabSync';
+import {
+  clearPendingPaychanguOrder,
+  clearPaychanguRedirectAt,
+  getPendingPaychanguOrder,
+} from '../../utils/pendingPaychanguOrder';
 
 export interface OrderItem {
   product: {
@@ -103,6 +109,15 @@ export const orderApi = baseApi.injectEndpoints({
         'Admin',
         ...productInvalidationTags(arg.items.map((item) => item.productId)),
       ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          broadcastClientSync('orders');
+          broadcastClientSync('products');
+        } catch {
+          /* ignore */
+        }
+      },
     }),
     getOrders: builder.query<OrdersResponse, OrdersQueryParams | void>({
       query: (params) => {
@@ -147,6 +162,20 @@ export const orderApi = baseApi.injectEndpoints({
           'Admin',
           ...productInvalidationTags(productIds),
         ];
+      },
+      async onQueryStarted(arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          const { orderId: pendingId } = getPendingPaychanguOrder();
+          if (pendingId && pendingId === arg.id) {
+            clearPendingPaychanguOrder();
+            clearPaychanguRedirectAt();
+          }
+          broadcastClientSync('orders');
+          broadcastClientSync('products');
+        } catch {
+          /* ignore */
+        }
       },
     }),
   }),

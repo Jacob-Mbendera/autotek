@@ -160,11 +160,11 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `completed` |
 | **Problem** | Admin can save ETA without provider; customer gets “on the way” with no name. |
-| **Rules** | `estimatedArrivalAt` requires `assignedDriver` / `assignedMechanic`; optionally auto-set status to `assigned` |
-| **Backend** | `updateCarService`, `updateTowingService` |
-| **Frontend** | [`admin/Services.tsx`](frontend/src/pages/admin/Services.tsx) — disable ETA save or show validation |
+| **Rules** | `estimatedArrivalAt` requires `assignedDriver` / `assignedMechanic`; clearing provider also clears ETA |
+| **Backend** | `updateCarService`, `updateTowingService` + `shared/utils/serviceEtaRules.ts` |
+| **Frontend** | [`admin/Services.tsx`](frontend/src/pages/admin/Services.tsx) — disable ETA controls without provider |
 | **Acceptance** | ETA save blocked without provider |
 
 ---
@@ -314,6 +314,7 @@ For each BR item:
 | 2026-07-07 | BR-04 | Restrict customer order cancel after dispatch (shared util, cancelOrder API, OrderDetail UI) |
 | 2026-07-07 | BR-03 | Stock restore on cancel — Option B (deduct on create, restore on allowed cancel) |
 | 2026-07-08 | BR-13 | Auto-cancel stale unpaid orders (scheduler + CLI, stock restore, optional email) |
+| 2026-07-13 | BR-09 | ETA requires assigned provider (shared rule, car/towing API 400, admin Services UI) |
 
 ---
 
@@ -325,4 +326,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-09** when ready (say “start BR-09” in Agent mode).*
+*Next step: Start **BR-10** when ready (say “start BR-10” in Agent mode), or **BR-05** for coupon usage on payment.*

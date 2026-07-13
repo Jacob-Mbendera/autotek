@@ -16,6 +16,7 @@ import {
   getAllowedNextServiceStatuses,
   getServiceStatusLabel,
 } from '@shared/utils/serviceStatusTransitions';
+import { ETA_REQUIRES_PROVIDER_MESSAGE } from '@shared/utils/serviceEtaRules';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 const formatCarServiceTypes = (service: any): string => {
@@ -160,6 +161,15 @@ export const AdminServices = () => {
   };
 
   const applyEtaPreset = (minutesFromNow: number) => {
+    if (!providerPickId) {
+      dispatch(
+        showNotification({
+          message: ETA_REQUIRES_PROVIDER_MESSAGE,
+          type: 'warning',
+        })
+      );
+      return;
+    }
     const preset = etaPresetFromNow(minutesFromNow);
     setEtaDateInput(preset.date);
     setEtaTimeInput(preset.time);
@@ -204,8 +214,17 @@ export const AdminServices = () => {
       );
       return;
     }
+    const etaIso = combineDateAndTimeToIso(etaDateInput, etaTimeInput);
+    if (etaIso && !providerPickId) {
+      dispatch(
+        showNotification({
+          message: ETA_REQUIRES_PROVIDER_MESSAGE,
+          type: 'warning',
+        })
+      );
+      return;
+    }
     try {
-      const etaIso = combineDateAndTimeToIso(etaDateInput, etaTimeInput);
       if (selectedService.type === 'towing') {
         const updated = await updateTowingService({
           id: selectedService._id,
@@ -723,8 +742,13 @@ export const AdminServices = () => {
                   <div>
                     <span className="block text-xs text-gray-400 mb-1 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Estimated arrival (optional)
+                      Estimated arrival {providerPickId ? '(optional)' : ''}
                     </span>
+                    {!providerPickId && (
+                      <Body className="text-xs text-amber-400/90 mb-2">
+                        Assign a provider before setting an estimated arrival time.
+                      </Body>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="admin-service-eta-date" className="block text-xs text-gray-500 mb-1">
@@ -735,7 +759,8 @@ export const AdminServices = () => {
                           type="date"
                           value={etaDateInput}
                           onChange={(e) => setEtaDateInput(e.target.value)}
-                          className={etaFieldClassName}
+                          disabled={!providerPickId}
+                          className={`${etaFieldClassName} disabled:opacity-50 disabled:cursor-not-allowed`}
                         />
                       </div>
                       <div>
@@ -747,7 +772,8 @@ export const AdminServices = () => {
                           type="time"
                           value={etaTimeInput}
                           onChange={(e) => setEtaTimeInput(e.target.value)}
-                          className={etaFieldClassName}
+                          disabled={!providerPickId}
+                          className={`${etaFieldClassName} disabled:opacity-50 disabled:cursor-not-allowed`}
                         />
                       </div>
                     </div>
@@ -757,6 +783,7 @@ export const AdminServices = () => {
                         size="small"
                         dark
                         type="button"
+                        disabled={!providerPickId}
                         onClick={() => applyEtaPreset(30)}
                       >
                         In 30 min
@@ -766,6 +793,7 @@ export const AdminServices = () => {
                         size="small"
                         dark
                         type="button"
+                        disabled={!providerPickId}
                         onClick={() => applyEtaPreset(60)}
                       >
                         In 1 hour
@@ -775,6 +803,7 @@ export const AdminServices = () => {
                         size="small"
                         dark
                         type="button"
+                        disabled={!providerPickId}
                         onClick={() => applyEtaPreset(120)}
                       >
                         In 2 hours

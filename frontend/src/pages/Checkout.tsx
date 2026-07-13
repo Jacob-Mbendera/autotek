@@ -1,7 +1,7 @@
 import React, { useEffect, useState, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
-import { useCreateOrderMutation } from '../store/api/orderApi';
+import { useCreateOrderMutation, useGetOrdersQuery } from '../store/api/orderApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
 import { clearCart, removeCoupon } from '../store/slices/cartSlice';
@@ -9,9 +9,11 @@ import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getResolvedFrontendBaseUrl } from '../utils/frontendBaseUrl';
-import { setPendingPaychanguOrder, setPaychanguRedirectAt } from '../utils/pendingPaychanguOrder';
+import { setPendingPaychanguOrder, setPaychanguRedirectAt, getPendingPaychanguOrder, isPendingPaychanguOrderFresh } from '../utils/pendingPaychanguOrder';
+import { broadcastClientSync } from '../utils/crossTabSync';
 import { useReconcilePendingPaychanguOrder } from '../hooks/useReconcilePendingPaychanguOrder';
-import { UserRole } from '@shared/types';
+import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
+import { UserRole, PaymentStatus } from '@shared/types';
 import type { PaymentMethod } from '../../../shared/types';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -26,10 +28,43 @@ export const Checkout = () => {
   const cart = useAppSelector((state) => state.cart);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
-  useReconcilePendingPaychanguOrder();
+  const { shouldBlockCheckout, isCheckingPayment } = useReconcilePendingPaychanguOrder();
   
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
   const [initiatePayment, { isLoading: isInitiatingPayment }] = useInitiatePaymentMutation();
+  const { completePayment, isCompletingPayment } = useCompleteOrderPayment();
+
+  const { data: pendingOrdersData } = useGetOrdersQuery(
+    { status: 'pending', limit: 10 },
+    { skip: !isAuthenticated }
+  );
+
+  const { orderId: localPendingOrderId } = getPendingPaychanguOrder();
+
+  const resolvePendingUnpaidOrderId = (): string => {
+    const pendingFromApi = pendingOrdersData?.orders?.find(
+      (order) =>
+        order.status === 'pending' &&
+        (order.paymentStatus === PaymentStatus.PENDING ||
+          order.paymentStatus === PaymentStatus.FAILED)
+    );
+
+    if (pendingFromApi) {
+      return pendingFromApi._id;
+    }
+
+    // Authenticated users: trust API only so a stale local PayChangu marker
+    // cannot resume an already-cancelled order.
+    if (isAuthenticated) {
+      return '';
+    }
+
+    if (isPendingPaychanguOrderFresh() && localPendingOrderId) {
+      return localPendingOrderId;
+    }
+
+    return '';
+  };
   
   // Guest information (only if not authenticated)
   const [guestName, setGuestName] = useState('');
@@ -46,7 +81,7 @@ export const Checkout = () => {
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
   
-  const isLoading = isCreatingOrder || isInitiatingPayment;
+  const isLoading = isCreatingOrder || isInitiatingPayment || isCompletingPayment;
 
   useEffect(() => {
     if (user?.role === UserRole.ADMIN) {
@@ -185,6 +220,28 @@ export const Checkout = () => {
     }
 
     try {
+      const existingPendingOrderId = resolvePendingUnpaidOrderId();
+
+      if (paymentMethod === PAYMENT_METHOD_PAYCHANGU && existingPendingOrderId) {
+        dispatch(
+          showNotification({
+            message: 'Resuming payment on your existing pending order.',
+            type: 'info',
+          })
+        );
+        dispatch(clearCart());
+        dispatch(removeCoupon());
+        broadcastClientSync('orders');
+        broadcastClientSync('products');
+
+        await completePayment({
+          orderId: existingPendingOrderId,
+          guestEmail: !isAuthenticated ? guestEmail.trim() : undefined,
+          phoneNumber: user?.phone || guestPhone.trim(),
+        });
+        return;
+      }
+
       const orderItems = cart.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -228,6 +285,12 @@ export const Checkout = () => {
         }));
       }
 
+      // Clear cart as soon as the order is created — inventory is already reserved (BR-03).
+      dispatch(clearCart());
+      dispatch(removeCoupon());
+      broadcastClientSync('orders');
+      broadcastClientSync('products');
+
       // Initiate PayChangu payment and redirect to PayChangu checkout
       if (paymentMethod === PAYMENT_METHOD_PAYCHANGU) {
         // Use authenticated user email if account was created, otherwise use guest email
@@ -252,12 +315,11 @@ export const Checkout = () => {
           );
           setPaychanguRedirectAt();
           window.location.href = paymentResult.redirectUrl;
-          return; // Don't clear cart yet, wait for payment confirmation
+          return;
         }
       }
 
-      // For other payment methods, clear cart and redirect to order confirmation
-      dispatch(clearCart());
+      // For other payment methods, redirect to order confirmation
 
       // Store guest email in sessionStorage for order lookup if guest (and account wasn't created)
       if (!orderResult.user && !isAuthenticated) {
@@ -293,6 +355,14 @@ export const Checkout = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <H1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</H1>
+
+      {shouldBlockCheckout && (
+        <Card variant="md" className="mb-6 bg-amber-50 border-amber-200">
+          <Body className="text-sm text-amber-800">
+            Confirming your recent payment attempt. Please wait a moment before placing another order.
+          </Body>
+        </Card>
+      )}
 
       {!isAuthenticated && (
         <Card variant="md" className="mb-6 bg-blue-50 border-blue-200">
@@ -840,9 +910,9 @@ export const Checkout = () => {
                 variant="primary"
                 size="default"
                 className="w-full mt-6"
-                disabled={isLoading}
+                disabled={isLoading || shouldBlockCheckout}
               >
-                {isLoading ? (
+                {isLoading || isCheckingPayment ? (
                   'Placing Order...'
                 ) : (
                   <>

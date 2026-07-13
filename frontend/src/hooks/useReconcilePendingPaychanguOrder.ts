@@ -13,6 +13,7 @@ import {
   markPendingReconcileGaveUp,
   isRecentPaychanguRedirect,
 } from '../utils/pendingPaychanguOrder';
+import { broadcastClientSync } from '../utils/crossTabSync';
 import { baseApi } from '../store/api/baseApi';
 
 const VERIFY_POLL_MS = 5000;
@@ -128,6 +129,8 @@ export function useReconcilePendingPaychanguOrder(
     dispatch(clearCart());
     dispatch(removeCoupon());
     clearPendingPaychanguOrder();
+    broadcastClientSync('orders');
+    broadcastClientSync('products');
     dispatch(
       showNotification({
         message: 'Payment confirmed. Your cart was updated.',

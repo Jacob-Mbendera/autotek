@@ -44,9 +44,11 @@ const DeliveryLocations = lazy(() => import('./pages/admin').then(m => ({ defaul
 const AdminMediaLibrary = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminMediaLibrary })));
 
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { GuestOnlyRoute } from './components/GuestOnlyRoute';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
 import { Toast } from './components/ui/Toast';
+import { CrossTabSync } from './components/CrossTabSync';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -61,13 +63,35 @@ const PageLoader = () => (
 function App() {
   return (
     <BrowserRouter>
+      <CrossTabSync />
       <Toast />
       <Suspense fallback={<PageLoader />}>
         <Routes>
         {/* Public routes without layout */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route
+          path="/login"
+          element={
+            <GuestOnlyRoute>
+              <Login />
+            </GuestOnlyRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <GuestOnlyRoute>
+              <Register />
+            </GuestOnlyRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <GuestOnlyRoute>
+              <ForgotPassword />
+            </GuestOnlyRoute>
+          }
+        />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/cancel" element={<PaymentCancel />} />

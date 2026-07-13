@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGetProductQuery } from '../store/api/productApi';
 import { useAppDispatch, useAppSelector } from '../store/types';
 import { addItem, clearCart } from '../store/slices/cartSlice';
+import { useGuardedAddToCart } from '../hooks/useGuardedAddToCart';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -21,6 +22,7 @@ export const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { guardedAddToCart, hasPendingUnpaidOrder } = useGuardedAddToCart();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
 
@@ -42,21 +44,29 @@ export const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (data?.product) {
-      dispatch(
-        addItem({
-          productId: data.product._id,
-          productName: data.product.name,
-          price: data.product.price,
-          quantity: 1,
-          image: getProductImageUrl(data.product.images?.[0]),
-        })
-      );
-      dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
+      guardedAddToCart({
+        productId: data.product._id,
+        productName: data.product.name,
+        price: data.product.price,
+        quantity: 1,
+        image: getProductImageUrl(data.product.images?.[0]),
+      });
     }
   };
 
   const handleBuyNow = () => {
     if (data?.product) {
+      if (hasPendingUnpaidOrder) {
+        dispatch(
+          showNotification({
+            message:
+              'You have a pending unpaid order. Complete or cancel it before starting a new checkout.',
+            type: 'warning',
+          })
+        );
+        return;
+      }
+
       // Clear cart and add only this product
       dispatch(clearCart());
       dispatch(
@@ -68,7 +78,6 @@ export const ProductDetail = () => {
           image: getProductImageUrl(data.product.images?.[0]),
         })
       );
-      // Navigate to checkout
       navigate('/checkout');
     }
   };

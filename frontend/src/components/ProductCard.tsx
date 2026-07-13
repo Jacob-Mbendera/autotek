@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Eye, Star, Sparkles, Package, Heart, GitCompare, Tag, Award, Zap } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/types';
-import { addItem } from '../store/slices/cartSlice';
+import { useGuardedAddToCart } from '../hooks/useGuardedAddToCart';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -21,6 +21,7 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardProps) => {
   const dispatch = useAppDispatch();
+  const { guardedAddToCart } = useGuardedAddToCart();
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [optimisticWishlistState, setOptimisticWishlistState] = useState<boolean | null>(null);
 
@@ -58,16 +59,13 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
       return;
     }
     
-    dispatch(
-      addItem({
-        productId: product._id,
-        productName: product.name,
-        price: product.price,
-        quantity: 1,
-        image: getProductImageUrl(product.images?.[0]),
-      })
-    );
-    dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
+    guardedAddToCart({
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      quantity: 1,
+      image: getProductImageUrl(product.images?.[0]),
+    });
   };
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {

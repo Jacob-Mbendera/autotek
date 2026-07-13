@@ -1,5 +1,6 @@
 import { baseApi } from './baseApi';
 import type { Product } from './productApi';
+import { broadcastClientSync } from '../../utils/crossTabSync';
 
 export interface Wishlist {
   _id: string;
@@ -21,14 +22,12 @@ export const wishlistApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      // Optimistic update: immediately update cache before API responds
+      invalidatesTags: ['Wishlist'],
       async onQueryStarted({ productId }, { dispatch, queryFulfilled, getState }) {
-        // Get the product details from the product cache if available
         const state = getState() as any;
         const productCache = state.api.queries;
         let productToAdd: Product | undefined;
 
-        // Try to find the product in the cache
         for (const key in productCache) {
           if (key.startsWith('getProducts') || key.startsWith('getProduct')) {
             const cached = productCache[key];
@@ -41,11 +40,9 @@ export const wishlistApi = baseApi.injectEndpoints({
           }
         }
 
-        // Optimistically update the wishlist cache
         const patchResult = dispatch(
           wishlistApi.util.updateQueryData('getWishlist', undefined, (draft) => {
             if (draft.wishlist && productToAdd) {
-              // Add product if not already in wishlist
               const exists = draft.wishlist.products.some((p) => p._id === productId);
               if (!exists) {
                 draft.wishlist.products.push(productToAdd);
@@ -56,14 +53,13 @@ export const wishlistApi = baseApi.injectEndpoints({
 
         try {
           const { data } = await queryFulfilled;
-          // Update with actual server data
           dispatch(
             wishlistApi.util.updateQueryData('getWishlist', undefined, (draft) => {
               draft.wishlist = data.wishlist;
             })
           );
+          broadcastClientSync('wishlist');
         } catch {
-          // Revert optimistic update on error
           patchResult.undo();
         }
       },
@@ -73,12 +69,11 @@ export const wishlistApi = baseApi.injectEndpoints({
         url: `/wishlist/${productId}`,
         method: 'DELETE',
       }),
-      // Optimistic update: immediately remove from cache before API responds
+      invalidatesTags: ['Wishlist'],
       async onQueryStarted(productId, { dispatch, queryFulfilled }) {
         const patchResult = dispatch(
           wishlistApi.util.updateQueryData('getWishlist', undefined, (draft) => {
             if (draft.wishlist) {
-              // Remove product from wishlist
               draft.wishlist.products = draft.wishlist.products.filter(
                 (p) => p._id !== productId
               );
@@ -88,14 +83,13 @@ export const wishlistApi = baseApi.injectEndpoints({
 
         try {
           const { data } = await queryFulfilled;
-          // Update with actual server data
           dispatch(
             wishlistApi.util.updateQueryData('getWishlist', undefined, (draft) => {
               draft.wishlist = data.wishlist;
             })
           );
+          broadcastClientSync('wishlist');
         } catch {
-          // Revert optimistic update on error
           patchResult.undo();
         }
       },
@@ -105,8 +99,8 @@ export const wishlistApi = baseApi.injectEndpoints({
         url: '/wishlist',
         method: 'DELETE',
       }),
-      // Optimistic update: immediately clear cache before API responds
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+      invalidatesTags: ['Wishlist'],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         const patchResult = dispatch(
           wishlistApi.util.updateQueryData('getWishlist', undefined, (draft) => {
             if (draft.wishlist) {
@@ -117,14 +111,13 @@ export const wishlistApi = baseApi.injectEndpoints({
 
         try {
           const { data } = await queryFulfilled;
-          // Update with actual server data
           dispatch(
             wishlistApi.util.updateQueryData('getWishlist', undefined, (draft) => {
               draft.wishlist = data.wishlist;
             })
           );
+          broadcastClientSync('wishlist');
         } catch {
-          // Revert optimistic update on error
           patchResult.undo();
         }
       },

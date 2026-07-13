@@ -6,6 +6,7 @@ import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/ap
 import { baseApi } from '../store/api/baseApi';
 import { clearCart } from '../store/slices/cartSlice';
 import { clearPendingPaychanguOrder, clearPaychanguRedirectAt } from '../utils/pendingPaychanguOrder';
+import { broadcastClientSync } from '../utils/crossTabSync';
 import {
   clearPendingPaychanguService,
   getPendingPaychanguService,
@@ -62,6 +63,7 @@ export const PaymentSuccess = () => {
       dispatch(clearCart());
       clearPendingPaychanguOrder();
       clearPaychanguRedirectAt();
+      broadcastClientSync('orders');
       hasClearedCartRef.current = true;
     }
   };

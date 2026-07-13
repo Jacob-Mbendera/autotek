@@ -1,21 +1,27 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGetOrderQuery } from '../store/api/orderApi';
+import { useGetOrderQuery, useCancelOrderMutation } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery } from '../store/api/paymentApi';
 import { clearPendingPaychanguOrder, clearPaychanguRedirectAt } from '../utils/pendingPaychanguOrder';
 import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
+import { useAppDispatch } from '../store/types';
+import { showNotification } from '../store/slices/uiSlice';
+import { getErrorInfo } from '../utils/errorHandler';
+import { broadcastClientSync } from '../utils/crossTabSync';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
-import { XCircle, ArrowLeft, CreditCard, Loader2, AlertCircle } from 'lucide-react';
-import { PaymentStatus } from '@shared/types';
+import { XCircle, ArrowLeft, CreditCard, Loader2, AlertCircle, Ban } from 'lucide-react';
+import { PaymentStatus, OrderStatus } from '@shared/types';
 
 export const PaymentCancel = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const email = searchParams.get('email');
   const { completePayment, isCompletingPayment } = useCompleteOrderPayment();
+  const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
 
   useEffect(() => {
     clearPendingPaychanguOrder();
@@ -39,6 +45,11 @@ export const PaymentCancel = () => {
     ? payment.paymentMethod.replace('-', ' ')
     : 'Not specified';
 
+  const canCancelOrder =
+    Boolean(order) &&
+    order?.status === OrderStatus.PENDING &&
+    order?.paymentStatus !== PaymentStatus.COMPLETED;
+
   const handleRetryPayment = () => {
     if (!orderId) return;
     void completePayment({
@@ -46,6 +57,26 @@ export const PaymentCancel = () => {
       guestEmail: email || order?.guestInfo?.email,
       phoneNumber: order?.guestInfo?.phone,
     });
+  };
+
+  const handleCancelOrder = async () => {
+    if (!orderId) return;
+
+    try {
+      await cancelOrder({ id: orderId, email: email || undefined }).unwrap();
+      broadcastClientSync('orders');
+      broadcastClientSync('products');
+      dispatch(
+        showNotification({
+          message: 'Order cancelled. Reserved stock has been released.',
+          type: 'success',
+        })
+      );
+      navigate('/products');
+    } catch (error: unknown) {
+      const errorInfo = getErrorInfo(error, 'Could not cancel order. Please try again.');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
   };
 
   if (isLoading) {
@@ -75,8 +106,8 @@ export const PaymentCancel = () => {
               <Body className="font-medium text-amber-800">Order Still Pending</Body>
             </div>
             <Body className="text-sm text-amber-700 mb-3">
-              Your order (#{orderId.slice(0, 8)}...) is still pending. You can complete the payment
-              to confirm your order.
+              Your order (#{orderId.slice(0, 8)}...) is still pending. Complete payment to confirm
+              your order, or cancel it to release reserved stock.
             </Body>
             {order && (
               <div className="mt-3 pt-3 border-t border-amber-200 space-y-1 text-sm">
@@ -112,7 +143,7 @@ export const PaymentCancel = () => {
               <Button
                 variant="primary"
                 onClick={handleRetryPayment}
-                disabled={isCompletingPayment}
+                disabled={isCompletingPayment || isCancelling}
                 className="flex items-center justify-center gap-2"
               >
                 {isCompletingPayment ? (
@@ -127,6 +158,26 @@ export const PaymentCancel = () => {
                   </>
                 )}
               </Button>
+              {canCancelOrder && (
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleCancelOrder()}
+                  disabled={isCancelling || isCompletingPayment}
+                  className="flex items-center justify-center gap-2 border-red-200 text-red-700 hover:bg-red-50"
+                >
+                  {isCancelling ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                      Cancelling...
+                    </>
+                  ) : (
+                    <>
+                      <Ban className="h-5 w-5" />
+                      Cancel Order & Release Stock
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 onClick={() => navigate(`/orders/${orderId}`)}

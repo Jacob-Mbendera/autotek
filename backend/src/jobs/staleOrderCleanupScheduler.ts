@@ -1,5 +1,6 @@
 import {
   expireStaleUnpaidOrders,
+  getStaleUnpaidOrderMaxAgeMs,
   isStaleOrderCleanupEnabled,
 } from './expireStaleUnpaidOrders';
 import { log } from '../utils/logger';
@@ -34,8 +35,11 @@ export function startStaleOrderCleanupScheduler(): void {
   }
 
   const intervalMs = getCleanupIntervalMs();
+  const maxAgeMs = getStaleUnpaidOrderMaxAgeMs();
   log.info('Stale unpaid order cleanup scheduler started', {
     intervalMs,
+    maxAgeMs,
+    maxAgeMinutes: Math.round(maxAgeMs / 60_000),
     startupDelayMs: STARTUP_DELAY_MS,
   });
 

@@ -13,6 +13,7 @@ import {
   BarChart3, FileText, Sparkles, CreditCard
 } from 'lucide-react';
 import type { OrderStatus } from '@shared/types';
+import { formatOrderItemCount, getOrderTotalQuantity } from '../utils/orderItems';
 import { format } from 'date-fns';
 
 // Helper function to get status badge colors
@@ -235,7 +236,7 @@ export const Orders = () => {
           order._id.slice(-8).toUpperCase(),
           formatDate(order.createdAt),
           order.status,
-          order.items.length,
+          getOrderTotalQuantity(order),
           order.totalAmount,
           order.paymentStatus,
         ].join(',')
@@ -657,7 +658,7 @@ export const Orders = () => {
                           <span>Items</span>
                         </div>
                         <span className="text-gray-900 font-medium">
-                          {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                          {formatOrderItemCount(order)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
@@ -761,7 +762,7 @@ export const Orders = () => {
                     </td>
                     <td className="py-4 px-4">
                       <Body className="text-sm text-gray-600">
-                        {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                        {formatOrderItemCount(order)}
                       </Body>
                     </td>
                     <td className="py-4 px-4">

@@ -7,18 +7,34 @@ import Order, { IOrder } from '../models/Order';
 import User from '../models/User';
 import { OrderStatus, PaymentStatus } from '../types/shared';
 import { emailService } from '../services/emailService';
-import { restoreStockForOrderItems } from '../utils/orderStock';
+import { restoreStockForOrder } from '../utils/orderStock';
 import { log } from '../utils/logger';
 
 const DEFAULT_MAX_AGE_HOURS = 48;
 const DEFAULT_BATCH_LIMIT = 50;
+const MS_PER_MINUTE = 60 * 1000;
+const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 
-export function getStaleUnpaidOrderMaxAgeHours(): number {
-  const parsed = Number(process.env.STALE_UNPAID_ORDER_HOURS);
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    return DEFAULT_MAX_AGE_HOURS;
+/**
+ * Prefer STALE_UNPAID_ORDER_MINUTES when set (useful for short soak tests).
+ * Otherwise use STALE_UNPAID_ORDER_HOURS (default 48).
+ */
+export function getStaleUnpaidOrderMaxAgeMs(): number {
+  const minutes = Number(process.env.STALE_UNPAID_ORDER_MINUTES);
+  if (Number.isFinite(minutes) && minutes >= 1) {
+    return Math.floor(minutes) * MS_PER_MINUTE;
   }
-  return Math.floor(parsed);
+
+  const hours = Number(process.env.STALE_UNPAID_ORDER_HOURS);
+  if (!Number.isFinite(hours) || hours < 1) {
+    return DEFAULT_MAX_AGE_HOURS * MS_PER_HOUR;
+  }
+  return Math.floor(hours) * MS_PER_HOUR;
+}
+
+/** @deprecated Prefer getStaleUnpaidOrderMaxAgeMs — kept for callers that log hours. */
+export function getStaleUnpaidOrderMaxAgeHours(): number {
+  return getStaleUnpaidOrderMaxAgeMs() / MS_PER_HOUR;
 }
 
 export function isStaleOrderCleanupEnabled(): boolean {
@@ -58,12 +74,18 @@ async function notifyOrderExpired(order: IOrder): Promise<void> {
  * Cancel unpaid pending orders older than the configured age and restore stock.
  */
 export async function expireStaleUnpaidOrders(options?: {
+  maxAgeMs?: number;
+  /** @deprecated Use maxAgeMs */
   maxAgeHours?: number;
   limit?: number;
 }): Promise<ExpireStaleUnpaidOrdersResult> {
-  const maxAgeHours = options?.maxAgeHours ?? getStaleUnpaidOrderMaxAgeHours();
+  const maxAgeMs =
+    options?.maxAgeMs ??
+    (options?.maxAgeHours != null
+      ? options.maxAgeHours * MS_PER_HOUR
+      : getStaleUnpaidOrderMaxAgeMs());
   const limit = options?.limit ?? DEFAULT_BATCH_LIMIT;
-  const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - maxAgeMs);
 
   const candidates = await Order.find({
     status: OrderStatus.PENDING,
@@ -85,7 +107,8 @@ export async function expireStaleUnpaidOrders(options?: {
   }
 
   log.info('Stale unpaid order cleanup started', {
-    maxAgeHours,
+    maxAgeMs,
+    maxAgeMinutes: Math.round(maxAgeMs / MS_PER_MINUTE),
     cutoff: cutoff.toISOString(),
     candidateCount: candidates.length,
   });
@@ -111,7 +134,7 @@ export async function expireStaleUnpaidOrders(options?: {
         continue;
       }
 
-      await restoreStockForOrderItems(order.items, session);
+      await restoreStockForOrder(order, session);
       await session.commitTransaction();
       result.cancelled += 1;
 

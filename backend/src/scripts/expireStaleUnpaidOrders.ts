@@ -4,6 +4,7 @@
  * Usage:
  *   npm run jobs:expire-stale-orders
  *   STALE_UNPAID_ORDER_HOURS=24 npm run jobs:expire-stale-orders
+ *   STALE_UNPAID_ORDER_MINUTES=10 npm run jobs:expire-stale-orders
  */
 import dotenv from 'dotenv';
 dotenv.config();
@@ -12,16 +13,17 @@ import mongoose from 'mongoose';
 import connectDB from '../config/database';
 import {
   expireStaleUnpaidOrders,
-  getStaleUnpaidOrderMaxAgeHours,
+  getStaleUnpaidOrderMaxAgeMs,
 } from '../jobs/expireStaleUnpaidOrders';
 
 async function main(): Promise<void> {
   await connectDB();
 
-  const maxAgeHours = getStaleUnpaidOrderMaxAgeHours();
-  console.log(`Expiring unpaid pending orders older than ${maxAgeHours} hour(s)...`);
+  const maxAgeMs = getStaleUnpaidOrderMaxAgeMs();
+  const maxAgeMinutes = Math.round(maxAgeMs / (60 * 1000));
+  console.log(`Expiring unpaid pending orders older than ${maxAgeMinutes} minute(s)...`);
 
-  const result = await expireStaleUnpaidOrders({ maxAgeHours });
+  const result = await expireStaleUnpaidOrders({ maxAgeMs });
   console.log('Done:', result);
 
   await mongoose.disconnect();

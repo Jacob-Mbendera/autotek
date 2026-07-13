@@ -11,6 +11,7 @@ import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
 import { ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
+import { getSafeRedirectPath } from '../utils/safeRedirectPath';
 
 export const Register = () => {
   const navigate = useNavigate();
@@ -67,8 +68,7 @@ export const Register = () => {
       
       dispatch(setUser({ user: result.user, token: result.token }));
       dispatch(showNotification({ message: 'Account created successfully', type: 'success' }));
-      // Redirect to returnUrl if provided, otherwise to home
-      const redirectTo = returnUrl ? decodeURIComponent(returnUrl) : '/';
+      const redirectTo = getSafeRedirectPath(returnUrl, '/');
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
       const errorInfo = getErrorInfo(err);

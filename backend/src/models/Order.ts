@@ -29,6 +29,8 @@ export interface IOrder extends Document {
   paymentMethod?: PaymentMethod;
   paymentStatus: PaymentStatus;
   shippingAddress: IShippingAddress | string;
+  /** Set when reserved stock is returned to inventory (cancel / auto-expire). */
+  stockReleasedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -116,6 +118,10 @@ const OrderSchema = new Schema<IOrder>(
     shippingAddress: {
       type: Schema.Types.Mixed,
       required: true,
+    },
+    stockReleasedAt: {
+      type: Date,
+      required: false,
     },
   },
   {

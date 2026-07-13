@@ -5,6 +5,7 @@ import User from '../models/User';
 import { ProviderType, ServiceStatus, UserRole } from '../types/shared';
 import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
 import { assertValidServiceStatusTransition } from '../utils/serviceStatusTransitions';
+import { assertEstimatedArrivalRequiresProvider } from '../utils/serviceEtaRules';
 import { hasTowingServiceProvider } from '../utils/serviceProviderOnRecord';
 import { populateAssignedDriver } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
@@ -475,6 +476,14 @@ export const updateTowingService = async (
           towingService.set('estimatedArrivalAt', undefined);
           towingService.set('etaUpdatedAt', undefined);
         } else {
+          const etaCheck = assertEstimatedArrivalRequiresProvider(
+            hasTowingServiceProvider(towingService),
+            estimatedArrivalAt
+          );
+          if (!etaCheck.ok) {
+            res.status(400).json({ message: etaCheck.message });
+            return;
+          }
           const d = new Date(estimatedArrivalAt);
           if (Number.isNaN(d.getTime())) {
             res.status(400).json({ message: 'Invalid estimatedArrivalAt' });
@@ -483,6 +492,10 @@ export const updateTowingService = async (
           towingService.estimatedArrivalAt = d;
           towingService.etaUpdatedAt = new Date();
         }
+      } else if (!hasTowingServiceProvider(towingService) && towingService.estimatedArrivalAt) {
+        // Provider cleared while ETA left untouched — drop ETA to keep state consistent (BR-09)
+        towingService.set('estimatedArrivalAt', undefined);
+        towingService.set('etaUpdatedAt', undefined);
       }
 
       if (status) {

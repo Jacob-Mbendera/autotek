@@ -38,8 +38,22 @@ const comparisonSlice = createSlice({
     clearComparison: (state) => {
       state.products = [];
     },
+    replaceComparisonState: (
+      state,
+      action: PayloadAction<{ products: Product[]; maxProducts?: number }>
+    ) => {
+      state.products = action.payload.products ?? [];
+      if (action.payload.maxProducts != null) {
+        state.maxProducts = action.payload.maxProducts;
+      }
+    },
   },
 });
 
-export const { addToComparison, removeFromComparison, clearComparison } = comparisonSlice.actions;
+export const {
+  addToComparison,
+  removeFromComparison,
+  clearComparison,
+  replaceComparisonState,
+} = comparisonSlice.actions;
 export default comparisonSlice.reducer;

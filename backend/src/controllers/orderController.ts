@@ -17,7 +17,7 @@ import {
   deductStockForOrderItem,
   InsufficientStockError,
   loadProductForStockCheck,
-  restoreStockForOrderItems,
+  restoreStockForOrder,
 } from '../utils/orderStock';
 import mongoose from 'mongoose';
 
@@ -398,7 +398,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
     try {
       order.status = OrderStatus.CANCELLED;
       await order.save({ session });
-      await restoreStockForOrderItems(order.items, session);
+      await restoreStockForOrder(order, session);
       await session.commitTransaction();
     } catch (stockError) {
       await session.abortTransaction();
@@ -477,8 +477,10 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       ? `Order cancelled successfully. Refund of MWK ${order.totalAmount} processed.`
       : 'Order cancelled successfully.';
 
+    const refreshedOrder = await Order.findById(order._id);
+
     res.json({
-      order,
+      order: refreshedOrder ?? order,
       message,
       refundProcessed: refundResult?.success || false,
       refundMessage: refundResult?.message,

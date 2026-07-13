@@ -1,8 +1,11 @@
 import rateLimit from 'express-rate-limit';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 /**
  * General API rate limiter
- * Limits: 100 requests per 15 minutes per IP
+ * Production: 100 requests per 15 minutes per IP
+ * Development: skipped so local UI/testing is not blocked
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -12,6 +15,7 @@ export const generalLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in RateLimit-* headers
   legacyHeaders: false, // Disable X-RateLimit-* headers
+  skip: () => !isProduction,
 });
 
 /**

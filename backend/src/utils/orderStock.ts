@@ -8,7 +8,7 @@
  */
 import mongoose, { Types } from 'mongoose';
 import Product, { IProduct } from '../models/Product';
-import type { IOrderItem } from '../models/Order';
+import Order, { type IOrder, type IOrderItem } from '../models/Order';
 import { log } from './logger';
 
 export class InsufficientStockError extends Error {
@@ -72,4 +72,34 @@ export async function restoreStockForOrderItems(
     }
     await product.save({ session });
   }
+}
+
+type OrderStockRelease = Pick<IOrder, '_id' | 'items' | 'stockReleasedAt'>;
+
+/**
+ * Idempotent stock restore for a single order (cancel / auto-expire).
+ * Skips if stockReleasedAt is already set.
+ */
+export async function restoreStockForOrder(
+  order: OrderStockRelease,
+  session?: mongoose.ClientSession
+): Promise<boolean> {
+  const claim = await Order.updateOne(
+    {
+      _id: order._id,
+      $or: [{ stockReleasedAt: { $exists: false } }, { stockReleasedAt: null }],
+    },
+    { $set: { stockReleasedAt: new Date() } },
+    { session }
+  );
+
+  if (claim.modifiedCount === 0) {
+    log.info('restoreStockForOrder: stock already released', {
+      orderId: String(order._id),
+    });
+    return false;
+  }
+
+  await restoreStockForOrderItems(order.items, session);
+  return true;
 }
