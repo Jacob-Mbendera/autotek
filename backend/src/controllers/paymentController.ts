@@ -11,6 +11,7 @@ import { initiatePayment } from '../utils/paymentGateways';
 import { log } from '../utils/logger';
 import { createPayoutAfterPaymentSave } from '../utils/servicePayout';
 import { emailService } from '../services/emailService';
+import { recordCouponUsageForPaidOrder } from '../utils/couponUsage';
 
 const normalizeRedirectUrl = (url: string | undefined, fallbackUrl: string): string => {
   const candidateUrl = (url || fallbackUrl).trim();
@@ -132,6 +133,16 @@ async function syncCompletedPaymentToRelatedEntities(payment: {
 
     if (!order) {
       return;
+    }
+
+    try {
+      await recordCouponUsageForPaidOrder(order);
+    } catch (couponError) {
+      log.error('Failed to record coupon usage after payment', {
+        orderId: String(order._id),
+        couponCode: order.couponCode,
+        error: couponError,
+      });
     }
 
     try {

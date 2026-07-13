@@ -103,10 +103,10 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `completed` |
 | **Problem** | `coupon.usageCount` increments at order create even if payment never completes. |
-| **Rules** | Increment coupon usage when payment completes (or decrement on payment failure after increment — prefer increment-on-pay only) |
-| **Backend** | [`orderController.ts`](backend/src/controllers/orderController.ts) create; [`paymentController.ts`](backend/src/controllers/paymentController.ts) on success |
+| **Rules** | Increment coupon usage when payment completes (increment-on-pay only); userLimit counts paid orders only |
+| **Backend** | [`orderController.ts`](backend/src/controllers/orderController.ts) create; [`paymentController.ts`](backend/src/controllers/paymentController.ts) on success; `utils/couponUsage.ts` |
 | **Acceptance** | Abandoned checkout does not consume coupon quota |
 
 ---
@@ -316,6 +316,7 @@ For each BR item:
 | 2026-07-08 | BR-13 | Auto-cancel stale unpaid orders (scheduler + CLI, stock restore, optional email) |
 | 2026-07-13 | BR-09 | ETA requires assigned provider (shared rule, car/towing API 400, admin Services UI) |
 | 2026-07-13 | BR-10 | Auto-sync provider assignment with assigned/pending status |
+| 2026-07-13 | BR-05 | Coupon usageCount increments only after payment success |
 
 ---
 
@@ -327,4 +328,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-05** (coupon usage on payment) or **BR-11** (admin cancel side effects) when ready.*
+*Next step: Start **BR-11** (admin cancel side effects) or **BR-06** (service refund on cancel) when ready.*

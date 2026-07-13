@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Coupon from '../models/Coupon';
 import Order from '../models/Order';
+import { PaymentStatus } from '../types/shared';
 
 interface ValidateCouponRequest {
   code: string;
@@ -55,11 +56,12 @@ export const validateCoupon = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Check user limit (if authenticated)
+    // Check user limit (if authenticated) — only paid orders consume quota (BR-05)
     if (req.user && coupon.userLimit) {
       const userOrderCount = await Order.countDocuments({
         user: req.user._id,
-        'couponCode': coupon.code,
+        couponCode: coupon.code,
+        paymentStatus: PaymentStatus.COMPLETED,
       });
 
       if (userOrderCount >= coupon.userLimit) {

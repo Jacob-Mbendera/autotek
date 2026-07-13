@@ -164,10 +164,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
               }
 
               finalTotal = Math.max(0, totalAmount - discount);
-
-              // Increment coupon usage count
-              coupon.usageCount += 1;
-              await coupon.save();
+              // BR-05: do not increment usageCount here — only on payment success
             }
           }
         }
