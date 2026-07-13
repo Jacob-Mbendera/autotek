@@ -225,6 +225,7 @@ export const AdminServices = () => {
       return;
     }
     try {
+      const wasPending = selectedService.status === ServiceStatus.PENDING;
       if (selectedService.type === 'towing') {
         const updated = await updateTowingService({
           id: selectedService._id,
@@ -240,7 +241,16 @@ export const AdminServices = () => {
         }).unwrap();
         setSelectedService({ ...selectedService, ...updated, type: 'car-service' });
       }
-      dispatch(showNotification({ message: 'Assignment and ETA saved', type: 'success' }));
+      const assignedNow = Boolean(providerPickId);
+      dispatch(
+        showNotification({
+          message:
+            wasPending && assignedNow
+              ? 'Provider saved. Status moved to Assigned.'
+              : 'Assignment and ETA saved',
+          type: 'success',
+        })
+      );
       await refetch();
     } catch (error: unknown) {
       const errorInfo = getErrorInfo(error, 'Failed to save assignment');
@@ -718,6 +728,7 @@ export const AdminServices = () => {
                 </Body>
                 <Body className="text-xs text-gray-500 mb-3">
                   Only vetted providers appear here. Active jobs count helps avoid overload.
+                  Saving a provider on a pending service automatically moves it to Assigned.
                 </Body>
                 <div className="bg-slate-700/50 rounded-lg p-4 space-y-3">
                   <div>

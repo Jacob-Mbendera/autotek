@@ -173,11 +173,11 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `completed` |
 | **Problem** | “Save assignment & ETA” and “Update Status” are separate; data drifts. |
-| **Rules** | When provider saved and status is `pending`, auto-set `assigned` (or require status update in same action) |
-| **Backend** | Assignment save handlers |
-| **Frontend** | Single clear flow in admin modal |
+| **Rules** | When provider saved and status is `pending`, auto-set `assigned`; unassign from `assigned` returns to `pending`; cannot unassign while `in-progress` |
+| **Backend** | Assignment save handlers + `shared/utils/serviceAssignmentStatusSync.ts` |
+| **Frontend** | [`admin/Services.tsx`](frontend/src/pages/admin/Services.tsx) — helper copy + success toast |
 | **Acceptance** | Assigning provider moves service to `assigned` when appropriate |
 | **Depends on** | BR-02 |
 
@@ -315,6 +315,7 @@ For each BR item:
 | 2026-07-07 | BR-03 | Stock restore on cancel — Option B (deduct on create, restore on allowed cancel) |
 | 2026-07-08 | BR-13 | Auto-cancel stale unpaid orders (scheduler + CLI, stock restore, optional email) |
 | 2026-07-13 | BR-09 | ETA requires assigned provider (shared rule, car/towing API 400, admin Services UI) |
+| 2026-07-13 | BR-10 | Auto-sync provider assignment with assigned/pending status |
 
 ---
 
@@ -326,4 +327,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-10** when ready (say “start BR-10” in Agent mode), or **BR-05** for coupon usage on payment.*
+*Next step: Start **BR-05** (coupon usage on payment) or **BR-11** (admin cancel side effects) when ready.*

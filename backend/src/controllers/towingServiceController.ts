@@ -6,6 +6,10 @@ import { ProviderType, ServiceStatus, UserRole } from '../types/shared';
 import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
 import { assertValidServiceStatusTransition } from '../utils/serviceStatusTransitions';
 import { assertEstimatedArrivalRequiresProvider } from '../utils/serviceEtaRules';
+import {
+  PROVIDER_REQUIRED_WHILE_IN_PROGRESS_MESSAGE,
+  resolveAutoStatusForProviderChange,
+} from '../utils/serviceAssignmentStatusSync';
 import { hasTowingServiceProvider } from '../utils/serviceProviderOnRecord';
 import { populateAssignedDriver } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
@@ -498,17 +502,47 @@ export const updateTowingService = async (
         towingService.set('etaUpdatedAt', undefined);
       }
 
-      if (status) {
-        const transition = assertValidServiceStatusTransition(
+      if (
+        !hasTowingServiceProvider(towingService) &&
+        previousStatus === ServiceStatus.IN_PROGRESS
+      ) {
+        res.status(400).json({ message: PROVIDER_REQUIRED_WHILE_IN_PROGRESS_MESSAGE });
+        return;
+      }
+
+      const explicitStatusProvided = Boolean(status);
+      let nextStatus: ServiceStatus | undefined = status || undefined;
+
+      if (!explicitStatusProvided && assignedDriver !== undefined) {
+        const autoStatus = resolveAutoStatusForProviderChange({
           previousStatus,
-          status,
-          hasTowingServiceProvider(towingService)
-        );
-        if (!transition.ok) {
-          res.status(400).json({ message: transition.message });
-          return;
+          hasProvider: hasTowingServiceProvider(towingService),
+          explicitStatusProvided: false,
+        });
+        if (autoStatus) {
+          nextStatus = autoStatus;
         }
-        towingService.status = status;
+      }
+
+      if (nextStatus) {
+        const isAutoDemoteToPending =
+          !explicitStatusProvided &&
+          previousStatus === ServiceStatus.ASSIGNED &&
+          nextStatus === ServiceStatus.PENDING &&
+          !hasTowingServiceProvider(towingService);
+
+        if (!isAutoDemoteToPending) {
+          const transition = assertValidServiceStatusTransition(
+            previousStatus,
+            nextStatus,
+            hasTowingServiceProvider(towingService)
+          );
+          if (!transition.ok) {
+            res.status(400).json({ message: transition.message });
+            return;
+          }
+        }
+        towingService.status = nextStatus;
       }
     } else {
       // Users should use /cancel endpoint instead

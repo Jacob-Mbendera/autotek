@@ -6,6 +6,10 @@ import { ProviderType, ServiceStatus, ServiceType, UserRole } from '../types/sha
 import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
 import { assertValidServiceStatusTransition } from '../utils/serviceStatusTransitions';
 import { assertEstimatedArrivalRequiresProvider } from '../utils/serviceEtaRules';
+import {
+  PROVIDER_REQUIRED_WHILE_IN_PROGRESS_MESSAGE,
+  resolveAutoStatusForProviderChange,
+} from '../utils/serviceAssignmentStatusSync';
 import { hasCarServiceProvider } from '../utils/serviceProviderOnRecord';
 import { populateAssignedMechanic } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
@@ -610,17 +614,47 @@ export const updateCarService = async (
         carService.set('etaUpdatedAt', undefined);
       }
 
-      if (status) {
-        const transition = assertValidServiceStatusTransition(
+      if (
+        !hasCarServiceProvider(carService) &&
+        previousStatus === ServiceStatus.IN_PROGRESS
+      ) {
+        res.status(400).json({ message: PROVIDER_REQUIRED_WHILE_IN_PROGRESS_MESSAGE });
+        return;
+      }
+
+      const explicitStatusProvided = Boolean(status);
+      let nextStatus: ServiceStatus | undefined = status || undefined;
+
+      if (!explicitStatusProvided && assignedMechanic !== undefined) {
+        const autoStatus = resolveAutoStatusForProviderChange({
           previousStatus,
-          status,
-          hasCarServiceProvider(carService)
-        );
-        if (!transition.ok) {
-          res.status(400).json({ message: transition.message });
-          return;
+          hasProvider: hasCarServiceProvider(carService),
+          explicitStatusProvided: false,
+        });
+        if (autoStatus) {
+          nextStatus = autoStatus;
         }
-        carService.status = status;
+      }
+
+      if (nextStatus) {
+        const isAutoDemoteToPending =
+          !explicitStatusProvided &&
+          previousStatus === ServiceStatus.ASSIGNED &&
+          nextStatus === ServiceStatus.PENDING &&
+          !hasCarServiceProvider(carService);
+
+        if (!isAutoDemoteToPending) {
+          const transition = assertValidServiceStatusTransition(
+            previousStatus,
+            nextStatus,
+            hasCarServiceProvider(carService)
+          );
+          if (!transition.ok) {
+            res.status(400).json({ message: transition.message });
+            return;
+          }
+        }
+        carService.status = nextStatus;
       }
     } else {
       // Users should use /cancel endpoint instead
