@@ -18,6 +18,7 @@ import {
   MapPin,
   Building2,
   Images,
+  Tag,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 
@@ -35,6 +36,7 @@ export const AdminSidebar = () => {
     { name: 'Services', href: '/admin/services', icon: Wrench },
     { name: 'Providers', href: '/admin/providers', icon: Building2 },
     { name: 'Custom Orders', href: '/admin/custom-orders', icon: FileText },
+    { name: 'Coupons', href: '/admin/coupons', icon: Tag },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Delivery Locations', href: '/admin/delivery-locations', icon: MapPin },
   ];

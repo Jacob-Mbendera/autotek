@@ -72,6 +72,7 @@ export const baseApi = createApi({
     'ServiceProvider',
     'ServicePayout',
     'MediaAsset',
+    'Coupon',
   ],
   endpoints: () => ({}),
 });

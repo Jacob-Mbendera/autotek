@@ -89,7 +89,7 @@ export const couponApi = baseApi.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (_result, _error, { id }) => [{ type: 'Coupon', id }],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Coupon', id }, 'Coupon'],
     }),
     deleteCoupon: builder.mutation<{ message: string }, string>({
       query: (id) => ({
