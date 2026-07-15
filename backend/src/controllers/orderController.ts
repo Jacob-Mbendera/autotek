@@ -9,7 +9,7 @@ import { OrderStatus, UserRole, PaymentStatus } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { hashPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
-import { processPayChanguRefund } from '../utils/paymentRefunds';
+import { processPayChanguRefund, CUSTOMER_REFUND_PENDING_MESSAGE } from '../utils/paymentRefunds';
 import { log } from '../utils/logger';
 import { assertCustomerCanCancelOrder, assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
 import {
@@ -404,23 +404,26 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       session.endSession();
     }
 
-    // Process refund if payment was completed
-    let refundResult = null;
+    // Queue manual refund if payment was completed (PayChangu has no refund API)
+    let refundResult: {
+      success: boolean;
+      pending?: boolean;
+      message: string;
+      amount?: number;
+    } | null = null;
     try {
-      // Find associated payment
       const payment = await Payment.findOne({
         order: order._id,
-        status: 'completed',
+        status: PaymentStatus.COMPLETED,
       });
 
       if (payment && payment.transactionId) {
-        log.info(`Order cancelled - processing refund`, {
+        log.info(`Order cancelled - queueing manual refund`, {
           orderId: order._id,
           transactionId: payment.transactionId,
-          amount: payment.amount
+          amount: payment.amount,
         });
 
-        // Process refund through PayChangu
         refundResult = await processPayChanguRefund({
           transactionId: payment.transactionId,
           amount: payment.amount,
@@ -428,58 +431,27 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
           orderId: order._id.toString(),
         });
 
-        if (refundResult.success) {
-          // Update payment status to refunded
-          payment.status = PaymentStatus.REFUNDED;
-          payment.refundId = refundResult.refundId;
-          await payment.save();
-
-          log.payment.refund(order._id.toString(), payment.amount, true, {
-            refundId: refundResult.refundId,
-            message: refundResult.message
-          });
-
-          // Send refund confirmation email
-          try {
-            const customerEmail = order.user
-              ? (await User.findById(order.user))?.email
-              : order.guestInfo?.email;
-
-            if (customerEmail) {
-              await emailService.sendRefundProcessedEmail({
-                email: customerEmail,
-                orderNumber: order._id.toString(),
-                refundAmount: payment.amount,
-                currency: 'MWK',
-              });
-            }
-          } catch (emailError) {
-            log.error('Failed to send refund email', emailError);
-            // Don't fail the cancellation if email fails
-          }
-        } else {
-          log.payment.refund(order._id.toString(), payment.amount, false, {
-            error: refundResult.message
-          });
-          // Continue with cancellation even if refund fails - admin can process manually
-        }
+        log.payment.refund(order._id.toString(), payment.amount, refundResult.success, {
+          pending: true,
+          message: refundResult.message,
+        });
       }
-    } catch (refundError: any) {
-      log.error('Error processing refund', refundError);
-      // Continue with cancellation even if refund processing fails
+    } catch (refundError: unknown) {
+      log.error('Error queueing refund', refundError);
     }
 
-    // Return success response with refund info
-    const message = refundResult?.success
-      ? `Order cancelled successfully. Refund of MWK ${order.totalAmount} processed.`
-      : 'Order cancelled successfully.';
+    const message =
+      refundResult?.success
+        ? `Order cancelled successfully. ${CUSTOMER_REFUND_PENDING_MESSAGE}`
+        : 'Order cancelled successfully.';
 
     const refreshedOrder = await Order.findById(order._id);
 
     res.json({
       order: refreshedOrder ?? order,
       message,
-      refundProcessed: refundResult?.success || false,
+      refundProcessed: false,
+      refundPending: Boolean(refundResult?.success),
       refundMessage: refundResult?.message,
     });
   } catch (error: any) {

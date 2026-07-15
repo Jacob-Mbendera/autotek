@@ -39,6 +39,8 @@ export enum PaymentStatus {
   PENDING = 'pending',
   COMPLETED = 'completed',
   FAILED = 'failed',
+  REFUND_PENDING = 'refund_pending',
+  REFUNDED = 'refunded',
 }
 
 export enum ServiceType {

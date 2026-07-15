@@ -8,9 +8,12 @@ export interface IPayment extends Document {
   type: 'order' | 'towing' | 'car-service';
   amount: number;
   method: PaymentMethod;
-  transactionId?: string; // Our tx_ref
-  chargeId?: string; // PayChangu's charge_id (for refunds)
-  refundId?: string; // PayChangu's refund ID
+  transactionId?: string;
+  chargeId?: string;
+  refundId?: string;
+  refundReason?: string;
+  refundRequestedAt?: Date;
+  refundCompletedAt?: Date;
   status: PaymentStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -50,10 +53,19 @@ const PaymentSchema = new Schema<IPayment>(
     },
     chargeId: {
       type: String,
-      index: true, // Index for quick lookups during refunds
+      index: true,
     },
     refundId: {
       type: String,
+    },
+    refundReason: {
+      type: String,
+    },
+    refundRequestedAt: {
+      type: Date,
+    },
+    refundCompletedAt: {
+      type: Date,
     },
     status: {
       type: String,
@@ -65,5 +77,7 @@ const PaymentSchema = new Schema<IPayment>(
     timestamps: true,
   }
 );
+
+PaymentSchema.index({ status: 1, createdAt: -1 });
 
 export default mongoose.model<IPayment>('Payment', PaymentSchema);

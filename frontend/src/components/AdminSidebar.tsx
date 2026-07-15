@@ -19,6 +19,7 @@ import {
   Building2,
   Images,
   Tag,
+  Banknote,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 
@@ -33,6 +34,7 @@ export const AdminSidebar = () => {
     { name: 'Media library', href: '/admin/media', icon: Images },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Returns', href: '/admin/returns', icon: RotateCcw },
+    { name: 'Refunds', href: '/admin/refunds', icon: Banknote },
     { name: 'Services', href: '/admin/services', icon: Wrench },
     { name: 'Providers', href: '/admin/providers', icon: Building2 },
     { name: 'Custom Orders', href: '/admin/custom-orders', icon: FileText },

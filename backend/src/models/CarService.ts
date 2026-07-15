@@ -31,7 +31,7 @@ export interface ICarService extends Document {
   quoteRequestNotes?: string;
   quoteRequestSubmittedAt?: Date;
   payment?: Types.ObjectId;
-  paymentStatus: 'pending' | 'completed' | 'failed';
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refund_pending' | 'refunded';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -143,7 +143,7 @@ const CarServiceSchema = new Schema<ICarService>(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'completed', 'failed'],
+      enum: ['pending', 'completed', 'failed', 'refund_pending', 'refunded'],
       default: 'pending',
     },
     notes: {
@@ -154,5 +154,14 @@ const CarServiceSchema = new Schema<ICarService>(
     timestamps: true,
   }
 );
+
+/** Legacy bookings only stored `serviceType`; keep saves (e.g. cancel) valid. */
+CarServiceSchema.pre('validate', function () {
+  const types = this.serviceTypes;
+  const hasTypes = Array.isArray(types) && types.length > 0;
+  if (!hasTypes && this.serviceType) {
+    this.serviceTypes = [this.serviceType];
+  }
+});
 
 export default mongoose.model<ICarService>('CarService', CarServiceSchema);

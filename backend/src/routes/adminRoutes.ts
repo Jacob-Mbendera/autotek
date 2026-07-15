@@ -24,6 +24,10 @@ import {
   listAdminPayouts,
   markPayoutPaid,
 } from '../controllers/providerAdminController';
+import {
+  getAdminRefunds,
+  completeAdminRefund,
+} from '../controllers/adminRefundController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import {
@@ -60,6 +64,9 @@ router.patch('/service-providers/:id', updateServiceProvider);
 
 router.get('/service-payouts', listAdminPayouts);
 router.patch('/service-payouts/:id/mark-paid', markPayoutPaid);
+
+router.get('/refunds', getAdminRefunds);
+router.patch('/refunds/:id/complete', completeAdminRefund);
 
 router.get('/media-assets', listMediaAssets);
 router.post('/media-assets', uploadLibraryFiles, uploadMediaLibrary);

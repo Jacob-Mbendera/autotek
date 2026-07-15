@@ -30,7 +30,7 @@ export interface ITowingService extends Document {
   quoteRequestNotes?: string;
   quoteRequestSubmittedAt?: Date;
   payment?: Types.ObjectId;
-  paymentStatus: 'pending' | 'completed' | 'failed';
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refund_pending' | 'refunded';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -126,7 +126,7 @@ const TowingServiceSchema = new Schema<ITowingService>(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'completed', 'failed'],
+      enum: ['pending', 'completed', 'failed', 'refund_pending', 'refunded'],
       default: 'pending',
     },
   },

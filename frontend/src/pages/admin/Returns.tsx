@@ -187,7 +187,7 @@ export const AdminReturns = () => {
         data: refundAmount ? { refundAmount: parseFloat(refundAmount) } : undefined,
       }).unwrap();
       dispatch(showNotification({
-        message: 'Refund processing initiated',
+        message: 'Refund queued. Complete it in PayChangu, then mark done under Admin → Refunds.',
         type: 'success',
       }));
       setSelectedReturn(null);
@@ -425,7 +425,7 @@ export const AdminReturns = () => {
                         onClick={() => openActionModal(returnDoc._id, 'refund')}
                       >
                         <Banknote className="h-4 w-4 mr-2" />
-                        Process Refund
+                        Queue Refund
                       </Button>
                     )}
                   </div>
@@ -507,11 +507,12 @@ export const AdminReturns = () => {
         isOpen={actionType === 'refund' && !!selectedReturn}
         onClose={closeModal}
         onConfirm={handleProcessRefund}
-        title="Process Refund"
+        title="Queue Refund"
         message={
           <div className="space-y-4">
             <Body>
-              Process refund for return #{selectedReturn?.slice(-8).toUpperCase()}?
+              Queue a manual PayChangu refund for return #{selectedReturn?.slice(-8).toUpperCase()}?
+              You must refund in the PayChangu dashboard, then mark it completed under Admin → Refunds.
             </Body>
             {selectedReturnDoc && (
               <div>
@@ -533,7 +534,7 @@ export const AdminReturns = () => {
             )}
           </div>
         }
-        confirmText="Process Refund"
+        confirmText="Queue Refund"
         cancelText="Cancel"
         isLoading={isProcessingRefund}
       />

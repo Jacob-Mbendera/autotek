@@ -862,6 +862,100 @@ class EmailService {
       console.log('================================================\n');
     }
   }
+
+  /** Notify admin that a refund must be processed manually in the PayChangu dashboard. */
+  async sendAdminPendingRefundNotification(params: {
+    paymentId: string;
+    type: string;
+    amount: number;
+    transactionId?: string;
+    chargeId?: string;
+    reason?: string;
+  }): Promise<void> {
+    const adminEmail =
+      process.env.ADMIN_NOTIFICATION_EMAIL || process.env.SUPPORT_EMAIL;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const ref = params.paymentId.slice(-8).toUpperCase();
+    const subject = `[AutoTek] Manual refund pending — MWK ${params.amount.toLocaleString()} — #${ref}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #0d9488;">Manual refund required</h2>
+        <p>A paid cancellation needs a refund via the PayChangu dashboard (no refund API).</p>
+        <div style="background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Payment ref:</strong> #${escapeHtml(ref)}</p>
+          <p style="margin: 4px 0;"><strong>Type:</strong> ${escapeHtml(params.type)}</p>
+          <p style="margin: 4px 0;"><strong>Amount:</strong> MWK ${params.amount.toLocaleString()}</p>
+          <p style="margin: 4px 0;"><strong>Transaction ID:</strong> ${escapeHtml(params.transactionId || 'N/A')}</p>
+          <p style="margin: 4px 0;"><strong>Charge ID:</strong> ${escapeHtml(params.chargeId || 'N/A')}</p>
+          <p style="margin: 4px 0;"><strong>Reason:</strong> ${escapeHtml(params.reason || 'N/A')}</p>
+        </div>
+        <ol>
+          <li>Refund the customer in the PayChangu dashboard.</li>
+          <li>Mark the refund completed in AutoTek Admin → Refunds.</li>
+        </ol>
+        <p style="margin-top: 20px;">
+          <a href="${frontendUrl}/admin/refunds" style="background: #14b8a6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">Open admin refunds</a>
+        </p>
+      </body>
+      </html>
+    `;
+
+    if (adminEmail) {
+      await this.sendEmail({ to: adminEmail, subject, html });
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log('\n=== PENDING REFUND (no admin email configured) ===');
+      console.log(subject);
+      console.log(params);
+      console.log('=================================================\n');
+    }
+  }
+
+  /** Customer notice after admin marks a manual PayChangu refund as completed. */
+  async sendManualRefundCompletedEmail(params: {
+    email: string;
+    customerName: string;
+    referenceLabel: string;
+    refundAmount: number;
+  }): Promise<void> {
+    const { email, customerName, referenceLabel, refundAmount } = params;
+    if (!email) return;
+
+    const subject = `Refund completed #${referenceLabel} - AutoTek`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Refund Completed</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Refund Completed</h2>
+          <p>Hello ${escapeHtml(customerName)},</p>
+          <p>We've completed your refund of <strong>MWK ${refundAmount.toLocaleString()}</strong> (ref #${escapeHtml(referenceLabel)}).</p>
+          <div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <p style="margin: 0; color: #065f46;">
+              Funds should appear in your original payment method within 3–5 business days, depending on your mobile money or bank provider.
+            </p>
+          </div>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+            © ${new Date().getFullYear()} AutoTek. All rights reserved.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: email, subject, html });
+  }
 }
 
 export const emailService = new EmailService();

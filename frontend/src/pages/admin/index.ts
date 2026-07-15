@@ -11,3 +11,4 @@ export { DeliveryLocations } from './DeliveryLocations';
 export { AdminProviders } from './Providers';
 export { AdminMediaLibrary } from './MediaLibrary';
 export { AdminCoupons } from './Coupons';
+export { AdminRefunds } from './Refunds';

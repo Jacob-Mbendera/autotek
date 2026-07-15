@@ -111,15 +111,16 @@
 
 ---
 
-### BR-06 — Service refund on cancel (PayChangu)
+### BR-06 — Service / order refund on cancel (PayChangu manual)
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
-| **Problem** | Service cancel has TODO stub; paid services don’t auto-refund like orders. |
-| **Rules** | If `paymentStatus === completed`, process PayChangu refund (mirror order cancel pattern) |
-| **Backend** | [`carServiceController.ts`](backend/src/controllers/carServiceController.ts), [`towingServiceController.ts`](backend/src/controllers/towingServiceController.ts) cancel handlers |
-| **Acceptance** | Paid cancelled service triggers refund flow or clear admin manual step with audit |
+| **Status** | `completed` |
+| **Problem** | PayChangu has no refund API; paid cancels must not pretend to auto-refund. |
+| **Rules** | If payment `completed`, queue `refund_pending`; admin refunds in PayChangu dashboard then marks completed in AutoTek; cancel still succeeds if queue fails; customer message: 3–5 business days |
+| **Backend** | `utils/paymentRefunds.ts`, `utils/serviceCancelRefund.ts`, order/car/towing cancel, `GET/PATCH /api/admin/refunds` |
+| **Frontend** | Admin → Refunds (`/admin/refunds`) |
+| **Acceptance** | Paid cancel creates pending refund; admin can mark completed after dashboard refund; customer notified on complete |
 
 ---
 
@@ -317,6 +318,8 @@ For each BR item:
 | 2026-07-13 | BR-09 | ETA requires assigned provider (shared rule, car/towing API 400, admin Services UI) |
 | 2026-07-13 | BR-10 | Auto-sync provider assignment with assigned/pending status |
 | 2026-07-13 | BR-05 | Coupon usageCount increments only after payment success |
+| 2026-07-13 | BR-06 | Service cancel triggers PayChangu refund for paid towing/car services |
+| 2026-07-15 | BR-06 | Aligned to manual PayChangu refunds: `refund_pending` queue + Admin Refunds page |
 
 ---
 
@@ -328,4 +331,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-11** (admin cancel side effects) or **BR-06** (service refund on cancel) when ready.*
+*Next step: Start **BR-11** (admin cancel side effects) or **BR-07** (service payment before in-progress — needs ops confirm) when ready.*

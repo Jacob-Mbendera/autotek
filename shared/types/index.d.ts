@@ -32,7 +32,9 @@ export declare enum PaymentMethod {
 export declare enum PaymentStatus {
     PENDING = "pending",
     COMPLETED = "completed",
-    FAILED = "failed"
+    FAILED = "failed",
+    REFUND_PENDING = "refund_pending",
+    REFUNDED = "refunded"
 }
 export declare enum ServiceType {
     OIL_CHANGE = "oil-change",

@@ -43,6 +43,8 @@ var PaymentStatus;
     PaymentStatus["PENDING"] = "pending";
     PaymentStatus["COMPLETED"] = "completed";
     PaymentStatus["FAILED"] = "failed";
+    PaymentStatus["REFUND_PENDING"] = "refund_pending";
+    PaymentStatus["REFUNDED"] = "refunded";
 })(PaymentStatus || (exports.PaymentStatus = PaymentStatus = {}));
 var ServiceType;
 (function (ServiceType) {

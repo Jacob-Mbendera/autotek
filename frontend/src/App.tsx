@@ -43,6 +43,7 @@ const AdminReturns = lazy(() => import('./pages/admin').then(m => ({ default: m.
 const DeliveryLocations = lazy(() => import('./pages/admin').then(m => ({ default: m.DeliveryLocations })));
 const AdminMediaLibrary = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminMediaLibrary })));
 const AdminCoupons = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminCoupons })));
+const AdminRefunds = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminRefunds })));
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestOnlyRoute } from './components/GuestOnlyRoute';
@@ -330,6 +331,16 @@ function App() {
             <ProtectedRoute adminOnly>
               <AdminLayout>
                 <AdminCoupons />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/refunds"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout>
+                <AdminRefunds />
               </AdminLayout>
             </ProtectedRoute>
           }

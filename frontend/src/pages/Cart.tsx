@@ -637,34 +637,38 @@ export const Cart = () => {
                     </Body>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Input
-                        type="text"
-                        placeholder="Promo code"
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleApplyCoupon();
-                          }
-                        }}
-                        className="text-sm"
-                        disabled={validatingCoupon}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      placeholder="Promo code"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleApplyCoupon();
+                        }
+                      }}
+                      className="text-sm"
+                      disabled={validatingCoupon}
+                    />
                     <Button
                       variant="secondary"
                       size="default"
                       onClick={handleApplyCoupon}
                       disabled={!promoCode.trim() || validatingCoupon}
-                      className="px-4"
+                      className="w-full"
                     >
                       {validatingCoupon ? (
-                        <div className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        <>
+                          <div className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2" />
+                          Applying...
+                        </>
                       ) : (
-                        <Tag className="h-4 w-4" />
+                        <>
+                          <Tag className="h-4 w-4 mr-2" />
+                          Apply Coupon
+                        </>
                       )}
                     </Button>
                   </div>

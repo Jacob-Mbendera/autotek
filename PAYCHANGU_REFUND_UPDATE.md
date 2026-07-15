@@ -12,10 +12,10 @@ PayChangu **does not provide a refund API**. All refunds must be processed manua
 ### What This Means for AutoTek
 
 **Current Implementation Status:**
-- ✅ Backend has refund logic structure in place (`backend/src/utils/paymentRefunds.ts`)
+- ✅ Backend queues `refund_pending` on paid cancel / return refund (`paymentRefunds.ts`)
 - ❌ Cannot call PayChangu refund API (doesn't exist)
-- ✅ Can track refund requests internally
-- ✅ Can mark refunds as pending/completed in our system
+- ✅ Admin Refunds page + `PATCH /api/admin/refunds/:id/complete`
+- ✅ Admin email on queue; customer email when marked completed
 
 **Required Process:**
 
@@ -132,9 +132,9 @@ The current implementation gracefully handles the lack of API:
 - ⏳ Document manual refund process in admin guide
 
 ### Short-term (Before Production)
-- [ ] Create Admin Refunds Management page
-- [ ] Add "Mark Refund Completed" functionality
-- [ ] Update admin documentation with manual process
+- [x] Create Admin Refunds Management page
+- [x] Add "Mark Refund Completed" functionality
+- [x] Update admin documentation with manual process (`PAYCHANGU_REFUND_UPDATE.md`)
 - [ ] Create admin training guide for PayChangu dashboard refunds
 - [ ] Set up KYC verification with PayChangu
 - [ ] Replace sandbox keys with live keys

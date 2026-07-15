@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import TowingService from '../models/TowingService';
 import User from '../models/User';
-import { ProviderType, ServiceStatus, UserRole } from '../types/shared';
+import { ProviderType, ServiceStatus, UserRole, PaymentStatus } from '../types/shared';
 import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
 import { assertValidServiceStatusTransition } from '../utils/serviceStatusTransitions';
 import { assertEstimatedArrivalRequiresProvider } from '../utils/serviceEtaRules';
@@ -15,6 +15,7 @@ import { populateAssignedDriver } from '../utils/populateServiceProvider';
 import { emailService } from '../services/emailService';
 import { resolveCoordsForAddress } from '../utils/geocoding';
 import { validateQuoteContactPhones } from '../utils/phoneValidation';
+import { processPaidServiceCancelRefund } from '../utils/serviceCancelRefund';
 
 export const createTowingService = async (
   req: AuthRequest,
@@ -330,22 +331,53 @@ export const cancelTowingService = async (
     towingService.status = ServiceStatus.CANCELLED;
     await towingService.save();
 
-    // TODO: Handle refund if payment was completed
-    // This will be implemented when we add payment integration for services
-    let refundInfo = null;
-    if (towingService.paymentStatus === 'completed') {
-      // Future: Process refund via PayChangu API
-      refundInfo = {
-        message: 'Refund will be processed within 3-5 business days',
-        refundAmount: towingService.price,
-        status: 'pending'
-      };
+    // BR-06: queue manual refund for completed payments (PayChangu dashboard)
+    let refundInfo: {
+      attempted: boolean;
+      success: boolean;
+      pending: boolean;
+      refundAmount?: number;
+      message: string;
+      status: string;
+    } | null = null;
+
+    if (towingService.paymentStatus === PaymentStatus.COMPLETED) {
+      try {
+        const refund = await processPaidServiceCancelRefund({
+          kind: 'towing',
+          serviceId: towingService._id.toString(),
+          reason: 'Towing service cancelled by customer',
+        });
+        refundInfo = {
+          attempted: refund.attempted,
+          success: refund.success,
+          pending: refund.pending,
+          refundAmount: refund.refundAmount,
+          message: refund.message,
+          status: refund.pending ? 'pending' : refund.success ? 'queued' : 'failed',
+        };
+      } catch {
+        refundInfo = {
+          attempted: true,
+          success: false,
+          pending: false,
+          refundAmount: towingService.price,
+          message: 'Refund queueing error; admin can process manually',
+          status: 'failed',
+        };
+      }
     }
 
+    const message = refundInfo?.pending
+      ? `Service cancelled successfully. ${refundInfo.message}`
+      : 'Service cancelled successfully';
+
     res.json({
-      message: 'Service cancelled successfully',
+      message,
       service: towingService,
-      refund: refundInfo
+      refund: refundInfo,
+      refundProcessed: false,
+      refundPending: Boolean(refundInfo?.pending),
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to cancel towing service' });

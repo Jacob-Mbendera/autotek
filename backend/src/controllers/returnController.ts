@@ -35,7 +35,7 @@ import { uploadMultipleImages } from '../config/cloudinary';
 import { cleanupFile } from '../middleware/upload';
 import path from 'path';
 import { emailService } from '../services/emailService';
-import { processPayChanguRefund } from '../utils/paymentRefunds';
+import { queueManualRefund, CUSTOMER_REFUND_PENDING_MESSAGE } from '../utils/paymentRefunds';
 import Payment from '../models/Payment';
 
 const RETURN_WINDOW_DAYS = 30;
@@ -580,53 +580,40 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Update refund amount and set to processing
+    // Update refund amount and queue manual PayChangu refund (no API)
     returnDoc.refundAmount = finalRefundAmount;
     returnDoc.refundStatus = 'processing' as any;
     await returnDoc.save();
 
-    // Process refund through PayChangu
-    const refundResult = await processPayChanguRefund({
+    const refundResult = await queueManualRefund({
+      paymentId: payment._id.toString(),
       transactionId: payment.transactionId,
       amount: finalRefundAmount,
       reason: returnDoc.returnReason,
-      orderId: orderId.toString(),
+      referenceId: returnDoc._id.toString(),
     });
 
     if (!refundResult.success) {
-      // Refund failed
       returnDoc.refundStatus = 'failed' as any;
       await returnDoc.save();
 
       res.status(400).json({
         return: returnDoc,
-        message: refundResult.message || 'Refund processing failed',
+        message: refundResult.message || 'Failed to queue refund',
         error: refundResult.error,
       });
       return;
     }
 
-    // Refund successful
-    returnDoc.refundStatus = 'completed' as any;
-    returnDoc.status = 'completed' as any;
-    await returnDoc.save();
-
-    // Send refund confirmation email
-    const email = returnDoc.user
-      ? (returnDoc.user as any).email
-      : returnDoc.guestInfo?.email;
-    if (email) {
-      await emailService.sendRefundProcessedEmail(returnDoc, returnDoc.user as any, returnDoc.guestInfo?.email);
-    }
-
     res.json({
       return: returnDoc,
       refund: {
-        refundId: refundResult.refundId,
         amount: finalRefundAmount,
-        status: refundResult.status,
+        status: 'pending',
+        paymentId: payment._id.toString(),
       },
-      message: 'Refund processed successfully',
+      message: `Refund queued for manual PayChangu processing. ${CUSTOMER_REFUND_PENDING_MESSAGE} Mark completed under Admin → Refunds after dashboard refund.`,
+      refundPending: true,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to process refund' });
