@@ -1,4 +1,4 @@
-import { ServiceStatus } from '../types/index';
+import { PaymentStatus, ServiceStatus } from '../types/index';
 
 const FORWARD_FLOW: ServiceStatus[] = [
   ServiceStatus.PENDING,
@@ -9,6 +9,12 @@ const FORWARD_FLOW: ServiceStatus[] = [
 
 const STATUSES_REQUIRING_PROVIDER = new Set<ServiceStatus>([
   ServiceStatus.ASSIGNED,
+  ServiceStatus.IN_PROGRESS,
+  ServiceStatus.COMPLETED,
+]);
+
+/** BR-07 Option A — pay before work starts (assigned may be unpaid). */
+const STATUSES_REQUIRING_PAYMENT = new Set<ServiceStatus>([
   ServiceStatus.IN_PROGRESS,
   ServiceStatus.COMPLETED,
 ]);
@@ -33,6 +39,14 @@ function requiresProvider(status: ServiceStatus): boolean {
   return STATUSES_REQUIRING_PROVIDER.has(status);
 }
 
+function requiresPayment(status: ServiceStatus): boolean {
+  return STATUSES_REQUIRING_PAYMENT.has(status);
+}
+
+function isPaymentCompleted(paymentStatus: string): boolean {
+  return paymentStatus === PaymentStatus.COMPLETED;
+}
+
 export function getServiceStatusLabel(status: ServiceStatus): string {
   return STATUS_LABELS[status] ?? status;
 }
@@ -40,7 +54,8 @@ export function getServiceStatusLabel(status: ServiceStatus): string {
 /** Next statuses admin may select (forward one step or cancel). */
 export function getAllowedNextServiceStatuses(
   currentStatus: ServiceStatus,
-  hasProvider: boolean
+  hasProvider: boolean,
+  paymentStatus: string = PaymentStatus.PENDING
 ): ServiceStatus[] {
   if (currentStatus === ServiceStatus.CANCELLED || currentStatus === ServiceStatus.COMPLETED) {
     return [];
@@ -51,7 +66,9 @@ export function getAllowedNextServiceStatuses(
 
   if (idx >= 0 && idx < FORWARD_FLOW.length - 1) {
     const next = FORWARD_FLOW[idx + 1];
-    if (!requiresProvider(next) || hasProvider) {
+    const providerOk = !requiresProvider(next) || hasProvider;
+    const paymentOk = !requiresPayment(next) || isPaymentCompleted(paymentStatus);
+    if (providerOk && paymentOk) {
       allowed.push(next);
     }
   }
@@ -62,7 +79,8 @@ export function getAllowedNextServiceStatuses(
 export function assertValidServiceStatusTransition(
   currentStatus: ServiceStatus,
   newStatus: ServiceStatus,
-  hasProvider: boolean
+  hasProvider: boolean,
+  paymentStatus: string = PaymentStatus.PENDING
 ): ServiceStatusTransitionResult {
   if (currentStatus === newStatus) {
     return { ok: false, message: 'Service already has this status.' };
@@ -76,9 +94,17 @@ export function assertValidServiceStatusTransition(
     return { ok: false, message: 'Completed services cannot be changed.' };
   }
 
-  const allowed = getAllowedNextServiceStatuses(currentStatus, hasProvider);
+  const allowed = getAllowedNextServiceStatuses(currentStatus, hasProvider, paymentStatus);
 
   if (!allowed.includes(newStatus)) {
+    if (requiresPayment(newStatus) && !isPaymentCompleted(paymentStatus)) {
+      return {
+        ok: false,
+        message:
+          'Payment must be completed before moving to In Progress or Completed. Customer can pay while the service is Assigned.',
+      };
+    }
+
     if (requiresProvider(newStatus) && !hasProvider) {
       return {
         ok: false,

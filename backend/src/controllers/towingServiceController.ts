@@ -567,7 +567,8 @@ export const updateTowingService = async (
           const transition = assertValidServiceStatusTransition(
             previousStatus,
             nextStatus,
-            hasTowingServiceProvider(towingService)
+            hasTowingServiceProvider(towingService),
+            towingService.paymentStatus
           );
           if (!transition.ok) {
             res.status(400).json({ message: transition.message });

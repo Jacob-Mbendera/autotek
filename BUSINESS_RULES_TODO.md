@@ -128,15 +128,13 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `completed` |
 | **Problem** | Work can be marked `in-progress` / `completed` while `paymentStatus` is still `pending`. |
-| **Rules** | |
-| | • `in-progress` and `completed` require `paymentStatus === completed` (if pay-before-work policy — **confirm with ops**) |
-| | • `assigned` may be allowed before payment (quote then pay) |
-| **Backend** | Part of BR-02 transition helper |
-| **Frontend** | Admin Services — show payment status near status dropdown |
-| **Acceptance** | Cannot start job without payment if policy confirmed |
-| **Note** | Confirm business rule: pay before dispatch to provider vs pay before work starts |
+| **Rules** | **Option A (confirmed):** `in-progress` and `completed` require `paymentStatus === completed`; `assigned` allowed before payment (quote → pay → start) |
+| **Backend** | `shared/utils/serviceStatusTransitions.ts`; car/towing `update*` controllers |
+| **Frontend** | Admin Services — payment near status dropdown + unpaid helper banner |
+| **Acceptance** | Cannot start or complete job without completed payment |
+| **Note** | Ops chose pay-before-work (not pay-before-complete-only) |
 
 ---
 
@@ -322,15 +320,16 @@ For each BR item:
 | 2026-07-13 | BR-06 | Service cancel triggers PayChangu refund for paid towing/car services |
 | 2026-07-15 | BR-06 | Aligned to manual PayChangu refunds: `refund_pending` queue + Admin Refunds page |
 | 2026-07-16 | BR-11 | Admin status→cancelled uses shared cancel side effects (stock + refund queue) |
+| 2026-07-16 | BR-07 | Option A: in-progress/completed require payment completed; assigned may be unpaid |
 
 ---
 
 ## Open decisions (resolve before or during BR-01 / BR-03 / BR-07)
 
 1. **Stock policy:** Option B + BR-13 auto-cancel unpaid orders after `STALE_UNPAID_ORDER_HOURS` (default 48h); Option A deferred unless inventory issues arise
-2. **Service pay timing:** Must customer pay before `in-progress`, or only before `completed`? (BR-07)
+2. **Service pay timing:** **Resolved — Option A** (pay before `in-progress` / `completed`; `assigned` OK unpaid)
 3. **Offline payment:** Will admin ever mark bank transfer paid manually before dispatch? If yes, need `paymentStatus` override workflow.
 
 ---
 
-*Next step: Start **BR-07** (service payment before in-progress — needs ops confirm) or **BR-08** (custom order status rules) when ready.*
+*Next step: Start **BR-08** (custom order status rules) or **BR-12** (returns / collected wording) when ready.*

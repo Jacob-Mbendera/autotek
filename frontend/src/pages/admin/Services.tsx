@@ -191,13 +191,21 @@ export const AdminServices = () => {
     ? hasProviderOnService(selectedService, providerPickId)
     : false;
   const allowedNextServiceStatuses = selectedService
-    ? getAllowedNextServiceStatuses(selectedService.status, serviceHasProvider)
+    ? getAllowedNextServiceStatuses(
+        selectedService.status,
+        serviceHasProvider,
+        selectedService.paymentStatus || 'pending'
+      )
     : [];
 
   useEffect(() => {
     if (!selectedService || !newStatus) return;
     const hasProvider = hasProviderOnService(selectedService, providerPickId);
-    const allowed = getAllowedNextServiceStatuses(selectedService.status, hasProvider);
+    const allowed = getAllowedNextServiceStatuses(
+      selectedService.status,
+      hasProvider,
+      selectedService.paymentStatus || 'pending'
+    );
     if (!allowed.includes(newStatus)) {
       setNewStatus('');
     }
@@ -266,7 +274,8 @@ export const AdminServices = () => {
     const transition = assertValidServiceStatusTransition(
       selectedService.status,
       newStatus as ServiceStatus,
-      serviceHasProvider
+      serviceHasProvider,
+      selectedService.paymentStatus || 'pending'
     );
     if (!transition.ok) {
       dispatch(showNotification({ message: transition.message, type: 'error' }));
@@ -640,6 +649,23 @@ export const AdminServices = () => {
                   <span className="font-semibold text-gray-200">
                     {getServiceStatusLabel(selectedService.status)}
                   </span>
+                  {selectedService.paymentStatus ? (
+                    <>
+                      {' '}
+                      · Payment:{' '}
+                      <span
+                        className={
+                          selectedService.paymentStatus === 'completed'
+                            ? 'font-semibold text-green-400'
+                            : selectedService.paymentStatus === 'failed'
+                              ? 'font-semibold text-red-400'
+                              : 'font-semibold text-amber-400'
+                        }
+                      >
+                        {selectedService.paymentStatus}
+                      </span>
+                    </>
+                  ) : null}
                 </Body>
                 <div className="flex items-center gap-3">
                   <select
@@ -682,14 +708,23 @@ export const AdminServices = () => {
                     any later step.
                   </Body>
                 )}
+                {serviceHasProvider &&
+                  selectedService.paymentStatus !== 'completed' &&
+                  selectedService.status !== ServiceStatus.CANCELLED &&
+                  selectedService.status !== ServiceStatus.COMPLETED && (
+                    <Body className="text-xs text-amber-400 mt-2 bg-amber-950/40 border border-amber-800/50 rounded-md px-3 py-2">
+                      Payment is not completed ({selectedService.paymentStatus || 'pending'}). You
+                      can assign a provider, but In Progress and Completed require payment first.
+                    </Body>
+                  )}
                 {allowedNextServiceStatuses.length === 0 ? (
                   <Body className="text-xs text-gray-500 mt-2">
                     No further status changes are available for this service.
                   </Body>
                 ) : (
                   <Body className="text-xs text-gray-500 mt-2">
-                    Advance one step at a time: Assigned → In Progress → Completed. Cancel is
-                    allowed until the job is completed.
+                    Advance one step at a time: Assigned → In Progress → Completed. Payment must be
+                    completed before In Progress. Cancel is allowed until the job is completed.
                   </Body>
                 )}
               </div>

@@ -682,7 +682,8 @@ export const updateCarService = async (
           const transition = assertValidServiceStatusTransition(
             previousStatus,
             nextStatus,
-            hasCarServiceProvider(carService)
+            hasCarServiceProvider(carService),
+            carService.paymentStatus
           );
           if (!transition.ok) {
             res.status(400).json({ message: transition.message });
