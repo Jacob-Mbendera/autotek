@@ -39,6 +39,7 @@ export interface Order {
   paymentMethod?: PaymentMethod;
   paymentStatus: PaymentStatus;
   shippingAddress: ShippingAddress | string;
+  cancelReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,7 +77,7 @@ interface OrdersQueryParams {
   status?: OrderStatus;
 }
 
-function productIdFromOrderItem(item: {
+export function productIdFromOrderItem(item: {
   product: OrderItem['product'] | string | null | undefined;
 }): string | null {
   const { product } = item;
@@ -88,7 +89,7 @@ function productIdFromOrderItem(item: {
   return null;
 }
 
-function productInvalidationTags(productIds: string[]) {
+export function productInvalidationTags(productIds: string[]) {
   const uniqueIds = [...new Set(productIds.filter(Boolean))];
   return [
     { type: 'Product' as const, id: 'LIST' },

@@ -3,23 +3,19 @@ import { AuthRequest } from '../middleware/auth';
 import Order, { IShippingAddress } from '../models/Order';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
-import Payment from '../models/Payment';
 import DeliveryLocation from '../models/DeliveryLocation';
-import { OrderStatus, UserRole, PaymentStatus } from '../types/shared';
+import { OrderStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { hashPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
-import { processPayChanguRefund, CUSTOMER_REFUND_PENDING_MESSAGE } from '../utils/paymentRefunds';
-import { log } from '../utils/logger';
+import { applyOrderCancellation } from '../utils/orderCancelSideEffects';
 import { assertCustomerCanCancelOrder, assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
 import {
   assertSufficientStock,
   deductStockForOrderItem,
   InsufficientStockError,
   loadProductForStockCheck,
-  restoreStockForOrder,
 } from '../utils/orderStock';
-import mongoose from 'mongoose';
 
 // Helper function to format address for display
 const formatShippingAddress = (address: IShippingAddress | string): string => {
@@ -389,70 +385,17 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      order.status = OrderStatus.CANCELLED;
-      await order.save({ session });
-      await restoreStockForOrder(order, session);
-      await session.commitTransaction();
-    } catch (stockError) {
-      await session.abortTransaction();
-      throw stockError;
-    } finally {
-      session.endSession();
-    }
-
-    // Queue manual refund if payment was completed (PayChangu has no refund API)
-    let refundResult: {
-      success: boolean;
-      pending?: boolean;
-      message: string;
-      amount?: number;
-    } | null = null;
-    try {
-      const payment = await Payment.findOne({
-        order: order._id,
-        status: PaymentStatus.COMPLETED,
-      });
-
-      if (payment && payment.transactionId) {
-        log.info(`Order cancelled - queueing manual refund`, {
-          orderId: order._id,
-          transactionId: payment.transactionId,
-          amount: payment.amount,
-        });
-
-        refundResult = await processPayChanguRefund({
-          transactionId: payment.transactionId,
-          amount: payment.amount,
-          reason: 'Order cancelled by customer',
-          orderId: order._id.toString(),
-        });
-
-        log.payment.refund(order._id.toString(), payment.amount, refundResult.success, {
-          pending: true,
-          message: refundResult.message,
-        });
-      }
-    } catch (refundError: unknown) {
-      log.error('Error queueing refund', refundError);
-    }
-
-    const message =
-      refundResult?.success
-        ? `Order cancelled successfully. ${CUSTOMER_REFUND_PENDING_MESSAGE}`
-        : 'Order cancelled successfully.';
-
-    const refreshedOrder = await Order.findById(order._id);
+    const result = await applyOrderCancellation({
+      order,
+      reason: 'Order cancelled by customer',
+    });
 
     res.json({
-      order: refreshedOrder ?? order,
-      message,
-      refundProcessed: false,
-      refundPending: Boolean(refundResult?.success),
-      refundMessage: refundResult?.message,
+      order: result.order,
+      message: result.message,
+      refundProcessed: result.refundProcessed,
+      refundPending: result.refundPending,
+      refundMessage: result.refundMessage,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to cancel order' });
@@ -461,7 +404,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
 
 export const updateOrderStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status } = req.body;
+    const { status, cancelReason } = req.body;
 
     if (!Object.values(OrderStatus).includes(status)) {
       res.status(400).json({ message: 'Invalid status' });
@@ -481,6 +424,62 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     );
     if (!transition.ok) {
       res.status(400).json({ message: transition.message });
+      return;
+    }
+
+    // BR-11: admin cancel must use same stock restore + refund queue as cancelOrder
+    if (status === OrderStatus.CANCELLED) {
+      const trimmedReason =
+        typeof cancelReason === 'string' ? cancelReason.trim() : '';
+      if (trimmedReason.length < 3) {
+        res.status(400).json({
+          message: 'Cancellation reason is required (at least 3 characters)',
+        });
+        return;
+      }
+      if (trimmedReason.length > 500) {
+        res.status(400).json({
+          message: 'Cancellation reason must be 500 characters or less',
+        });
+        return;
+      }
+
+      const result = await applyOrderCancellation({
+        order,
+        reason: `Admin: ${trimmedReason}`,
+        cancelReason: trimmedReason,
+      });
+
+      try {
+        if (result.order.user) {
+          const user = await User.findById(result.order.user);
+          if (user) {
+            await emailService.sendOrderStatusUpdate(result.order, user);
+          }
+        } else if (result.order.guestInfo) {
+          await emailService.sendOrderStatusUpdate(
+            result.order,
+            undefined,
+            result.order.guestInfo.email
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send order status update email:', emailError);
+      }
+
+      const orderDoc = result.order;
+      const orderPayload =
+        typeof (orderDoc as { toObject?: () => Record<string, unknown> }).toObject === 'function'
+          ? (orderDoc as { toObject: () => Record<string, unknown> }).toObject()
+          : orderDoc;
+
+      res.json({
+        ...orderPayload,
+        message: result.message,
+        refundProcessed: result.refundProcessed,
+        refundPending: result.refundPending,
+        refundMessage: result.refundMessage,
+      });
       return;
     }
 

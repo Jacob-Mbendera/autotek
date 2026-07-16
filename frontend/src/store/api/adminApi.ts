@@ -1,6 +1,8 @@
 import { baseApi } from './baseApi';
 import type { OrderStatus, CustomOrderStatus, ServiceStatus, UserRole } from '../../../../shared/types';
 import type { Order } from './orderApi';
+import { productIdFromOrderItem, productInvalidationTags } from './orderApi';
+import { broadcastClientSync } from '../../utils/crossTabSync';
 
 export interface AdminStats {
   orders: {
@@ -140,20 +142,63 @@ export const adminApi = baseApi.injectEndpoints({
       providesTags: (_result, _error, id) => [{ type: 'Admin', id }],
     }),
     updateOrderStatus: builder.mutation<
-      { order: unknown },
-      { id: string; status: OrderStatus }
+      {
+        _id?: string;
+        status?: OrderStatus;
+        items?: Order['items'];
+        message?: string;
+        refundPending?: boolean;
+        refundProcessed?: boolean;
+        refundMessage?: string;
+        cancelReason?: string;
+      },
+      { id: string; status: OrderStatus; cancelReason?: string }
     >({
-      query: ({ id, status }) => ({
-        url: `/orders/${id}/status`,
-        method: 'PUT',
-        body: { status },
-      }),
-      invalidatesTags: (_result, _error, { id }) => [
-        'Admin',
-        { type: 'Admin', id },
-        'Order',
-        { type: 'Order', id },
-      ],
+      query: ({ id, status, cancelReason }) => {
+        const body: { status: OrderStatus; cancelReason?: string } = { status };
+        if (status === 'cancelled') {
+          body.cancelReason = cancelReason ?? '';
+        }
+        return {
+          url: `/orders/${id}/status`,
+          method: 'PUT',
+          body,
+        };
+      },
+      invalidatesTags: (result, _error, { id, status }) => {
+        const tags: Array<
+          | 'Admin'
+          | 'Order'
+          | 'Product'
+          | { type: 'Admin' | 'Order' | 'Product'; id: string }
+        > = [
+          'Admin',
+          { type: 'Admin', id },
+          'Order',
+          { type: 'Order', id },
+        ];
+
+        if (status === 'cancelled' || result?.status === 'cancelled') {
+          const productIds =
+            result?.items
+              ?.map((item) => productIdFromOrderItem(item))
+              .filter((productId): productId is string => Boolean(productId)) ?? [];
+          tags.push('Product', ...productInvalidationTags(productIds));
+        }
+
+        return tags;
+      },
+      async onQueryStarted({ status }, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          if (status === 'cancelled') {
+            broadcastClientSync('orders');
+            broadcastClientSync('products');
+          }
+        } catch {
+          /* ignore */
+        }
+      },
     }),
     getCustomOrder: builder.query<{ customOrder: unknown }, string>({
       query: (id) => `/admin/custom-orders/${id}`,

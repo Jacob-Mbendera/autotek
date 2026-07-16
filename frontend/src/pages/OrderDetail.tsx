@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
+import { Input } from '../components/ui/Input';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
@@ -180,6 +181,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | ''>('');
+  const [adminCancelReason, setAdminCancelReason] = useState('');
 
   // Determine if this is an admin route by checking the pathname FIRST
   // Calculate synchronously (not in useMemo) to ensure it's available immediately
@@ -500,6 +502,13 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
       }));
       return;
     }
+    if (selectedStatus === OrderStatus.CANCELLED && adminCancelReason.trim().length < 3) {
+      dispatch(showNotification({
+        message: 'Please enter a cancellation reason (at least 3 characters)',
+        type: 'warning',
+      }));
+      return;
+    }
     const transition = assertValidOrderStatusTransition(
       order.status,
       selectedStatus as OrderStatus,
@@ -518,12 +527,34 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   const handleStatusUpdateConfirm = async () => {
     if (!selectedStatus || !id) return;
 
+    if (selectedStatus === OrderStatus.CANCELLED && adminCancelReason.trim().length < 3) {
+      dispatch(showNotification({
+        message: 'Please enter a cancellation reason (at least 3 characters)',
+        type: 'warning',
+      }));
+      return;
+    }
+
     try {
-      await updateOrderStatus({ id, status: selectedStatus as OrderStatus }).unwrap();
+      const result = await updateOrderStatus({
+        id,
+        status: selectedStatus as OrderStatus,
+        cancelReason:
+          selectedStatus === OrderStatus.CANCELLED
+            ? adminCancelReason.trim()
+            : undefined,
+      }).unwrap();
       setShowStatusUpdateModal(false);
       setSelectedStatus('');
+      setAdminCancelReason('');
+      const successMessage =
+        selectedStatus === OrderStatus.CANCELLED && result.message
+          ? result.message
+          : selectedStatus === OrderStatus.CANCELLED && result.refundPending
+            ? 'Order cancelled. Refund will be processed within 3-5 business days.'
+            : 'Order status updated successfully!';
       dispatch(showNotification({
-        message: 'Order status updated successfully!',
+        message: successMessage,
         type: 'success',
       }));
       await adminQueryResult.refetch();
@@ -899,6 +930,12 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
                 </span>
               </div>
+              {order.status === OrderStatus.CANCELLED && order.cancelReason ? (
+                <div className="pt-2 border-t border-gray-100">
+                  <Body className="text-gray-600 mb-1">Cancellation reason:</Body>
+                  <Body className="text-gray-900 text-sm">{order.cancelReason}</Body>
+                </div>
+              ) : null}
             </div>
           </Card>
 
@@ -936,7 +973,13 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   </label>
                   <select
                     value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value as OrderStatus)}
+                    onChange={(e) => {
+                      const next = e.target.value as OrderStatus | '';
+                      setSelectedStatus(next);
+                      if (next !== OrderStatus.CANCELLED) {
+                        setAdminCancelReason('');
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
                     disabled={allowedNextOrderStatuses.length === 0}
                   >
@@ -947,6 +990,22 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                       </option>
                     ))}
                   </select>
+                  {selectedStatus === OrderStatus.CANCELLED && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cancellation reason (required)
+                      </label>
+                      <Input
+                        value={adminCancelReason}
+                        onChange={(e) => setAdminCancelReason(e.target.value)}
+                        placeholder="e.g. Customer request — duplicate order"
+                        maxLength={500}
+                      />
+                      <Body className="text-xs text-gray-500 mt-1">
+                        Saved on the order and shown on Admin Refunds for PayChangu processing.
+                      </Body>
+                    </div>
+                  )}
                   {order.paymentStatus !== PaymentStatus.COMPLETED && (
                     <Body className="text-xs text-amber-800 mt-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                       Payment is not complete. You can cancel this order or wait until payment clears
@@ -968,7 +1027,13 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   variant="primary"
                   className="w-full"
                   onClick={handleStatusUpdateClick}
-                  disabled={!selectedStatus || isUpdatingStatus || allowedNextOrderStatuses.length === 0}
+                  disabled={
+                    !selectedStatus ||
+                    isUpdatingStatus ||
+                    allowedNextOrderStatuses.length === 0 ||
+                    (selectedStatus === OrderStatus.CANCELLED &&
+                      adminCancelReason.trim().length < 3)
+                  }
                 >
                   {isUpdatingStatus ? (
                     <>
@@ -1112,11 +1177,15 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         isOpen={showStatusUpdateModal}
         onClose={() => setShowStatusUpdateModal(false)}
         onConfirm={handleStatusUpdateConfirm}
-        title="Update Order Status"
-        message={`Are you sure you want to change the order status from "${getStatusLabel(order.status)}" to "${selectedStatus ? getStatusLabel(selectedStatus as OrderStatus) : ''}"?`}
-        confirmText="Update Status"
-        cancelText="Cancel"
-        variant="info"
+        title={selectedStatus === OrderStatus.CANCELLED ? 'Cancel Order' : 'Update Order Status'}
+        message={
+          selectedStatus === OrderStatus.CANCELLED
+            ? `Cancel this order for reason: "${adminCancelReason.trim()}"? If paid, a refund will be queued (3–5 business days) and stock restored.`
+            : `Are you sure you want to change the order status from "${getStatusLabel(order.status)}" to "${selectedStatus ? getStatusLabel(selectedStatus as OrderStatus) : ''}"?`
+        }
+        confirmText={selectedStatus === OrderStatus.CANCELLED ? 'Cancel Order' : 'Update Status'}
+        cancelText="Back"
+        variant={selectedStatus === OrderStatus.CANCELLED ? 'warning' : 'info'}
         isLoading={isUpdatingStatus}
       />
     </div>

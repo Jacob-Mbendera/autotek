@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle, Info, AlertTriangle, Loader2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { H2, Body } from './Typography';
 import { AdminCard } from './AdminCard';
@@ -9,12 +10,13 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info' | 'success';
   dark?: boolean;
   isLoading?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export const ConfirmationModal = ({
@@ -28,6 +30,7 @@ export const ConfirmationModal = ({
   variant = 'danger',
   dark = false,
   isLoading = false,
+  confirmDisabled = false,
 }: ConfirmationModalProps) => {
   if (!isOpen) return null;
 
@@ -77,6 +80,13 @@ export const ConfirmationModal = ({
     confirmText
   );
 
+  const messageBlock =
+    typeof message === 'string' ? (
+      <Body className={cn('mb-6', dark ? 'text-gray-300' : 'text-gray-600')}>{message}</Body>
+    ) : (
+      <div className={cn('mb-6', dark ? 'text-gray-300' : 'text-gray-600')}>{message}</div>
+    );
+
   if (dark) {
     return (
       <div
@@ -85,12 +95,20 @@ export const ConfirmationModal = ({
       >
         <AdminCard variant="default" className="w-full max-w-md animate-scale-in">
           <div className="flex items-center gap-3 mb-4">
-            <div className={cn('flex-shrink-0', variant === 'danger' && 'text-red-500', variant === 'warning' && 'text-amber-500', variant === 'info' && 'text-blue-500', variant === 'success' && 'text-green-500')}>
+            <div
+              className={cn(
+                'flex-shrink-0',
+                variant === 'danger' && 'text-red-500',
+                variant === 'warning' && 'text-amber-500',
+                variant === 'info' && 'text-blue-500',
+                variant === 'success' && 'text-green-500'
+              )}
+            >
               {getIcon()}
             </div>
             <H2 className="text-xl font-bold text-gray-50">{title}</H2>
           </div>
-          <Body className="text-gray-300 mb-6">{message}</Body>
+          {messageBlock}
           <div className="flex gap-3 justify-end">
             <Button variant="secondary" type="button" dark onClick={onClose} disabled={isLoading}>
               {cancelText}
@@ -98,7 +116,7 @@ export const ConfirmationModal = ({
             <Button
               type="button"
               onClick={onConfirm}
-              disabled={isLoading}
+              disabled={isLoading || confirmDisabled}
               className={cn(
                 getConfirmButtonVariant(),
                 'focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900',
@@ -120,12 +138,20 @@ export const ConfirmationModal = ({
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
         <div className="flex items-center gap-3 mb-4">
-          <div className={cn('flex-shrink-0', variant === 'danger' && 'text-red-500', variant === 'warning' && 'text-amber-500', variant === 'info' && 'text-blue-500', variant === 'success' && 'text-green-500')}>
+          <div
+            className={cn(
+              'flex-shrink-0',
+              variant === 'danger' && 'text-red-500',
+              variant === 'warning' && 'text-amber-500',
+              variant === 'info' && 'text-blue-500',
+              variant === 'success' && 'text-green-500'
+            )}
+          >
             {getIcon()}
           </div>
           <H2 className="text-xl font-bold text-gray-900">{title}</H2>
         </div>
-        <Body className="text-gray-600 mb-6">{message}</Body>
+        {messageBlock}
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" type="button" onClick={onClose} disabled={isLoading}>
             {cancelText}
@@ -133,7 +159,7 @@ export const ConfirmationModal = ({
           <Button
             type="button"
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isLoading || confirmDisabled}
             className={cn(
               getConfirmButtonVariant(),
               'focus:ring-2 focus:ring-offset-2',

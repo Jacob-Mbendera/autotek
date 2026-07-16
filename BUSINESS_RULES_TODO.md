@@ -188,10 +188,11 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `completed` |
 | **Problem** | Admin can set status to `cancelled` via `updateOrderStatus` without running refund/stock logic that `cancelOrder` uses. |
-| **Rules** | `cancelled` via status update should call shared `cancelOrderSideEffects()` or reject and force use of cancel endpoint |
-| **Backend** | `orderController.ts` |
+| **Rules** | `cancelled` via status update uses shared `applyOrderCancellation()` (stock restore + refund queue) |
+| **Backend** | `orderController.ts`, `utils/orderCancelSideEffects.ts` |
+| **Frontend** | Admin Order Detail status update — cancel confirm copy + refund toast |
 | **Acceptance** | Admin cancel always triggers refund (if paid) and stock restore per BR-03/BR-04 |
 | **Depends on** | BR-01, BR-03, BR-04 |
 
@@ -320,6 +321,7 @@ For each BR item:
 | 2026-07-13 | BR-05 | Coupon usageCount increments only after payment success |
 | 2026-07-13 | BR-06 | Service cancel triggers PayChangu refund for paid towing/car services |
 | 2026-07-15 | BR-06 | Aligned to manual PayChangu refunds: `refund_pending` queue + Admin Refunds page |
+| 2026-07-16 | BR-11 | Admin status→cancelled uses shared cancel side effects (stock + refund queue) |
 
 ---
 
@@ -331,4 +333,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-11** (admin cancel side effects) or **BR-07** (service payment before in-progress — needs ops confirm) when ready.*
+*Next step: Start **BR-07** (service payment before in-progress — needs ops confirm) or **BR-08** (custom order status rules) when ready.*
