@@ -225,7 +225,10 @@ export const AdminReturns = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
         <H1 className="text-gray-50">Returns Management</H1>
-        <Body className="text-gray-400 mt-2">Manage and process return requests</Body>
+        <Body className="text-gray-400 mt-2">
+          Manage and process return requests. Customers can only request returns on collected
+          orders, within 30 days of collection.
+        </Body>
       </div>
 
       {/* Statistics */}

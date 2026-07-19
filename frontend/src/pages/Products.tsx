@@ -214,6 +214,30 @@ export const Products = () => {
               <Body className="text-lg text-gray-700 mb-6 max-w-xl">
                 Browse our extensive catalog of quality automotive spare parts. Search by category, price, or product name.
               </Body>
+
+              <div className="mb-6 rounded-2xl border border-teal-200 bg-white/90 p-4 shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <Body className="font-semibold text-gray-900">Can&apos;t find the part you need?</Body>
+                    <Body className="text-sm text-gray-600">
+                      Send a part request and we&apos;ll help source it for you.
+                    </Body>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Link to="/request-part">
+                      <Button size="small" className="gap-2">
+                        <Package className="h-4 w-4" />
+                        Request a Part
+                      </Button>
+                    </Link>
+                    <Link to="/my-part-requests">
+                      <Button variant="secondary" size="small">
+                        My Part Requests
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
               
               {/* Enhanced Search Bar with Autocomplete */}
               <form onSubmit={handleSearch} className="relative max-w-2xl">
@@ -732,14 +756,21 @@ export const Products = () => {
             <div className="text-center py-20 bg-gray-50 rounded-lg border-2 border-gray-200">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <Body className="text-gray-700 text-lg font-semibold mb-2">No products found</Body>
-              <Body className="text-gray-600 mb-4">Try adjusting your filters or search terms</Body>
-              <Button
-                variant="secondary"
-                onClick={handleResetFilters}
-                className="mt-4"
-              >
-                Clear Filters
-              </Button>
+              <Body className="text-gray-600 mb-3">Try adjusting your filters or search terms.</Body>
+              <Body className="text-gray-600 mb-6">
+                We couldn&apos;t find that part. Request a part and we&apos;ll source it for you.
+              </Body>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button variant="secondary" onClick={handleResetFilters}>
+                  Clear Filters
+                </Button>
+                <Link to="/request-part">
+                  <Button className="gap-2">
+                    <Package className="h-4 w-4" />
+                    Request a Part
+                  </Button>
+                </Link>
+              </div>
             </div>
           ) : (
             <>

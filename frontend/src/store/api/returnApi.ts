@@ -74,8 +74,17 @@ interface ReturnsResponse {
 interface ReturnsQueryParams {
   email?: string;
   status?: ReturnStatus;
+  orderId?: string;
   page?: number;
   limit?: number;
+}
+
+function returnInvalidationTags(returnId?: string) {
+  return [
+    { type: 'Return' as const, id: 'LIST' },
+    'Return' as const,
+    ...(returnId ? [{ type: 'Return' as const, id: returnId }] : []),
+  ];
 }
 
 interface RejectReturnRequest {
@@ -87,6 +96,7 @@ interface ProcessRefundRequest {
 }
 
 export const returnApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     createReturn: builder.mutation<{ return: Return; message: string }, CreateReturnRequest>({
       query: (data) => {
@@ -113,7 +123,27 @@ export const returnApi = baseApi.injectEndpoints({
           headers: {},
         };
       },
-      invalidatesTags: ['Return'],
+      invalidatesTags: (result) => returnInvalidationTags(result?.return?._id),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          const created = data.return;
+          if (!created?._id) return;
+
+          dispatch(
+            baseApi.util.invalidateTags(returnInvalidationTags(created._id))
+          );
+          dispatch(
+            returnApi.util.upsertQueryData(
+              'getReturn',
+              { id: created._id },
+              { return: created }
+            )
+          );
+        } catch {
+          /* ignore */
+        }
+      },
     }),
     getReturns: builder.query<ReturnsResponse, ReturnsQueryParams | void>({
       query: (params) => {
@@ -123,6 +153,7 @@ export const returnApi = baseApi.injectEndpoints({
         const searchParams = new URLSearchParams();
         if (params.email) searchParams.append('email', params.email);
         if (params.status) searchParams.append('status', params.status);
+        if (params.orderId) searchParams.append('orderId', params.orderId);
         if (params.page) searchParams.append('page', params.page.toString());
         if (params.limit) searchParams.append('limit', params.limit.toString());
 
@@ -131,14 +162,24 @@ export const returnApi = baseApi.injectEndpoints({
           method: 'GET',
         };
       },
-      providesTags: ['Return'],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.returns.map((r) => ({ type: 'Return' as const, id: r._id })),
+              { type: 'Return' as const, id: 'LIST' },
+              'Return',
+            ]
+          : [{ type: 'Return' as const, id: 'LIST' }, 'Return'],
     }),
     getReturn: builder.query<{ return: Return }, { id: string; email?: string }>({
       query: ({ id, email }) => {
         const params = email ? `?email=${encodeURIComponent(email)}` : '';
         return `/returns/${id}${params}`;
       },
-      providesTags: (result, error, { id }) => [{ type: 'Return', id }],
+      providesTags: (_result, _error, { id }) => [
+        { type: 'Return', id },
+        { type: 'Return', id: 'LIST' },
+      ],
     }),
     cancelReturn: builder.mutation<{ return: Return; message: string }, { id: string; email?: string }>({
       query: ({ id, email }) => {
@@ -148,7 +189,47 @@ export const returnApi = baseApi.injectEndpoints({
           method: 'PUT',
         };
       },
-      invalidatesTags: (result, error, { id }) => [{ type: 'Return', id }, 'Return'],
+      invalidatesTags: (_result, _error, { id }) => returnInvalidationTags(id),
+      async onQueryStarted({ id, email }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(baseApi.util.invalidateTags(returnInvalidationTags(id)));
+
+          const cancelled = data.return;
+          if (cancelled) {
+            dispatch(
+              returnApi.util.updateQueryData(
+                'getReturn',
+                { id, email },
+                (draft) => {
+                  draft.return = cancelled;
+                }
+              )
+            );
+            dispatch(
+              returnApi.util.updateQueryData(
+                'getReturn',
+                { id },
+                (draft) => {
+                  draft.return = cancelled;
+                }
+              )
+            );
+          } else {
+            dispatch(
+              returnApi.util.updateQueryData(
+                'getReturn',
+                { id, email },
+                (draft) => {
+                  draft.return.status = 'cancelled';
+                }
+              )
+            );
+          }
+        } catch {
+          /* ignore */
+        }
+      },
     }),
     // Admin endpoints
     getAllReturns: builder.query<ReturnsResponse, { status?: ReturnStatus; startDate?: string; endDate?: string; page?: number; limit?: number } | void>({
@@ -168,14 +249,25 @@ export const returnApi = baseApi.injectEndpoints({
           method: 'GET',
         };
       },
-      providesTags: ['Return'],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.returns.map((r) => ({ type: 'Return' as const, id: r._id })),
+              { type: 'Return' as const, id: 'LIST' },
+              'Return',
+            ]
+          : [{ type: 'Return' as const, id: 'LIST' }, 'Return'],
     }),
     approveReturn: builder.mutation<{ return: Return; message: string }, string>({
       query: (id) => ({
         url: `/admin/returns/${id}/approve`,
         method: 'PUT',
       }),
-      invalidatesTags: (result, error, id) => [{ type: 'Return', id }, 'Return'],
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Return', id },
+        { type: 'Return', id: 'LIST' },
+        'Return',
+      ],
     }),
     rejectReturn: builder.mutation<{ return: Return; message: string }, { id: string; data: RejectReturnRequest }>({
       query: ({ id, data }) => ({
@@ -183,7 +275,11 @@ export const returnApi = baseApi.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Return', id }, 'Return'],
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Return', id },
+        { type: 'Return', id: 'LIST' },
+        'Return',
+      ],
     }),
     processRefund: builder.mutation<{ return: Return; message: string }, { id: string; data?: ProcessRefundRequest }>({
       query: ({ id, data }) => ({
@@ -191,7 +287,11 @@ export const returnApi = baseApi.injectEndpoints({
         method: 'POST',
         body: data || {},
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Return', id }, 'Return'],
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Return', id },
+        { type: 'Return', id: 'LIST' },
+        'Return',
+      ],
     }),
   }),
 });

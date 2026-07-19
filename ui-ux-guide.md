@@ -55,8 +55,8 @@ This document defines the design system, UI components, UX patterns, and styling
   - Used for: Orders/services being processed
 - **In Progress**: `#8B5CF6` (Purple)
   - Used for: Orders/services currently in progress
-- **Completed**: `#10B981` (Green)
-  - Used for: Completed orders, delivered items, successful actions
+- **Completed / Collected**: `#10B981` (Green)
+  - Used for: Collected orders, successful actions
 - **Error**: `#EF4444` (Red)
   - Used for: Cancelled orders, failed actions, error states
 
@@ -250,7 +250,7 @@ Using Tailwind's default spacing scale (4px base unit):
   - **Pending**: `#F59E0B` (Orange/Yellow)
   - **Processing**: `#3B82F6` (Blue)
   - **In Progress**: `#8B5CF6` (Purple)
-  - **Completed/Delivered**: `#10B981` (Green)
+  - **Collected**: `#10B981` (Green)
   - **Cancelled/Error**: `#EF4444` (Red)
 
 ### Loading States

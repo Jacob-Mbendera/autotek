@@ -1,20 +1,52 @@
 import { Response } from 'express';
+import path from 'path';
 import { AuthRequest } from '../middleware/auth';
 import CustomOrder from '../models/CustomOrder';
 import { CustomOrderStatus } from '../types/shared';
+import { uploadImage, deleteImage } from '../config/cloudinary';
+import { cleanupFile } from '../middleware/upload';
+
+const optionalString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const getUploadedFiles = (req: AuthRequest): Express.Multer.File[] => {
+  if (!req.files) return [];
+  if (Array.isArray(req.files)) return req.files;
+  return Object.values(req.files).flat();
+};
 
 export const createCustomOrder = async (
   req: AuthRequest,
   res: Response
 ): Promise<void> => {
-  try {
-    const { productName, description, category, estimatedPrice } = req.body;
+  const files = getUploadedFiles(req);
+  const filePaths = files.map((file) => path.join(process.cwd(), 'uploads', file.filename));
+  const uploadedPublicIds: string[] = [];
 
-    if (!productName || !description || !category) {
-      res.status(400).json({
-        message: 'Product name, description, and category are required',
-      });
-      return;
+  try {
+    const productName = String(req.body.productName || '').trim();
+    const description = String(req.body.description || '').trim();
+    const category = String(req.body.category || '').trim();
+    const make = String(req.body.make || '').trim();
+    const model = String(req.body.model || '').trim();
+    const engine = String(req.body.engine || '').trim();
+    const position = String(req.body.position || '').trim();
+    const year = Number(req.body.year);
+    const quantity = Number(req.body.quantity);
+    const estimatedPriceRaw = req.body.estimatedPrice;
+    const estimatedPrice =
+      estimatedPriceRaw === undefined || estimatedPriceRaw === '' || estimatedPriceRaw === null
+        ? undefined
+        : Number(estimatedPriceRaw);
+
+    const imageUrls: string[] = [];
+    for (const filePath of filePaths) {
+      const result = await uploadImage(filePath, 'autotek/custom-orders');
+      uploadedPublicIds.push(result.public_id);
+      imageUrls.push(result.secure_url);
     }
 
     const customOrder = new CustomOrder({
@@ -22,13 +54,36 @@ export const createCustomOrder = async (
       productName,
       description,
       category,
-      estimatedPrice,
+      estimatedPrice: Number.isFinite(estimatedPrice) ? estimatedPrice : undefined,
+      vehicleDetails: {
+        make,
+        model,
+        year,
+        engine,
+        trim: optionalString(req.body.trim),
+        transmission: optionalString(req.body.transmission),
+        drivetrain: optionalString(req.body.drivetrain),
+        bodyStyle: optionalString(req.body.bodyStyle),
+        vinOrChassis: optionalString(req.body.vinOrChassis)?.toUpperCase(),
+      },
+      partDetails: {
+        position,
+        partNumber: optionalString(req.body.partNumber)?.toUpperCase(),
+        quantity,
+        preference: optionalString(req.body.preference) || 'no-preference',
+      },
+      images: imageUrls,
     });
 
     await customOrder.save();
     res.status(201).json(customOrder);
   } catch (error: any) {
+    if (uploadedPublicIds.length > 0) {
+      await Promise.allSettled(uploadedPublicIds.map((publicId) => deleteImage(publicId)));
+    }
     res.status(500).json({ message: error.message || 'Failed to create custom order' });
+  } finally {
+    filePaths.forEach((filePath) => cleanupFile(filePath));
   }
 };
 

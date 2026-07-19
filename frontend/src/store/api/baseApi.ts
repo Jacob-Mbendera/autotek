@@ -6,7 +6,7 @@ const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 // Create base query with error transformation
 const baseQueryWithErrorHandling = fetchBaseQuery({
   baseUrl,
-  prepareHeaders: (headers, { getState, arg }) => {
+  prepareHeaders: (headers, { getState, arg, endpoint }) => {
     const state = getState() as RootState;
     const token = state.auth.token;
 
@@ -15,12 +15,23 @@ const baseQueryWithErrorHandling = fetchBaseQuery({
     }
 
     // Multipart uploads: never force application/json; browser must set boundary on FormData.
-    const filesArg = arg as { files?: unknown[] } | undefined;
+    const filesArg = arg as { files?: unknown[]; images?: unknown[] } | undefined;
     const isMultipartFileUpload =
-      Array.isArray(filesArg?.files) &&
-      filesArg.files.length > 0 &&
-      filesArg.files[0] instanceof File;
-    if (isMultipartFileUpload) {
+      (Array.isArray(filesArg?.files) &&
+        filesArg.files.length > 0 &&
+        filesArg.files[0] instanceof File) ||
+      (Array.isArray(filesArg?.images) &&
+        filesArg.images.length > 0 &&
+        filesArg.images[0] instanceof File);
+    // Some endpoints always send FormData even when no files are attached.
+    const alwaysMultipartEndpoints = new Set([
+      'createReturn',
+      'createCustomOrder',
+      'createProduct',
+      'updateProduct',
+      'uploadMediaLibrary',
+    ]);
+    if (isMultipartFileUpload || alwaysMultipartEndpoints.has(endpoint)) {
       headers.delete('Content-Type');
       return headers;
     }

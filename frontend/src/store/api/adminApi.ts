@@ -1,8 +1,14 @@
 import { baseApi } from './baseApi';
 import type { OrderStatus, CustomOrderStatus, ServiceStatus, UserRole } from '../../../../shared/types';
 import type { Order } from './orderApi';
-import { productIdFromOrderItem, productInvalidationTags } from './orderApi';
+import type { CustomOrder } from './customOrderApi';
+import {
+  productIdFromOrderItem,
+  productInvalidationTags,
+} from './productInvalidation';
 import { broadcastClientSync } from '../../utils/crossTabSync';
+
+export type AdminCustomOrder = CustomOrder;
 
 export interface AdminStats {
   orders: {
@@ -200,12 +206,21 @@ export const adminApi = baseApi.injectEndpoints({
         }
       },
     }),
-    getCustomOrder: builder.query<{ customOrder: unknown }, string>({
+    getCustomOrder: builder.query<{ customOrder: AdminCustomOrder }, string>({
       query: (id) => `/admin/custom-orders/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Admin', id }],
     }),
     getAllCustomOrders: builder.query<
-      { customOrders: unknown[]; pagination: unknown },
+      {
+        customOrders: AdminCustomOrder[];
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages?: number;
+          pages?: number;
+        };
+      },
       GetAllCustomOrdersQueryParams | void
     >({
       query: (params) => {
@@ -216,6 +231,7 @@ export const adminApi = baseApi.injectEndpoints({
         if (params.page) searchParams.append('page', params.page.toString());
         if (params.limit) searchParams.append('limit', params.limit.toString());
         if (params.status) searchParams.append('status', params.status);
+        if (params.search) searchParams.append('search', params.search);
         if (params.startDate) searchParams.append('startDate', params.startDate);
         if (params.endDate) searchParams.append('endDate', params.endDate);
 

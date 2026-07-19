@@ -22,6 +22,7 @@ import serviceReducer from './slices/serviceSlice';
 import uiReducer from './slices/uiSlice';
 import adminReducer from './slices/adminSlice';
 import { baseApi } from './api/baseApi';
+import './api/registerApis';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -44,6 +45,33 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
+// RTK Query can throw when tag invalidation runs for an unregistered endpoint (e.g. HMR).
+// Swallow that specific failure so callers still receive the real API error (e.g. 400),
+// then force Return tag invalidation so list UIs do not stay stale.
+const safeRtkQueryMiddleware: Middleware = (api) => {
+  const rtkHandler = baseApi.middleware(api);
+  return (next) => (action) => {
+    try {
+      return rtkHandler(next)(action);
+    } catch (error) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes('invalidatesTags')
+      ) {
+        const result = next(action);
+        api.dispatch(
+          baseApi.util.invalidateTags([
+            'Return',
+            { type: 'Return', id: 'LIST' },
+          ])
+        );
+        return result;
+      }
+      throw error;
+    }
+  };
+};
+
 // Middleware to reset RTK Query cache on logout
 const rtkQueryCacheResetMiddleware: Middleware = (store) => (next) => (action) => {
   const result = next(action);
@@ -61,7 +89,7 @@ export const store = configureStore({
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     })
-      .concat(baseApi.middleware)
+      .concat(safeRtkQueryMiddleware)
       .concat(rtkQueryCacheResetMiddleware),
   devTools: import.meta.env.DEV,
 });

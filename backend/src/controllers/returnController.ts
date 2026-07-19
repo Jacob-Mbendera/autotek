@@ -151,10 +151,17 @@ export const createReturn = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    // Check if order is eligible for return
+    // Check if order is eligible for return (collected + within window)
+    if (order.status !== OrderStatus.COMPLETED) {
+      res.status(400).json({
+        message: 'Returns are only available after the order has been collected.',
+      });
+      return;
+    }
+
     if (!isWithinReturnWindow(order)) {
       res.status(400).json({
-        message: `Return window has expired. Returns must be requested within ${RETURN_WINDOW_DAYS} days of order completion.`,
+        message: `Return window has expired. Returns must be requested within ${RETURN_WINDOW_DAYS} days of collection.`,
       });
       return;
     }
@@ -277,7 +284,7 @@ export const createReturn = async (req: AuthRequest, res: Response): Promise<voi
 
 export const getUserReturns = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { email, status, page = 1, limit = 10 } = req.query;
+    const { email, status, orderId, page = 1, limit = 10 } = req.query;
 
     let query: any = {};
 
@@ -288,6 +295,10 @@ export const getUserReturns = async (req: AuthRequest, res: Response): Promise<v
     } else {
       res.status(401).json({ message: 'Authentication required or email query parameter needed' });
       return;
+    }
+
+    if (orderId && typeof orderId === 'string') {
+      query.order = orderId;
     }
 
     const validReturnStatuses = ['pending', 'approved', 'rejected', 'completed', 'cancelled'];

@@ -67,12 +67,15 @@ export const Returns = () => {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  const { data, isLoading, error } = useGetReturnsQuery({
-    email: !isAuthenticated && user?.email ? user.email : undefined,
-    status: statusFilter,
-    page,
-    limit,
-  });
+  const { data, isLoading, error } = useGetReturnsQuery(
+    {
+      email: !isAuthenticated && user?.email ? user.email : undefined,
+      status: statusFilter,
+      page,
+      limit,
+    },
+    { refetchOnMountOrArgChange: true }
+  );
 
   const returns = data?.returns || [];
   const pagination = data?.pagination;

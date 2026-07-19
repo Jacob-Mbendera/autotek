@@ -17,6 +17,8 @@ const CompareProducts = lazy(() => import('./pages/CompareProducts').then(m => (
 const ProductDetail = lazy(() => import('./pages/ProductDetail').then(m => ({ default: m.ProductDetail })));
 const BookService = lazy(() => import('./pages/BookService').then(m => ({ default: m.BookService })));
 const MyServices = lazy(() => import('./pages/MyServices').then(m => ({ default: m.MyServices })));
+const RequestPart = lazy(() => import('./pages/RequestPart').then(m => ({ default: m.RequestPart })));
+const MyPartRequests = lazy(() => import('./pages/MyPartRequests').then(m => ({ default: m.MyPartRequests })));
 const ServicePayment = lazy(() => import('./pages/ServicePayment').then(m => ({ default: m.ServicePayment })));
 const Cart = lazy(() => import('./pages/Cart').then(m => ({ default: m.Cart })));
 const Checkout = lazy(() => import('./pages/Checkout').then(m => ({ default: m.Checkout })));
@@ -171,6 +173,26 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <MyServices />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/request-part"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RequestPart />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-part-requests"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MyPartRequests />
               </Layout>
             </ProtectedRoute>
           }

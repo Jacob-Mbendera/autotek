@@ -10,6 +10,7 @@ export default defineConfig({
       '@shared/types': path.resolve(__dirname, '../shared/types/index.ts'),
       '@shared': path.resolve(__dirname, '../shared'),
     },
+    dedupe: ['@reduxjs/toolkit', 'react-redux'],
     // Prefer TypeScript files over compiled JS
     extensions: ['.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
   },

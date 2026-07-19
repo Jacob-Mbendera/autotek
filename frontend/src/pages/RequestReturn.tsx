@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useGetOrderQuery } from '../store/api/orderApi';
-import { useCreateReturnMutation } from '../store/api/returnApi';
+import { useCreateReturnMutation, useGetReturnsQuery } from '../store/api/returnApi';
+import { baseApi } from '../store/api/baseApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -58,6 +59,11 @@ export const RequestReturn = () => {
     { skip: !orderId }
   );
 
+  const { data: returnsData } = useGetReturnsQuery(undefined, {
+    skip: !isAuthenticated || !orderId,
+    refetchOnMountOrArgChange: true,
+  });
+
   const [createReturn, { isLoading: isSubmitting }] = useCreateReturnMutation();
 
   const [selectedItems, setSelectedItems] = useState<Map<string, SelectedItem>>(new Map());
@@ -70,7 +76,15 @@ export const RequestReturn = () => {
 
   const order = orderData?.order;
 
-  // Check if order is eligible for return (30 days from completion)
+  const existingReturn = returnsData?.returns?.find((ret) => {
+    const returnOrderId = typeof ret.order === 'object' ? ret.order._id : ret.order;
+    return (
+      String(returnOrderId) === String(orderId) &&
+      (ret.status === 'pending' || ret.status === 'approved')
+    );
+  });
+
+  // Check if order is eligible for return (30 days from collection)
   const isEligibleForReturn = () => {
     if (!order || order.status !== 'completed') return false;
     const completionDate = new Date(order.updatedAt || order.createdAt);
@@ -190,9 +204,18 @@ export const RequestReturn = () => {
 
     if (!isEligibleForReturn()) {
       dispatch(showNotification({
-        message: 'This order is not eligible for return. Returns must be requested within 30 days of order completion.',
+        message: 'This order is not eligible for return. Returns must be requested within 30 days of collection.',
         type: 'error',
       }));
+      return;
+    }
+
+    if (existingReturn) {
+      dispatch(showNotification({
+        message: 'A return request already exists for this order',
+        type: 'error',
+      }));
+      navigate(`/returns/${existingReturn._id}`);
       return;
     }
 
@@ -220,6 +243,16 @@ export const RequestReturn = () => {
         guestInfo,
         images: images.length > 0 ? images : undefined,
       }).unwrap();
+
+      dispatch(
+        baseApi.util.invalidateTags([
+          'Return',
+          { type: 'Return', id: 'LIST' },
+          ...(result.return?._id
+            ? [{ type: 'Return' as const, id: result.return._id }]
+            : []),
+        ])
+      );
 
       dispatch(showNotification({
         message: 'Return request submitted successfully!',
@@ -312,13 +345,36 @@ export const RequestReturn = () => {
           <div className="flex items-start">
             <AlertCircle className="h-5 w-5 text-amber-600 mr-3 mt-0.5" />
             <div>
-              <Body className="font-medium text-amber-900">Return Window Expired</Body>
+              <Body className="font-medium text-amber-900">
+                {order.status !== 'completed' ? 'Order Not Collected Yet' : 'Return Window Expired'}
+              </Body>
               <Body className="text-amber-700 text-sm mt-1">
                 {order.status !== 'completed'
-                  ? 'This order must be completed before you can request a return.'
-                  : `This order was completed ${daysSinceCompletion} days ago. Returns must be requested within 30 days of order completion.`}
+                  ? 'Returns are only available after the order has been collected.'
+                  : `This order was collected ${daysSinceCompletion} days ago. Returns must be requested within 30 days of collection.`}
               </Body>
             </div>
+          </div>
+        </Card>
+      )}
+
+      {existingReturn && (
+        <Card className="mt-6 p-4 bg-teal-50 border-teal-200">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start">
+              <CheckCircle className="h-5 w-5 text-teal-600 mr-3 mt-0.5" />
+              <div>
+                <Body className="font-medium text-teal-900">Return Already Requested</Body>
+                <Body className="text-teal-700 text-sm mt-1">
+                  A return request already exists for this order. You can view its status instead of submitting again.
+                </Body>
+              </div>
+            </div>
+            <Link to={`/returns/${existingReturn._id}`}>
+              <Button variant="primary" size="sm">
+                View Return
+              </Button>
+            </Link>
           </div>
         </Card>
       )}
@@ -550,7 +606,7 @@ export const RequestReturn = () => {
           <Link to={`/orders/${orderId}`}>
             <Button type="button" variant="outline">Cancel</Button>
           </Link>
-          <Button type="submit" disabled={!eligible || isSubmitting || selectedItems.size === 0}>
+          <Button type="submit" disabled={!eligible || !!existingReturn || isSubmitting || selectedItems.size === 0}>
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />

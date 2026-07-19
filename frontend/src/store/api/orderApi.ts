@@ -1,12 +1,18 @@
 import { baseApi } from './baseApi';
 import type { OrderStatus, PaymentMethod, PaymentStatus } from '../../../../shared/types';
 import type { ProductImageField } from './productApi';
+import {
+  productIdFromOrderItem,
+  productInvalidationTags,
+} from './productInvalidation';
 import { broadcastClientSync } from '../../utils/crossTabSync';
 import {
   clearPendingPaychanguOrder,
   clearPaychanguRedirectAt,
   getPendingPaychanguOrder,
 } from '../../utils/pendingPaychanguOrder';
+
+export { productIdFromOrderItem, productInvalidationTags } from './productInvalidation';
 
 export interface OrderItem {
   product: {
@@ -75,26 +81,6 @@ interface OrdersQueryParams {
   page?: number;
   limit?: number;
   status?: OrderStatus;
-}
-
-export function productIdFromOrderItem(item: {
-  product: OrderItem['product'] | string | null | undefined;
-}): string | null {
-  const { product } = item;
-  if (!product) return null;
-  if (typeof product === 'string') return product;
-  if (typeof product === 'object' && '_id' in product && product._id) {
-    return product._id;
-  }
-  return null;
-}
-
-export function productInvalidationTags(productIds: string[]) {
-  const uniqueIds = [...new Set(productIds.filter(Boolean))];
-  return [
-    { type: 'Product' as const, id: 'LIST' },
-    ...uniqueIds.map((id) => ({ type: 'Product' as const, id })),
-  ];
 }
 
 export const orderApi = baseApi.injectEndpoints({

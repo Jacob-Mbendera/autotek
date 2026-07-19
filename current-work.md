@@ -1,6 +1,24 @@
 # Current Work - AutoTek Development
 
-## Latest Update (June 25, 2026) - Image Milestone 5 Complete
+## Latest Update (July 19, 2026) - Known issue: Returns Quick Actions stale UI
+
+### Returns create/cancel does not update Order Detail Quick Actions without refresh
+**Status**: Open / deferred
+
+After creating or cancelling a return, Order Detail Quick Actions (`Request Return` / `View Return Request`) often stay stale until a hard browser refresh. Same pattern can affect related returns list UIs.
+
+**Attempted (not sufficient in practice):**
+- RTK `invalidatesTags` + safe middleware fallback invalidate
+- `refetchOnMountOrArgChange` on Order Detail / Returns
+- Explicit `invalidateTags` after create/cancel
+- Backend `orderId` filter on `GET /returns` + Order Detail query by `orderId`
+- Mutation `onQueryStarted` upsert/update for return detail cache
+
+**Next when revisited:** Trace Network tab on remount for `GET /returns?orderId=…` (status/cached body), confirm whether cache key / middleware still skips invalidation, or replace list-derived Quick Actions with a dedicated per-order returns endpoint / local UI state after mutation.
+
+---
+
+## Previous Update (June 25, 2026) - Image Milestone 5 Complete
 
 ### Unsplash Placeholder Replacement
 **Status**: Completed

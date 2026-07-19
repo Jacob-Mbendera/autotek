@@ -7,6 +7,7 @@ import {
   useRejectReturnMutation,
   useProcessRefundMutation,
 } from '../store/api/returnApi';
+import { baseApi } from '../store/api/baseApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -138,6 +139,14 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
         email: email || undefined,
       }).unwrap();
 
+      dispatch(
+        baseApi.util.invalidateTags([
+          'Return',
+          { type: 'Return', id: 'LIST' },
+          { type: 'Return', id },
+        ])
+      );
+
       dispatch(showNotification({
         message: 'Return cancelled successfully',
         type: 'success',
@@ -236,6 +245,19 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
         icon: returnDoc.status === 'approved' ? CheckCircle : XCircle,
         completed: true,
         active: returnDoc.status === 'approved' || returnDoc.status === 'rejected',
+        date: returnDoc.updatedAt,
+      });
+    }
+
+    // Cancelled
+    if (returnDoc.status === 'cancelled') {
+      steps.push({
+        status: 'cancelled',
+        label: 'Return Cancelled',
+        description: 'This return request was cancelled',
+        icon: XCircle,
+        completed: true,
+        active: false,
         date: returnDoc.updatedAt,
       });
     }
@@ -560,7 +582,10 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
                   {returnDoc.refundStatus.charAt(0).toUpperCase() + returnDoc.refundStatus.slice(1)}
                 </span>
               </div>
-              {returnDoc.refundStatus === 'pending' && (
+              {returnDoc.status === 'cancelled' && (
+                <Body className="text-xs text-gray-500">No refund will be issued for a cancelled return.</Body>
+              )}
+              {returnDoc.status !== 'cancelled' && returnDoc.refundStatus === 'pending' && (
                 <Body className="text-xs text-gray-500">Refund will be processed after the return is approved.</Body>
               )}
               {returnDoc.refundStatus === 'completed' && (
@@ -644,6 +669,30 @@ export const ReturnDetail = ({ isAdmin = false }: ReturnDetailProps) => {
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Cancel Return
               </Button>
+            </Card>
+          )}
+          {!isAdmin && returnDoc.status === 'cancelled' && orderId && (
+            <Card className="p-6 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center">
+                  <RotateCcw className="h-5 w-5 text-teal-600" />
+                </div>
+                <H2 className="text-lg font-semibold text-gray-900">Actions</H2>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Link to={`/returns/new?orderId=${orderId}`} className="block">
+                  <Button variant="primary" className="w-full">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Request a new return
+                  </Button>
+                </Link>
+                <Link to={orderLink} className="block">
+                  <Button variant="secondary" className="w-full">
+                    View Original Order
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
             </Card>
           )}
         </div>

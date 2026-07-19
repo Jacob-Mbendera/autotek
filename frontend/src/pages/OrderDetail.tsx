@@ -195,10 +195,15 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   const searchParams = new URLSearchParams(location.search);
   const guestEmail = sessionStorage.getItem('guestOrderEmail') || searchParams.get('email') || undefined;
   
-  // Check for existing returns for this order (skip if admin)
+  // Returns for this order only (skip if admin) — avoids paginated global list staleness
   const { data: returnsData } = useGetReturnsQuery(
-    guestEmail ? { email: guestEmail } : undefined,
-    { skip: isAdmin || !id }
+    id
+      ? {
+          orderId: id,
+          ...(guestEmail ? { email: guestEmail } : {}),
+        }
+      : undefined,
+    { skip: isAdmin || !id, refetchOnMountOrArgChange: true }
   );
 
   // Use admin API if admin, otherwise use regular order API
@@ -568,7 +573,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     }
   };
 
-  // Check if order is eligible for return (within 30 days of completion)
+  // Check if order is eligible for return (within 30 days of collection)
   const isEligibleForReturn = () => {
     if (!order || order.status !== OrderStatus.COMPLETED) return false;
     const completedDate = new Date(order.updatedAt);
@@ -576,14 +581,16 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     return daysSinceCompletion <= 30;
   };
 
-  // Check if there's already a return request for this order
-  const hasExistingReturn = () => {
-    if (!returnsData?.returns || !id) return false;
-    return returnsData.returns.some((ret) => {
-      const returnOrderId = typeof ret.order === 'object' ? ret.order._id : ret.order;
-      return returnOrderId === id;
-    });
-  };
+  // Active return (pending/approved) blocks a new request — cancelled/rejected do not
+  const activeReturn = returnsData?.returns?.find((ret) => {
+    if (!id) return false;
+    const returnOrderId = typeof ret.order === 'object' ? ret.order._id : ret.order;
+    return (
+      String(returnOrderId) === String(id) &&
+      (ret.status === 'pending' || ret.status === 'approved')
+    );
+  });
+  const hasActiveReturn = Boolean(activeReturn);
 
   // Navigate to return request page
   const handleRequestReturn = () => {
@@ -1100,7 +1107,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   {customerCancelBlockedMessage}
                 </Body>
               )}
-              {order.status === OrderStatus.COMPLETED && isEligibleForReturn() && !hasExistingReturn() && (
+              {order.status === OrderStatus.COMPLETED && isEligibleForReturn() && !hasActiveReturn && (
                 <Button
                   variant="primary"
                   className="w-full flex items-center justify-center"
@@ -1110,9 +1117,9 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                   Request Return
                 </Button>
               )}
-              {hasExistingReturn() && !isAdmin && (
+              {hasActiveReturn && activeReturn && !isAdmin && (
                 <Link
-                  to={`/returns/${returnsData?.returns.find((r) => (typeof r.order === 'object' ? r.order._id : r.order) === id)?._id}`}
+                  to={`/returns/${activeReturn._id}`}
                   className="block"
                 >
                   <Button

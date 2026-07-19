@@ -48,6 +48,9 @@ export const uploadSingle = upload.single('image');
 // Middleware for multiple image uploads
 export const uploadMultiple = upload.array('images', 10); // Max 10 images
 
+/** Customer part requests: up to 3 supporting photos. */
+export const uploadCustomOrderImages = upload.array('images', 3);
+
 /** Admin media library: upload many files into shared library (admin). */
 export const uploadLibraryFiles = upload.array('files', 30);
 

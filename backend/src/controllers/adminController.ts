@@ -186,6 +186,11 @@ export const getAllCustomOrders = async (
         { productName: searchRegex },
         { description: searchRegex },
         { category: searchRegex },
+        { 'vehicleDetails.make': searchRegex },
+        { 'vehicleDetails.model': searchRegex },
+        { 'vehicleDetails.engine': searchRegex },
+        { 'vehicleDetails.vinOrChassis': searchRegex },
+        { 'partDetails.partNumber': searchRegex },
       ];
     }
 

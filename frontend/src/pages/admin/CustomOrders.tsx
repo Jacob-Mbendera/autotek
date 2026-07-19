@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useGetAllCustomOrdersQuery, useGetCustomOrderQuery } from '../../store/api/adminApi';
-import { useUpdateCustomOrderMutation } from '../../store/api/customOrderApi';
+import {
+  useGetAllCustomOrdersQuery,
+  useGetCustomOrderQuery,
+  type AdminCustomOrder,
+} from '../../store/api/adminApi';
+import { useUpdateCustomOrderMutation, type CustomOrderCustomer } from '../../store/api/customOrderApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
 import { getErrorInfo } from '../../utils/errorHandler';
@@ -9,9 +13,48 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, FileText, Package, X, User, Phone, Mail, Calendar, Banknote, Tag, Save, ArrowLeft, ArrowRight } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Eye,
+  Loader2,
+  FileText,
+  Package,
+  X,
+  User,
+  Phone,
+  Mail,
+  Calendar,
+  Banknote,
+  Tag,
+  Save,
+  ArrowLeft,
+  ArrowRight,
+  Car,
+  Hash,
+  Image as ImageIcon,
+} from 'lucide-react';
 import { CustomOrderStatus } from '@shared/types';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
+
+const formatLabel = (value?: string) =>
+  value
+    ? value
+        .split('-')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ')
+    : '';
+
+const getCustomer = (order?: AdminCustomOrder | null): CustomOrderCustomer => {
+  if (!order?.user || typeof order.user === 'string') return {};
+  return order.user;
+};
+
+const vehicleSummary = (order: AdminCustomOrder) => {
+  const vehicle = order.vehicleDetails;
+  if (!vehicle?.make && !vehicle?.model && !vehicle?.year) return null;
+  return [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ');
+};
 
 export const AdminCustomOrders = () => {
   const dispatch = useAppDispatch();
@@ -19,7 +62,7 @@ export const AdminCustomOrders = () => {
   const [limit] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<CustomOrderStatus | ''>('');
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<AdminCustomOrder | null>(null);
   const [newStatus, setNewStatus] = useState<CustomOrderStatus | ''>('');
 
   const [updateCustomOrder, { isLoading: isUpdating }] = useUpdateCustomOrderMutation();
@@ -62,7 +105,7 @@ export const AdminCustomOrders = () => {
   );
 
   // Set newStatus when order is selected
-  const handleOrderSelect = (order: any) => {
+  const handleOrderSelect = (order: AdminCustomOrder) => {
     setSelectedOrder(order);
     setNewStatus(order.status);
   };
@@ -75,9 +118,6 @@ export const AdminCustomOrders = () => {
       setNewStatus(selectedOrder.status);
     }
   }, [orderDetailData, selectedOrder]);
-
-  // Get current status for display
-  const currentStatus = orderDetailData?.customOrder?.status || selectedOrder?.status || '';
 
   const handleStatusUpdate = async () => {
     if (!selectedOrder || !newStatus || newStatus === (orderDetailData?.customOrder?.status || selectedOrder.status)) {
@@ -94,13 +134,13 @@ export const AdminCustomOrders = () => {
       await refetch();
       // Update the selected order with new status
       setSelectedOrder({ ...selectedOrder, status: newStatus });
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorInfo = getErrorInfo(error, 'Failed to update custom order status');
       dispatch(showNotification({ 
         message: errorInfo.message, 
         type: 'error' 
       }));
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         console.error('Error updating custom order status:', error);
       }
     }
@@ -192,7 +232,10 @@ export const AdminCustomOrders = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredCustomOrders.map((order: any) => (
+                  filteredCustomOrders.map((order) => {
+                    const customer = getCustomer(order);
+                    const fitment = vehicleSummary(order);
+                    return (
                     <tr key={order._id} className="border-b border-gray-700/50 hover:bg-slate-700/30">
                       <td className="py-3 px-4">
                         <Body className="font-mono text-sm text-gray-50">
@@ -202,15 +245,23 @@ export const AdminCustomOrders = () => {
                       <td className="py-3 px-4">
                         <div>
                           <Body className="font-medium text-gray-50">
-                            {order.user?.name || 'N/A'}
+                            {customer.name || 'N/A'}
                           </Body>
-                          <Body className="text-sm text-gray-400">{order.user?.email || ''}</Body>
+                          <Body className="text-sm text-gray-400">{customer.email || ''}</Body>
                         </div>
                       </td>
                       <td className="py-3 px-4">
                         <Body className="font-medium text-gray-50">
                           {order.productName || 'N/A'}
                         </Body>
+                        {fitment && (
+                          <Body className="text-xs text-teal-300 mt-1">{fitment}</Body>
+                        )}
+                        {order.partDetails?.partNumber && (
+                          <Body className="text-xs text-gray-400 mt-1">
+                            PN: {order.partDetails.partNumber}
+                          </Body>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <Body className="text-sm text-gray-300 line-clamp-2">
@@ -244,18 +295,19 @@ export const AdminCustomOrders = () => {
                         </Button>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
 
-          {data?.pagination && (data.pagination as any).totalPages > 1 && (
+          {data?.pagination && (data.pagination.totalPages || data.pagination.pages || 0) > 1 && (
             <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-700">
               <Body className="text-gray-400">
                 Showing {((page - 1) * limit) + 1} to{' '}
-                {Math.min(page * limit, (data.pagination as any).total)} of{' '}
-                {(data.pagination as any).total} custom orders
+                {Math.min(page * limit, data.pagination.total)} of{' '}
+                {data.pagination.total} custom orders
               </Body>
               <div className="flex gap-2">
                 <Button
@@ -274,7 +326,7 @@ export const AdminCustomOrders = () => {
                   size="small"
                   dark
                   onClick={() => setPage(page + 1)}
-                  disabled={page >= (data.pagination as any).totalPages}
+                  disabled={page >= (data.pagination.totalPages || data.pagination.pages || 1)}
                   className="gap-1.5"
                 >
                   Next
@@ -349,6 +401,15 @@ export const AdminCustomOrders = () => {
                 </div>
 
                 {/* Customer Information */}
+                {(() => {
+                  const detailOrder = orderDetailData?.customOrder || selectedOrder;
+                  const customer = getCustomer(detailOrder);
+                  const vehicle = detailOrder.vehicleDetails;
+                  const part = detailOrder.partDetails;
+                  const images = detailOrder.images || [];
+
+                  return (
+                    <>
                 <div>
                   <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                     <User className="h-4 w-4" />
@@ -357,27 +418,74 @@ export const AdminCustomOrders = () => {
                   <div className="bg-slate-700/50 rounded-lg p-4 space-y-2">
                     <div className="flex items-center gap-2">
                       <Body className="text-gray-50 font-medium">
-                        {(orderDetailData?.customOrder?.user || selectedOrder.user)?.name || 'N/A'}
+                        {customer.name || 'N/A'}
                       </Body>
                     </div>
-                    {(orderDetailData?.customOrder?.user || selectedOrder.user)?.email && (
+                    {customer.email && (
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4 text-gray-400" />
                         <Body className="text-gray-300 text-sm">
-                          {(orderDetailData?.customOrder?.user || selectedOrder.user)?.email}
+                          {customer.email}
                         </Body>
                       </div>
                     )}
-                    {(orderDetailData?.customOrder?.user || selectedOrder.user)?.phone && (
+                    {customer.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-gray-400" />
                         <Body className="text-gray-300 text-sm">
-                          {(orderDetailData?.customOrder?.user || selectedOrder.user)?.phone}
+                          {customer.phone}
                         </Body>
                       </div>
                     )}
                   </div>
                 </div>
+
+                {(vehicle?.make || vehicle?.model || vehicle?.year || vehicle?.engine) && (
+                  <div>
+                    <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                      <Car className="h-4 w-4" />
+                      Vehicle Fitment
+                    </Body>
+                    <div className="bg-slate-700/50 rounded-lg p-4 space-y-3">
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Vehicle</Body>
+                        <Body className="text-gray-50 font-medium">
+                          {[vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || 'N/A'}
+                        </Body>
+                      </div>
+                      {vehicle?.engine && (
+                        <div>
+                          <Body className="text-xs text-gray-400 mb-1">Engine</Body>
+                          <Body className="text-gray-50">{vehicle.engine}</Body>
+                        </div>
+                      )}
+                      {(vehicle?.trim || vehicle?.transmission || vehicle?.drivetrain || vehicle?.bodyStyle) && (
+                        <div>
+                          <Body className="text-xs text-gray-400 mb-1">Additional details</Body>
+                          <Body className="text-gray-50">
+                            {[
+                              vehicle?.trim,
+                              formatLabel(vehicle?.transmission),
+                              formatLabel(vehicle?.drivetrain),
+                              formatLabel(vehicle?.bodyStyle),
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </Body>
+                        </div>
+                      )}
+                      {vehicle?.vinOrChassis && (
+                        <div>
+                          <Body className="text-xs text-gray-400 mb-1">VIN / Chassis</Body>
+                          <div className="flex items-center gap-2">
+                            <Hash className="h-4 w-4 text-gray-400" />
+                            <Body className="text-gray-50 font-mono">{vehicle.vinOrChassis}</Body>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Order Details */}
                 <div>
@@ -389,55 +497,99 @@ export const AdminCustomOrders = () => {
                     <div>
                       <Body className="text-xs text-gray-400 mb-1">Product Name</Body>
                       <Body className="text-gray-50 font-medium">
-                        {(orderDetailData?.customOrder || selectedOrder)?.productName || 'N/A'}
+                        {detailOrder.productName || 'N/A'}
                       </Body>
                     </div>
                     <div>
                       <Body className="text-xs text-gray-400 mb-1">Description</Body>
                       <Body className="text-gray-50">
-                        {(orderDetailData?.customOrder || selectedOrder)?.description || 'N/A'}
+                        {detailOrder.description || 'N/A'}
                       </Body>
                     </div>
-                    {(orderDetailData?.customOrder || selectedOrder)?.category && (
+                    {detailOrder.category && (
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Category</Body>
                         <div className="flex items-center gap-2">
                           <Tag className="h-4 w-4 text-gray-400" />
                           <Body className="text-gray-50">
-                            {(orderDetailData?.customOrder || selectedOrder)?.category}
+                            {detailOrder.category}
                           </Body>
                         </div>
                       </div>
                     )}
-                    {(orderDetailData?.customOrder || selectedOrder)?.estimatedPrice && (
+                    {(part?.position || part?.quantity || part?.preference || part?.partNumber) && (
+                      <div>
+                        <Body className="text-xs text-gray-400 mb-1">Part fitment</Body>
+                        <Body className="text-gray-50">
+                          {[
+                            part?.position ? formatLabel(part.position) : null,
+                            part?.quantity ? `Qty ${part.quantity}` : null,
+                            part?.preference ? formatLabel(part.preference) : null,
+                            part?.partNumber ? `PN ${part.partNumber}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Body>
+                      </div>
+                    )}
+                    {detailOrder.estimatedPrice != null && detailOrder.estimatedPrice > 0 && (
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Estimated Price</Body>
                         <div className="flex items-center gap-2">
                           <Banknote className="h-4 w-4 text-gray-400" />
                           <Body className="text-gray-50 font-medium">
-                            MWK {((orderDetailData?.customOrder || selectedOrder)?.estimatedPrice || 0).toLocaleString()}
+                            MWK {detailOrder.estimatedPrice.toLocaleString()}
                           </Body>
                         </div>
                       </div>
                     )}
-                    {(orderDetailData?.customOrder || selectedOrder)?.supplier && (
+                    {detailOrder.supplier && (
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Supplier</Body>
                         <Body className="text-gray-50">
-                          {(orderDetailData?.customOrder || selectedOrder)?.supplier}
+                          {detailOrder.supplier}
                         </Body>
                       </div>
                     )}
-                    {(orderDetailData?.customOrder || selectedOrder)?.notes && (
+                    {detailOrder.notes && (
                       <div>
                         <Body className="text-xs text-gray-400 mb-1">Notes</Body>
                         <Body className="text-gray-50">
-                          {(orderDetailData?.customOrder || selectedOrder)?.notes}
+                          {detailOrder.notes}
                         </Body>
                       </div>
                     )}
                   </div>
                 </div>
+
+                {images.length > 0 && (
+                  <div>
+                    <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Photos
+                    </Body>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {images.map((image, index) => (
+                        <a
+                          key={`${detailOrder._id}-img-${index}`}
+                          href={image}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <img
+                            src={image}
+                            alt={`${detailOrder.productName} photo ${index + 1}`}
+                            className="w-full h-28 object-cover rounded-lg border border-gray-600"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                    </>
+                  );
+                })()}
 
                 {/* Dates */}
                 <div>

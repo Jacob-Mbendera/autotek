@@ -202,10 +202,11 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
-| **Problem** | Returns require `order.status === completed` (collected). Mostly correct; verify copy and admin training. |
-| **Rules** | Audit return eligibility vs new order statuses; ensure only **collected** orders can return |
-| **Backend** | [`returnController.ts`](backend/src/controllers/returnController.ts) — already checks `COMPLETED` |
+| **Status** | `completed` |
+| **Problem** | Returns require `order.status === completed` (collected). Copy sometimes said “completed/delivered”. |
+| **Rules** | Only collected orders can return; clear errors for not-yet-collected vs window expired |
+| **Backend** | [`returnController.ts`](backend/src/controllers/returnController.ts) — split eligibility messages |
+| **Frontend** | RequestReturn + Admin Returns helper; order status labels already say Collected |
 | **Acceptance** | Docs/UI say “collected” not “delivered”; no return on `ready_for_collection` |
 
 ---
@@ -321,6 +322,7 @@ For each BR item:
 | 2026-07-15 | BR-06 | Aligned to manual PayChangu refunds: `refund_pending` queue + Admin Refunds page |
 | 2026-07-16 | BR-11 | Admin status→cancelled uses shared cancel side effects (stock + refund queue) |
 | 2026-07-16 | BR-07 | Option A: in-progress/completed require payment completed; assigned may be unpaid |
+| 2026-07-16 | BR-12 | Return eligibility copy + API errors use “collected”; not-yet-collected vs window split |
 
 ---
 
@@ -332,4 +334,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-08** (custom order status rules) or **BR-12** (returns / collected wording) when ready.*
+*Next step: Start **BR-08** (custom order status rules) when ready.*
