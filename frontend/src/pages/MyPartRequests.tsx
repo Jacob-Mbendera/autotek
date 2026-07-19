@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
@@ -20,6 +20,12 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { H1, H2, Body } from '../components/ui/Typography';
+
+const ACTIVE_PART_REQUEST_STATUSES: CustomOrderStatus[] = [
+  CustomOrderStatus.PENDING,
+  CustomOrderStatus.ORDERED,
+  CustomOrderStatus.RECEIVED,
+];
 
 const getStatusBadgeColor = (status: CustomOrderStatus) => {
   switch (status) {
@@ -58,13 +64,34 @@ export const MyPartRequests = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CustomOrderStatus | 'all'>('all');
+  const [partRequestsPollMs, setPartRequestsPollMs] = useState(0);
+  const pollTargetRef = useRef(0);
 
-  const { data, isLoading } = useGetCustomOrdersQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-  });
+  const partRequestsQueryOpts = useMemo(
+    () => ({
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      refetchOnMountOrArgChange: true,
+      pollingInterval: partRequestsPollMs,
+    }),
+    [partRequestsPollMs]
+  );
+
+  const { data, isLoading } = useGetCustomOrdersQuery(undefined, partRequestsQueryOpts);
 
   const partRequests = data?.customOrders ?? [];
+
+  // Poll while any request is still in progress so admin status updates appear without a full refresh.
+  useEffect(() => {
+    const needPoll = partRequests.some((request) =>
+      ACTIVE_PART_REQUEST_STATUSES.includes(request.status)
+    );
+    const next = needPoll ? 30000 : 0;
+    if (pollTargetRef.current !== next) {
+      pollTargetRef.current = next;
+      setPartRequestsPollMs(next);
+    }
+  }, [partRequests]);
 
   const filteredRequests = useMemo(() => {
     let filtered = [...partRequests];
@@ -312,12 +339,12 @@ export const MyPartRequests = () => {
                                 href={image}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block"
+                                className="block overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
                               >
                                 <img
                                   src={image}
                                   alt={`${request.productName} photo ${index + 1}`}
-                                  className="w-full h-28 object-cover rounded-lg border border-gray-200"
+                                  className="w-full h-40 sm:h-44 object-contain p-2"
                                 />
                               </a>
                             ))}

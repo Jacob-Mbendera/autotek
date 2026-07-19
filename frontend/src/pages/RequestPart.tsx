@@ -738,7 +738,7 @@ export const RequestPart = () => {
                           <img
                             src={preview}
                             alt={`Part request preview ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                            className="w-full h-36 object-contain rounded-lg border border-gray-200 bg-gray-50 p-1"
                           />
                           <button
                             type="button"

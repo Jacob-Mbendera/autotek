@@ -575,12 +575,12 @@ export const AdminCustomOrders = () => {
                           href={image}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block"
+                          className="block overflow-hidden rounded-lg border border-gray-600 bg-slate-900"
                         >
                           <img
                             src={image}
                             alt={`${detailOrder.productName} photo ${index + 1}`}
-                            className="w-full h-28 object-cover rounded-lg border border-gray-600"
+                            className="w-full h-40 object-contain p-2"
                           />
                         </a>
                       ))}
