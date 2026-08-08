@@ -228,13 +228,13 @@ PayChangu is a payment gateway that supports multiple payment methods for Malawi
 
 ### Quick Start
 
-See [`PAYCHANGU_QUICK_START.md`](PAYCHANGU_QUICK_START.md) for a 5-minute setup guide.
+See [`PAYCHANGU_QUICK_START.md`](docs/paychangu/PAYCHANGU_QUICK_START.md) for a 5-minute setup guide.
 
 ### Documentation
 
-- **Setup Guide**: [`PAYCHANGU_SETUP.md`](PAYCHANGU_SETUP.md) - Complete configuration and deployment guide
-- **Testing Guide**: [`PAYCHANGU_TESTING.md`](PAYCHANGU_TESTING.md) - Comprehensive testing instructions
-- **Quick Start**: [`PAYCHANGU_QUICK_START.md`](PAYCHANGU_QUICK_START.md) - Get started in 5 minutes
+- **Setup Guide**: [`PAYCHANGU_SETUP.md`](docs/paychangu/PAYCHANGU_SETUP.md) - Complete configuration and deployment guide
+- **Testing Guide**: [`PAYCHANGU_TESTING.md`](docs/paychangu/PAYCHANGU_TESTING.md) - Comprehensive testing instructions
+- **Quick Start**: [`PAYCHANGU_QUICK_START.md`](docs/paychangu/PAYCHANGU_QUICK_START.md) - Get started in 5 minutes
 
 ### Features
 

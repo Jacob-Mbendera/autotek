@@ -467,12 +467,12 @@ For **Car Service** card:
 **Steps (curl — backend on port 5000):**
 1. From the project root, run:
    ```bash
-   chmod +x scripts/test-my-services-api.sh
-   ./scripts/test-my-services-api.sh
+   chmod +x scripts/testing/test-my-services-api.sh
+   ./scripts/testing/test-my-services-api.sh
    ```
 2. Optional: override credentials or API base:
    ```bash
-   API_URL=http://localhost:5000/api TEST_EMAIL=testuser@autotek.com TEST_PASSWORD=Test123456 ./scripts/test-my-services-api.sh
+   API_URL=http://localhost:5000/api TEST_EMAIL=testuser@autotek.com TEST_PASSWORD=Test123456 ./scripts/testing/test-my-services-api.sh
    ```
 
 **Expected Results:**
@@ -558,7 +558,7 @@ Run **Test 4.0 (curl)** before browser tests when validating backend changes. Al
 - ✅ HTTP **400**
 - ✅ JSON `message` includes that online payment in **Malawi Kwacha (MWK)** is available **after the quote is confirmed** (or equivalent product copy).
 
-**Optional:** From the repo root, `./scripts/test-service-payment-mwk.sh` automates login + creates a zero-price towing if needed, then asserts **400** + MWK message on initiate.
+**Optional:** From the repo root, `./scripts/testing/test-service-payment-mwk.sh` automates login + creates a zero-price towing if needed, then asserts **400** + MWK message on initiate.
 
 **Test Result:** [ ] Pass [ ] Fail
 **Notes:**

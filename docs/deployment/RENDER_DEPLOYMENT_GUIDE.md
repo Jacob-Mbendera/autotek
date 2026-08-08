@@ -16,7 +16,7 @@ This document describes how to deploy AutoTek to [Render](https://render.com) as
 
 - Git repository connected to Render (GitHub/GitLab/Bitbucket).
 - **MongoDB Atlas** (or other) connection string.
-- **Cloudinary**, **PayChangu**, and **SMTP** credentials as required by your environment (see `backend/ENV_TEMPLATE.md` and `backend/.env.example` if present).
+- **Cloudinary**, **PayChangu**, and **SMTP** credentials as required by your environment (see `docs/backend-setup/ENV_TEMPLATE.md` and `backend/.env.example` if present).
 
 Do **not** commit real secrets. Configure them only in the Render dashboard or via synced secret stores.
 

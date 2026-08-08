@@ -247,8 +247,8 @@ When documenting bugs, use this template:
 - Responsive design mode for mobile testing
 
 ### API Testing
-- `curl` commands (see `backend/CURL_TESTS.md`)
-- `backend/test-endpoints.sh` script
+- `curl` commands (see `docs/backend-setup/CURL_TESTS.md`)
+- `scripts/testing/test-endpoints.sh` script
 - Postman (optional)
 
 ### Performance Testing

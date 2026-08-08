@@ -246,7 +246,7 @@ Use this checklist to verify that PayChangu payment integration is properly conf
 
 - [ ] **Test Webhook Endpoint**:
   ```bash
-  ./backend/test-paychangu-webhook.sh
+  ./scripts/testing/test-paychangu-webhook.sh
 
   # Or manually:
   curl -X POST http://localhost:5000/api/payments/webhook/paychangu \

@@ -3,7 +3,7 @@
 > Formal backlog for status transitions, payment/provider gates, inventory, and related integrity checks.  
 > **Work one item at a time** — mark status as you go. Backend enforcement is required for every item; UI hints are additive.
 
-**Last updated:** 2026-07-07
+**Last updated:** 2026-07-19
 
 ---
 
@@ -144,7 +144,7 @@
 
 | Field | Detail |
 |-------|--------|
-| **Status** | `pending` |
+| **Status** | `done` |
 | **Problem** | [`updateCustomOrder`](backend/src/controllers/customOrderController.ts) allows any enum value anytime. |
 | **Rules** | |
 | | • `ordered` / `received` / `completed` — define required fields (`estimatedPrice`, `supplier`, etc.) |
@@ -323,6 +323,7 @@ For each BR item:
 | 2026-07-16 | BR-11 | Admin status→cancelled uses shared cancel side effects (stock + refund queue) |
 | 2026-07-16 | BR-07 | Option A: in-progress/completed require payment completed; assigned may be unpaid |
 | 2026-07-16 | BR-12 | Return eligibility copy + API errors use “collected”; not-yet-collected vs window split |
+| 2026-07-19 | BR-08 | Custom order forward-only transitions + estimatedPrice/supplier gates (shared util, API 400, admin UI) |
 
 ---
 
@@ -334,4 +335,4 @@ For each BR item:
 
 ---
 
-*Next step: Start **BR-08** (custom order status rules) when ready.*
+*Next step: BR-14 (status audit trail) remains deferred; business-rules P0–P3 items are otherwise complete. Pick polish or product backlog next.*

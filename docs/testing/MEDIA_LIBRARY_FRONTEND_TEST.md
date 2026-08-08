@@ -94,4 +94,4 @@ That is enough to debug the next change.
 - Upload to library: `POST /api/admin/media-assets` — field name **`files`** (multipart).  
 - Assign: `POST /api/products/:id/assign-media` — JSON `{ "assets": [ { "url", "blurDataUrl?" } ] }` (admin JWT).
 
-Longer **curl** examples: see **Admin media library API** in [IMAGE_SYSTEM_TESTING.md](IMAGE_SYSTEM_TESTING.md).
+Longer **curl** examples: see **Admin media library API** in [IMAGE_SYSTEM_TESTING.md](../images/IMAGE_SYSTEM_TESTING.md).

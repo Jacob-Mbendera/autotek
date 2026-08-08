@@ -1,6 +1,48 @@
 # Current Work - AutoTek Development
 
-## Latest Update (July 19, 2026) - Known issue: Returns Quick Actions stale UI
+## Latest Update (July 19, 2026) - Product vehicle fitment Phase 3 implemented
+
+### Product fitment — match part requests to catalog
+**Status**: Phase 3 completed — see [`PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md`](../product-fitment/PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md)
+
+- Added `GET /api/products/suggestions` with ranked exact / strong / possible confidence.
+- Request a Part shows assistive “We may already have this” suggestions while the form is filled.
+- Admin Custom Orders detail shows dismissible catalog match suggestions.
+- Live curls verified OEM exact match, vehicle+name strong match, and empty results for out-of-range years.
+
+**Next:** Backfill fitment/OEM data on priority SKUs so suggestions become useful in production.
+
+---
+
+## Previous Update (July 19, 2026) - Product vehicle fitment Phase 2 implemented
+
+### Product fitment — shop by vehicle
+**Status**: Phase 2 completed — see [`PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md`](../product-fitment/PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md)
+
+- Product list API accepts `make`, `model`, `year`, `engine`, `includeUniversal` and excludes unlisted fitment.
+- Products page “My vehicle” filter with URL + localStorage persistence, match badges, and empty-state Request a part CTA with vehicle prefill.
+- Live curls verified Vitz match, universal include/exclude, and out-of-range year exclusion.
+
+**Next:** Admin backfill of priority SKUs, then Phase 3 (match part requests to catalog).
+
+---
+
+## Previous Update (July 19, 2026) - Product vehicle fitment Phase 1 implemented
+
+### Product fitment (shop by vehicle / exact part match)
+**Status**: Phase 1 completed — see [`PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md`](../product-fitment/PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md)
+
+- Added backward-compatible product fitment fields, validation, API multipart serialization, and compatibility index.
+- Admin product create/edit now captures universal status, multiple make/model/year/engine applications, fitment confidence, brand, OEM number, and alternate numbers.
+- Product Detail now clearly distinguishes universal, verified, partial, and unlisted fitment; unknown fitment directs customers to Request a part.
+- Legacy products verified through the running API with safe defaults.
+- Backend build and changed-file frontend TypeScript/lint checks pass. The full frontend build remains blocked by pre-existing unrelated TypeScript errors elsewhere in the app.
+
+**Next:** Admin reviews and backfills priority SKUs, then Phase 2 adds Shop by vehicle filtering.
+
+---
+
+## Previous Update (July 19, 2026) - Known issue: Returns Quick Actions stale UI
 
 ### Returns create/cancel does not update Order Detail Quick Actions without refresh
 **Status**: Open / deferred
