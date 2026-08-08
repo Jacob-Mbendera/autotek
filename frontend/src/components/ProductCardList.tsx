@@ -6,6 +6,7 @@ import { addItem } from '../store/slices/cartSlice';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import type { Product } from '../store/api/productApi';
+import type { VehicleFitmentMatchStrength } from '@shared/utils/productFitmentMatch';
 import { Button } from './ui/Button';
 import { OptimizedImage } from './ui/OptimizedImage';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
@@ -13,9 +14,10 @@ import { ProductPlaceholderImage } from './ProductPlaceholderImage';
 
 interface ProductCardListProps {
   product: Product;
+  fitmentMatch?: VehicleFitmentMatchStrength;
 }
 
-export const ProductCardList = ({ product }: ProductCardListProps) => {
+export const ProductCardList = ({ product, fitmentMatch = 'none' }: ProductCardListProps) => {
   const dispatch = useAppDispatch();
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [optimisticWishlistState, setOptimisticWishlistState] = useState<boolean | null>(null);
@@ -128,7 +130,7 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
     );
   };
 
-  const brand = product.supplier || 'UNIVERSAL';
+  const brand = product.brand || product.supplier || 'Brand not listed';
   const categoryDisplay = product.category.toUpperCase();
 
   return (
@@ -173,6 +175,25 @@ export const ProductCardList = ({ product }: ProductCardListProps) => {
         <div className="absolute top-2 left-2 z-10">
           {getStatusBadge()}
         </div>
+        {fitmentMatch !== 'none' && (
+          <div className="absolute bottom-2 left-2 z-10">
+            <span
+              className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold shadow border ${
+                fitmentMatch === 'strong'
+                  ? 'bg-green-100 text-green-800 border-green-200'
+                  : fitmentMatch === 'universal'
+                    ? 'bg-teal-100 text-teal-800 border-teal-200'
+                    : 'bg-amber-100 text-amber-800 border-amber-200'
+              }`}
+            >
+              {fitmentMatch === 'strong'
+                ? 'Fits your vehicle'
+                : fitmentMatch === 'universal'
+                  ? 'Universal part'
+                  : 'Check year/engine'}
+            </span>
+          </div>
+        )}
       </div>
       
       {/* Content section */}

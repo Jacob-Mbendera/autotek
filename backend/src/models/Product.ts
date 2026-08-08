@@ -1,4 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import type {
+  ProductCompatibilityEntry,
+  ProductFitmentStatus,
+} from '../../../shared/types';
 import type { ProductImageStored } from '../utils/productImages';
 import { normalizeProductImage } from '../utils/productImages';
 
@@ -10,6 +14,12 @@ export interface IProduct extends Document {
   stock: number;
   images: ProductImageStored[];
   supplier?: string;
+  brand?: string;
+  oemPartNumber?: string;
+  alternatePartNumbers: string[];
+  isUniversal: boolean;
+  compatibility: ProductCompatibilityEntry[];
+  fitmentStatus: ProductFitmentStatus;
   status: 'available' | 'out-of-stock';
   badge?: 'new' | 'sale' | 'featured';
   averageRating: number;
@@ -17,6 +27,41 @@ export interface IProduct extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const ProductCompatibilitySchema = new Schema<ProductCompatibilityEntry>(
+  {
+    make: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    model: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    yearFrom: {
+      type: Number,
+      min: 1900,
+      max: 2100,
+    },
+    yearTo: {
+      type: Number,
+      min: 1900,
+      max: 2100,
+    },
+    engine: {
+      type: String,
+      trim: true,
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+  },
+  { _id: false }
+);
 
 const ProductSchema = new Schema<IProduct>(
   {
@@ -50,6 +95,32 @@ const ProductSchema = new Schema<IProduct>(
     },
     supplier: {
       type: String,
+      trim: true,
+    },
+    brand: {
+      type: String,
+      trim: true,
+    },
+    oemPartNumber: {
+      type: String,
+      trim: true,
+    },
+    alternatePartNumbers: {
+      type: [{ type: String, trim: true }],
+      default: [],
+    },
+    isUniversal: {
+      type: Boolean,
+      default: false,
+    },
+    compatibility: {
+      type: [ProductCompatibilitySchema],
+      default: [],
+    },
+    fitmentStatus: {
+      type: String,
+      enum: ['none', 'partial', 'verified'],
+      default: 'none',
     },
     status: {
       type: String,
@@ -106,6 +177,7 @@ ProductSchema.set('toObject', {
 
 // Indexes for performance
 ProductSchema.index({ category: 1, status: 1 }); // Category + stock filtering
+ProductSchema.index({ 'compatibility.make': 1, 'compatibility.model': 1 });
 ProductSchema.index({ price: 1 }); // Price sorting
 ProductSchema.index({ name: 'text', description: 'text' }); // Text search
 ProductSchema.index({ createdAt: -1 }); // Latest products

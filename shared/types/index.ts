@@ -23,6 +23,17 @@ export enum CustomOrderStatus {
   CANCELLED = 'cancelled',
 }
 
+export type ProductFitmentStatus = 'none' | 'partial' | 'verified';
+
+export interface ProductCompatibilityEntry {
+  make: string;
+  model: string;
+  yearFrom?: number;
+  yearTo?: number;
+  engine?: string;
+  notes?: string;
+}
+
 export enum ServiceStatus {
   PENDING = 'pending',
   ASSIGNED = 'assigned',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetProductQuery } from '../store/api/productApi';
 import { useAppDispatch, useAppSelector } from '../store/types';
@@ -11,11 +11,18 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { H1, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { ShoppingCart, Zap, CheckCircle, Package, Heart } from 'lucide-react';
+import {
+  ShoppingCart,
+  Zap,
+  CheckCircle,
+  Package,
+  Heart,
+} from 'lucide-react';
 import { ReviewList } from '../components/ReviewList';
 import { ReviewForm } from '../components/ReviewForm';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
+import { ProductFitment } from '../components/ProductFitment';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 
 export const ProductDetail = () => {
@@ -23,10 +30,11 @@ export const ProductDetail = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { guardedAddToCart, hasPendingUnpaidOrder } = useGuardedAddToCart();
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [imageError, setImageError] = useState(false);
+  const [selectedImage, setSelectedImage] = useState({ productId: id, index: 0 });
+  const selectedImageIndex = selectedImage.productId === id ? selectedImage.index : 0;
+  const selectImage = (index: number) => setSelectedImage({ productId: id, index });
 
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { data, isLoading, error } = useGetProductQuery(id!);
   
   // Wishlist functionality
@@ -35,12 +43,6 @@ export const ProductDetail = () => {
   const [removeFromWishlist] = useRemoveFromWishlistMutation();
   
   const isInWishlist = wishlistData?.wishlist?.products?.some((p) => p._id === id) || false;
-
-  // Reset image error when product changes
-  useEffect(() => {
-    setImageError(false);
-    setSelectedImageIndex(0);
-  }, [id, data?.product?._id]);
 
   const handleAddToCart = () => {
     if (data?.product) {
@@ -108,7 +110,7 @@ export const ProductDetail = () => {
           type: 'success',
         }));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorInfo = getErrorInfo(error, 'Failed to update wishlist');
       dispatch(showNotification({
         message: errorInfo.message,
@@ -147,8 +149,6 @@ export const ProductDetail = () => {
   const product = data.product;
   const isOutOfStock = product.status === 'out-of-stock' || product.stock === 0;
   const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
-  const isInStock = !isOutOfStock && product.stock > 10;
-
   const { isPlaceholder: usingPlaceholderOnly } = resolveProductDisplayImage(
     product.images,
     product.category
@@ -156,7 +156,7 @@ export const ProductDetail = () => {
   const hasValidImage = !usingPlaceholderOnly;
 
   let displayEntries: { url: string; blurDataUrl?: string }[];
-  if (hasValidImage && product.images && product.images.length > 0 && !imageError) {
+  if (hasValidImage && product.images && product.images.length > 0) {
     displayEntries = product.images.map((img) => ({
       url: getProductImageUrl(img),
       blurDataUrl: getProductImageBlur(img),
@@ -165,7 +165,7 @@ export const ProductDetail = () => {
     displayEntries = [];
   }
 
-  const isPlaceholder = usingPlaceholderOnly || imageError;
+  const isPlaceholder = usingPlaceholderOnly;
 
   const safeImageIndex = Math.min(selectedImageIndex, Math.max(displayEntries.length - 1, 0));
   const currentEntry = displayEntries[safeImageIndex];
@@ -217,7 +217,7 @@ export const ProductDetail = () => {
       ],
       'Engine Parts': [
         'Premium quality materials for durability',
-        'Compatible with local vehicle models',
+        'Application details shown separately when available',
         'Extended warranty coverage',
         'Designed for optimal performance',
       ],
@@ -225,7 +225,7 @@ export const ProductDetail = () => {
         'Reliable performance in all conditions',
         'Easy installation process',
         'Long-lasting components',
-        'Compatible with standard systems',
+        'Product specifications available before purchase',
       ],
       'Suspension': [
         'Enhanced ride comfort',
@@ -240,7 +240,7 @@ export const ProductDetail = () => {
         'Premium quality materials',
         'Designed for durability',
         'Local warranty included',
-        'Compatible with standard systems',
+        'Fitment guidance available when listed',
       ]
     );
   };
@@ -250,6 +250,7 @@ export const ProductDetail = () => {
     { label: product.category, href: `/products?category=${encodeURIComponent(product.category)}` },
     { label: product.name },
   ];
+  const alternatePartNumbers = product.alternatePartNumbers ?? [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -298,7 +299,7 @@ export const ProductDetail = () => {
                 {displayEntries.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedImageIndex(index)}
+                    onClick={() => selectImage(index)}
                     className={`w-2 h-2 rounded-full transition-all ${
                       selectedImageIndex === index
                         ? 'bg-teal-500 w-8'
@@ -315,7 +316,7 @@ export const ProductDetail = () => {
               {displayEntries.slice(0, 4).map((entry, index) => (
                 <button
                   key={index}
-                  onClick={() => setSelectedImageIndex(index)}
+                  onClick={() => selectImage(index)}
                   className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-75 transition-opacity border-2 ${
                     selectedImageIndex === index
                       ? 'border-teal-500'
@@ -392,13 +393,15 @@ export const ProductDetail = () => {
         </div>
       </div>
 
+      <ProductFitment product={product} onRequestPart={() => navigate('/request-part')} />
+
       {/* Technical Specifications */}
       <Card variant="md" className="mb-8">
         <H1 className="text-2xl font-bold text-gray-900 mb-6">Technical Specifications</H1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex justify-between py-3 border-b border-gray-200">
             <span className="font-semibold text-gray-900">Brand</span>
-            <span className="text-gray-600">{product.supplier || 'Universal'}</span>
+            <span className="text-gray-600">{product.brand || 'Not specified'}</span>
           </div>
           <div className="flex justify-between py-3 border-b border-gray-200">
             <span className="font-semibold text-gray-900">SKU</span>
@@ -417,9 +420,15 @@ export const ProductDetail = () => {
             </span>
           </div>
           <div className="flex justify-between py-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-900">Compatibility</span>
-            <span className="text-gray-600">{product.category}</span>
+            <span className="font-semibold text-gray-900">OEM Part Number</span>
+            <span className="text-gray-600">{product.oemPartNumber || 'Not specified'}</span>
           </div>
+          {alternatePartNumbers.length > 0 && (
+            <div className="flex justify-between gap-6 py-3 border-b border-gray-200">
+              <span className="font-semibold text-gray-900">Alternate Part Numbers</span>
+              <span className="text-gray-600 text-right">{alternatePartNumbers.join(', ')}</span>
+            </div>
+          )}
         </div>
       </Card>
 

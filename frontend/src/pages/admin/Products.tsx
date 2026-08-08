@@ -30,10 +30,20 @@ import {
   ArrowLeft,
   ArrowRight,
   Star,
+  Car,
+  ShieldCheck,
 } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
+import type {
+  ProductCompatibilityEntry,
+  ProductFitmentStatus,
+} from '@shared/types';
 import { getPrimaryProductImage, getProductImageUrl, hasValidProductImage, getProductPlaceholderUrl } from '../../utils/productImage';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
+import {
+  VEHICLE_MAKES,
+  getModelsForMake,
+} from '../../constants/vehicleOptions';
 
 export const AdminProducts = () => {
   const dispatch = useAppDispatch();
@@ -54,6 +64,12 @@ export const AdminProducts = () => {
     price: '',
     stock: '',
     supplier: '',
+    brand: '',
+    oemPartNumber: '',
+    alternatePartNumbers: '',
+    isUniversal: false,
+    compatibility: [] as ProductCompatibilityEntry[],
+    fitmentStatus: 'none' as ProductFitmentStatus,
     status: 'available' as 'available' | 'out-of-stock',
     images: [] as File[],
   });
@@ -125,6 +141,12 @@ export const AdminProducts = () => {
         price: product.price.toString(),
         stock: product.stock.toString(),
         supplier: product.supplier || '',
+        brand: product.brand || '',
+        oemPartNumber: product.oemPartNumber || '',
+        alternatePartNumbers: (product.alternatePartNumbers || []).join(', '),
+        isUniversal: product.isUniversal || false,
+        compatibility: product.compatibility || [],
+        fitmentStatus: product.fitmentStatus || 'none',
         status: product.status,
         images: [],
       });
@@ -137,6 +159,12 @@ export const AdminProducts = () => {
         price: '',
         stock: '',
         supplier: '',
+        brand: '',
+        oemPartNumber: '',
+        alternatePartNumbers: '',
+        isUniversal: false,
+        compatibility: [],
+        fitmentStatus: 'none',
         status: 'available',
         images: [],
       });
@@ -165,6 +193,12 @@ export const AdminProducts = () => {
       price: '',
       stock: '',
       supplier: '',
+      brand: '',
+      oemPartNumber: '',
+      alternatePartNumbers: '',
+      isUniversal: false,
+      compatibility: [],
+      fitmentStatus: 'none',
       status: 'available',
       images: [],
     });
@@ -221,6 +255,37 @@ export const AdminProducts = () => {
     setImagesSnapshotBeforeCrop(null);
   };
 
+  const addCompatibilityEntry = () => {
+    setFormData((prev) => ({
+      ...prev,
+      compatibility: [...prev.compatibility, { make: '', model: '' }],
+      fitmentStatus: prev.fitmentStatus === 'none' ? 'partial' : prev.fitmentStatus,
+    }));
+  };
+
+  const updateCompatibilityEntry = (
+    index: number,
+    updates: Partial<ProductCompatibilityEntry>
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      compatibility: prev.compatibility.map((entry, entryIndex) =>
+        entryIndex === index ? { ...entry, ...updates } : entry
+      ),
+    }));
+  };
+
+  const removeCompatibilityEntry = (index: number) => {
+    setFormData((prev) => {
+      const compatibility = prev.compatibility.filter((_, entryIndex) => entryIndex !== index);
+      return {
+        ...prev,
+        compatibility,
+        fitmentStatus: compatibility.length === 0 ? 'none' : prev.fitmentStatus,
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -231,6 +296,15 @@ export const AdminProducts = () => {
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
         supplier: formData.supplier || undefined,
+        brand: formData.brand || undefined,
+        oemPartNumber: formData.oemPartNumber || undefined,
+        alternatePartNumbers: formData.alternatePartNumbers
+          .split(/[,\n]/)
+          .map((partNumber) => partNumber.trim())
+          .filter(Boolean),
+        isUniversal: formData.isUniversal,
+        compatibility: formData.isUniversal ? [] : formData.compatibility,
+        fitmentStatus: formData.fitmentStatus,
         status: formData.status,
         images: formData.images.length > 0 ? formData.images : undefined,
       };
@@ -243,7 +317,7 @@ export const AdminProducts = () => {
         dispatch(showNotification({ message: 'Product created successfully', type: 'success' }));
       }
       handleCloseModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorInfo = getErrorInfo(error, 'Failed to save product. Please try again.');
       dispatch(showNotification({
         message: errorInfo.message,
@@ -264,7 +338,7 @@ export const AdminProducts = () => {
       dispatch(showNotification({ message: 'Product deleted successfully', type: 'success' }));
       setShowDeleteModal(false);
       setDeletingProductId(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorInfo = getErrorInfo(error, 'Failed to delete product. Please try again.');
       dispatch(showNotification({
         message: errorInfo.message,
@@ -349,7 +423,10 @@ export const AdminProducts = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <H1 className="text-3xl font-bold text-gray-50 mb-2">Product Management</H1>
-          <Body className="text-gray-400">Manage your product catalog</Body>
+          <Body className="text-gray-400">
+            Manage your catalog. Open Add/Edit Product to set brand, OEM numbers, and vehicle
+            fitment.
+          </Body>
         </div>
         <Button onClick={() => handleOpenModal()}>
           <Plus className="h-5 w-5 mr-2" />
@@ -693,6 +770,233 @@ export const AdminProducts = () => {
                     );
                   })}
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  dark
+                  label="Brand (Optional)"
+                  value={formData.brand}
+                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  placeholder="e.g. Denso, Bosch, Castrol"
+                />
+                <Input
+                  dark
+                  label="OEM Part Number (Optional)"
+                  value={formData.oemPartNumber}
+                  onChange={(e) => setFormData({ ...formData, oemPartNumber: e.target.value })}
+                  placeholder="Manufacturer part number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Alternate Part Numbers (Optional)
+                </label>
+                <textarea
+                  value={formData.alternatePartNumbers}
+                  onChange={(e) =>
+                    setFormData({ ...formData, alternatePartNumbers: e.target.value })
+                  }
+                  rows={2}
+                  placeholder="Separate interchange or aftermarket numbers with commas"
+                  className="w-full px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
+                />
+              </div>
+
+              <div className="border border-teal-700/40 rounded-lg bg-teal-950/20 p-4 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Car className="h-5 w-5 text-teal-400" />
+                      <H2 className="text-lg font-semibold text-gray-50">Vehicle fitment</H2>
+                    </div>
+                    <Body className="text-sm text-gray-400 mt-1">
+                      Only list vehicles confirmed by a supplier application guide, packaging, or
+                      known fitment. An incorrect fit claim is worse than leaving fitment unlisted.
+                    </Body>
+                  </div>
+                  {!formData.isUniversal && (
+                    <Button type="button" size="small" onClick={addCompatibilityEntry}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add vehicle
+                    </Button>
+                  )}
+                </div>
+
+                <label className="flex items-start gap-3 p-4 rounded-lg border border-gray-700 bg-slate-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isUniversal}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isUniversal: e.target.checked,
+                        compatibility: e.target.checked ? [] : prev.compatibility,
+                        fitmentStatus: e.target.checked ? 'verified' : 'none',
+                      }))
+                    }
+                    className="mt-1 h-4 w-4 rounded border-gray-600 text-teal-600 focus:ring-teal-500"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-100">
+                      Universal / not vehicle-specific
+                    </span>
+                    <span className="block text-xs text-gray-400 mt-1">
+                      Use only for products that genuinely do not depend on make or model.
+                    </span>
+                  </span>
+                </label>
+
+                {!formData.isUniversal && formData.compatibility.length === 0 && (
+                  <div className="rounded-lg border border-amber-700/50 bg-amber-900/20 p-4">
+                    <Body className="text-sm text-amber-200">
+                      Fitment is not listed. Customers will be told to confirm compatibility or
+                      submit a part request instead of seeing a fit claim. Click Add vehicle to
+                      add make/model/year rows.
+                    </Body>
+                  </div>
+                )}
+
+                {!formData.isUniversal &&
+                  formData.compatibility.map((entry, index) => (
+                    <div
+                      key={index}
+                      className="rounded-lg border border-gray-700 bg-slate-900 p-4 space-y-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-gray-200">
+                          Compatible vehicle {index + 1}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="small"
+                          dark
+                          onClick={() => removeCompatibilityEntry(index)}
+                          title="Remove compatible vehicle"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Make
+                          </label>
+                          <input
+                            list={`vehicle-makes-${index}`}
+                            value={entry.make}
+                            onChange={(e) =>
+                              updateCompatibilityEntry(index, {
+                                make: e.target.value,
+                                model: e.target.value === entry.make ? entry.model : '',
+                              })
+                            }
+                            required
+                            placeholder="Select or enter make"
+                            className="w-full px-4 py-3 bg-slate-950 border border-gray-700 rounded-lg text-gray-50 placeholder-gray-500 focus:ring-2 focus:ring-teal-500 outline-none"
+                          />
+                          <datalist id={`vehicle-makes-${index}`}>
+                            {VEHICLE_MAKES.map((make) => (
+                              <option key={make} value={make} />
+                            ))}
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Model
+                          </label>
+                          <input
+                            list={`vehicle-models-${index}`}
+                            value={entry.model}
+                            onChange={(e) =>
+                              updateCompatibilityEntry(index, { model: e.target.value })
+                            }
+                            required
+                            placeholder="Select or enter model"
+                            className="w-full px-4 py-3 bg-slate-950 border border-gray-700 rounded-lg text-gray-50 placeholder-gray-500 focus:ring-2 focus:ring-teal-500 outline-none"
+                          />
+                          <datalist id={`vehicle-models-${index}`}>
+                            {getModelsForMake(entry.make).map((model) => (
+                              <option key={model} value={model} />
+                            ))}
+                          </datalist>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Input
+                          dark
+                          label="Year from (Optional)"
+                          type="number"
+                          min="1900"
+                          max="2100"
+                          value={entry.yearFrom ?? ''}
+                          onChange={(e) =>
+                            updateCompatibilityEntry(index, {
+                              yearFrom: e.target.value ? Number(e.target.value) : undefined,
+                            })
+                          }
+                        />
+                        <Input
+                          dark
+                          label="Year to (Optional)"
+                          type="number"
+                          min="1900"
+                          max="2100"
+                          value={entry.yearTo ?? ''}
+                          onChange={(e) =>
+                            updateCompatibilityEntry(index, {
+                              yearTo: e.target.value ? Number(e.target.value) : undefined,
+                            })
+                          }
+                        />
+                        <Input
+                          dark
+                          label="Engine (Optional)"
+                          value={entry.engine || ''}
+                          onChange={(e) =>
+                            updateCompatibilityEntry(index, { engine: e.target.value })
+                          }
+                          placeholder="e.g. 1.3L 2NZ-FE"
+                        />
+                      </div>
+
+                      <Input
+                        dark
+                        label="Fitment notes (Optional)"
+                        value={entry.notes || ''}
+                        onChange={(e) =>
+                          updateCompatibilityEntry(index, { notes: e.target.value })
+                        }
+                        placeholder="e.g. ABS models only, front axle"
+                      />
+                    </div>
+                  ))}
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                    <ShieldCheck className="h-4 w-4 text-teal-400" />
+                    Fitment confidence
+                  </label>
+                  <select
+                    value={formData.fitmentStatus}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        fitmentStatus: e.target.value as ProductFitmentStatus,
+                      })
+                    }
+                    disabled={!formData.isUniversal && formData.compatibility.length === 0}
+                    className="w-full px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 disabled:opacity-60 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                  >
+                    <option value="none">Not listed</option>
+                    <option value="partial">Partial — customer should confirm details</option>
+                    <option value="verified">Verified against a reliable source</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

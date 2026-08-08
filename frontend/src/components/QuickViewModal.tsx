@@ -68,7 +68,7 @@ export const QuickViewModal = ({ product, isOpen, onClose }: QuickViewModalProps
 
   const isOutOfStock = product.status === 'out-of-stock' || product.stock === 0;
   const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
-  const brand = product.supplier || 'UNIVERSAL';
+  const brand = product.brand || product.supplier || 'Brand not listed';
   const categoryDisplay = product.category.toUpperCase();
 
   const getStatusBadge = () => {

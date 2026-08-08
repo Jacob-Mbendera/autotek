@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   useGetAllCustomOrdersQuery,
   useGetCustomOrderQuery,
   type AdminCustomOrder,
 } from '../../store/api/adminApi';
 import { useUpdateCustomOrderMutation, type CustomOrderCustomer } from '../../store/api/customOrderApi';
+import { useGetProductSuggestionsQuery } from '../../store/api/productApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
 import { getErrorInfo } from '../../utils/errorHandler';
@@ -13,6 +14,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
+import { CatalogSuggestionsPanel } from '../../components/CatalogSuggestionsPanel';
 import {
   Search,
   Filter,
@@ -25,7 +27,6 @@ import {
   Phone,
   Mail,
   Calendar,
-  Banknote,
   Tag,
   Save,
   ArrowLeft,
@@ -33,8 +34,13 @@ import {
   Car,
   Hash,
   Image as ImageIcon,
+  AlertCircle,
 } from 'lucide-react';
 import { CustomOrderStatus } from '@shared/types';
+import {
+  getAllowedNextCustomOrderStatuses,
+  getCustomOrderStatusLabel,
+} from '@shared/utils/customOrderStatusTransitions';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 const formatLabel = (value?: string) =>
@@ -64,6 +70,9 @@ export const AdminCustomOrders = () => {
   const [statusFilter, setStatusFilter] = useState<CustomOrderStatus | ''>('');
   const [selectedOrder, setSelectedOrder] = useState<AdminCustomOrder | null>(null);
   const [newStatus, setNewStatus] = useState<CustomOrderStatus | ''>('');
+  const [editEstimatedPrice, setEditEstimatedPrice] = useState('');
+  const [editSupplier, setEditSupplier] = useState('');
+  const [dismissCatalogSuggestions, setDismissCatalogSuggestions] = useState(false);
 
   const [updateCustomOrder, { isLoading: isUpdating }] = useUpdateCustomOrderMutation();
 
@@ -104,44 +113,158 @@ export const AdminCustomOrders = () => {
     { skip: !selectedOrder }
   );
 
-  // Set newStatus when order is selected
+  // Set form fields when order is selected
   const handleOrderSelect = (order: AdminCustomOrder) => {
     setSelectedOrder(order);
     setNewStatus(order.status);
+    setEditEstimatedPrice(
+      order.estimatedPrice != null && order.estimatedPrice > 0
+        ? String(order.estimatedPrice)
+        : ''
+    );
+    setEditSupplier(order.supplier || '');
   };
 
-  // Update newStatus when orderDetailData loads
+  // Sync form when orderDetailData loads
   useEffect(() => {
-    if (orderDetailData?.customOrder?.status) {
-      setNewStatus(orderDetailData.customOrder.status);
+    const detail = orderDetailData?.customOrder;
+    if (detail) {
+      setNewStatus(detail.status);
+      setEditEstimatedPrice(
+        detail.estimatedPrice != null && detail.estimatedPrice > 0
+          ? String(detail.estimatedPrice)
+          : ''
+      );
+      setEditSupplier(detail.supplier || '');
+      setDismissCatalogSuggestions(false);
     } else if (selectedOrder?.status && !newStatus) {
       setNewStatus(selectedOrder.status);
     }
   }, [orderDetailData, selectedOrder]);
 
+  const detailOrder = orderDetailData?.customOrder || selectedOrder;
+  const currentStatus = (detailOrder?.status || CustomOrderStatus.PENDING) as CustomOrderStatus;
+
+  const catalogSuggestionArgs = useMemo(() => {
+    const vehicle = detailOrder?.vehicleDetails;
+    const part = detailOrder?.partDetails;
+    return {
+      make: vehicle?.make,
+      model: vehicle?.model,
+      year: vehicle?.year,
+      engine: vehicle?.engine,
+      productName: detailOrder?.productName,
+      partNumber: part?.partNumber,
+      category: detailOrder?.category,
+      limit: 5,
+    };
+  }, [detailOrder]);
+
+  const canSuggestCatalog =
+    Boolean(catalogSuggestionArgs.make && catalogSuggestionArgs.model) &&
+    Boolean(
+      (catalogSuggestionArgs.productName && catalogSuggestionArgs.productName.length >= 3) ||
+        (catalogSuggestionArgs.partNumber && catalogSuggestionArgs.partNumber.length >= 3)
+    );
+
+  const { data: catalogSuggestionData, isFetching: isFetchingCatalogSuggestions } =
+    useGetProductSuggestionsQuery(catalogSuggestionArgs, {
+      skip: !detailOrder || !canSuggestCatalog || dismissCatalogSuggestions,
+    });
+
+  const quoteFields = useMemo(() => {
+    const parsed = editEstimatedPrice.trim() === '' ? undefined : Number(editEstimatedPrice);
+    return {
+      estimatedPrice: Number.isFinite(parsed as number) ? (parsed as number) : undefined,
+      supplier: editSupplier.trim() || undefined,
+    };
+  }, [editEstimatedPrice, editSupplier]);
+
+  const allowedNextStatuses = useMemo(
+    () => getAllowedNextCustomOrderStatuses(currentStatus, quoteFields),
+    [currentStatus, quoteFields]
+  );
+
+  const statusSelectOptions = useMemo(() => {
+    const options = new Set<CustomOrderStatus>([currentStatus, ...allowedNextStatuses]);
+    return Array.from(options);
+  }, [currentStatus, allowedNextStatuses]);
+
+  const quoteBlocksAdvance =
+    currentStatus !== CustomOrderStatus.COMPLETED &&
+    currentStatus !== CustomOrderStatus.CANCELLED &&
+    !allowedNextStatuses.some((s) => s !== CustomOrderStatus.CANCELLED);
+
   const handleStatusUpdate = async () => {
-    if (!selectedOrder || !newStatus || newStatus === (orderDetailData?.customOrder?.status || selectedOrder.status)) {
+    if (!selectedOrder || !newStatus) {
+      return;
+    }
+
+    const statusUnchanged = newStatus === currentStatus;
+    const priceNum =
+      editEstimatedPrice.trim() === '' ? undefined : Number(editEstimatedPrice);
+    const currentPrice = detailOrder?.estimatedPrice;
+    const priceChanged =
+      priceNum !== undefined &&
+      Number.isFinite(priceNum) &&
+      priceNum !== currentPrice;
+    const clearPrice =
+      editEstimatedPrice.trim() === '' &&
+      currentPrice != null &&
+      currentPrice > 0;
+    const supplierChanged =
+      editSupplier.trim() !== (detailOrder?.supplier || '').trim();
+
+    if (statusUnchanged && !priceChanged && !clearPrice && !supplierChanged) {
+      return;
+    }
+
+    if (priceNum !== undefined && (!Number.isFinite(priceNum) || priceNum < 0)) {
+      dispatch(showNotification({
+        message: 'Estimated price must be a valid non-negative number',
+        type: 'error',
+      }));
       return;
     }
 
     try {
-      await updateCustomOrder({
-        id: selectedOrder._id,
-        status: newStatus as CustomOrderStatus,
-      }).unwrap();
+      const body: {
+        id: string;
+        status?: CustomOrderStatus;
+        estimatedPrice?: number;
+        supplier?: string;
+      } = { id: selectedOrder._id };
 
-      dispatch(showNotification({ message: 'Custom order status updated successfully!', type: 'success' }));
+      if (!statusUnchanged) {
+        body.status = newStatus as CustomOrderStatus;
+      }
+      if (priceChanged || clearPrice) {
+        body.estimatedPrice = clearPrice ? 0 : priceNum;
+      }
+      if (supplierChanged) {
+        body.supplier = editSupplier.trim();
+      }
+
+      const updated = await updateCustomOrder(body).unwrap();
+
+      dispatch(showNotification({ message: 'Custom order updated successfully!', type: 'success' }));
       await refetch();
-      // Update the selected order with new status
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+      setSelectedOrder({
+        ...selectedOrder,
+        ...updated,
+        status: updated.status ?? newStatus,
+        estimatedPrice: updated.estimatedPrice,
+        supplier: updated.supplier,
+      });
+      setNewStatus(updated.status ?? newStatus);
     } catch (error: unknown) {
-      const errorInfo = getErrorInfo(error, 'Failed to update custom order status');
-      dispatch(showNotification({ 
-        message: errorInfo.message, 
-        type: 'error' 
+      const errorInfo = getErrorInfo(error, 'Failed to update custom order');
+      dispatch(showNotification({
+        message: errorInfo.message,
+        type: 'error',
       }));
       if (import.meta.env.DEV) {
-        console.error('Error updating custom order status:', error);
+        console.error('Error updating custom order:', error);
       }
     }
   };
@@ -363,46 +486,101 @@ export const AdminCustomOrders = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Status Update */}
-                <div>
-                  <Body className="text-sm text-gray-400 mb-2">Status</Body>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value as CustomOrderStatus)}
-                      className="flex-1 px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-                    >
-                      <option value={CustomOrderStatus.PENDING}>Pending</option>
-                      <option value={CustomOrderStatus.ORDERED}>Ordered</option>
-                      <option value={CustomOrderStatus.RECEIVED}>Received</option>
-                      <option value={CustomOrderStatus.COMPLETED}>Completed</option>
-                      <option value={CustomOrderStatus.CANCELLED}>Cancelled</option>
-                    </select>
-                    <Button
-                      variant="primary"
-                      size="small"
+                {/* Quote fields + status */}
+                <div className="space-y-4">
+                  <div>
+                    <Body className="text-sm text-gray-400 mb-2">Estimated price (MWK)</Body>
+                    <Input
                       dark
-                      onClick={handleStatusUpdate}
-                      disabled={newStatus === (orderDetailData?.customOrder?.status || selectedOrder.status) || isUpdating}
-                    >
-                      {isUpdating ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      Update Status
-                    </Button>
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={editEstimatedPrice}
+                      onChange={(e) => setEditEstimatedPrice(e.target.value)}
+                      placeholder="Enter quote amount"
+                      disabled={
+                        currentStatus === CustomOrderStatus.COMPLETED ||
+                        currentStatus === CustomOrderStatus.CANCELLED
+                      }
+                    />
                   </div>
-                  {newStatus !== (orderDetailData?.customOrder?.status || selectedOrder.status) && (
-                    <Body className="text-xs text-amber-400 mt-2">
-                      Status will change from {orderDetailData?.customOrder?.status || selectedOrder.status} to {newStatus}
-                    </Body>
-                  )}
+                  <div>
+                    <Body className="text-sm text-gray-400 mb-2">Supplier</Body>
+                    <Input
+                      dark
+                      value={editSupplier}
+                      onChange={(e) => setEditSupplier(e.target.value)}
+                      placeholder="Supplier name"
+                      disabled={
+                        currentStatus === CustomOrderStatus.COMPLETED ||
+                        currentStatus === CustomOrderStatus.CANCELLED
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Body className="text-sm text-gray-400 mb-2">Status</Body>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={newStatus}
+                        onChange={(e) => setNewStatus(e.target.value as CustomOrderStatus)}
+                        disabled={statusSelectOptions.length <= 1}
+                        className="flex-1 px-4 py-2 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all disabled:opacity-60"
+                      >
+                        {statusSelectOptions.map((status) => (
+                          <option key={status} value={status}>
+                            {getCustomOrderStatusLabel(status)}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="primary"
+                        size="small"
+                        dark
+                        onClick={handleStatusUpdate}
+                        disabled={isUpdating || statusSelectOptions.length === 0}
+                      >
+                        {isUpdating ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Save
+                      </Button>
+                    </div>
+                    {statusSelectOptions.length <= 1 &&
+                      (currentStatus === CustomOrderStatus.COMPLETED ||
+                        currentStatus === CustomOrderStatus.CANCELLED) && (
+                      <Body className="text-xs text-gray-500 mt-2">
+                        No further status changes are available for this request.
+                      </Body>
+                    )}
+                    {quoteBlocksAdvance && (
+                      <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-700/50 bg-amber-950/40 px-3 py-2">
+                        <AlertCircle className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                        <Body className="text-xs text-amber-200">
+                          Enter an estimated price and supplier to advance to{' '}
+                          {getCustomOrderStatusLabel(
+                            currentStatus === CustomOrderStatus.PENDING
+                              ? CustomOrderStatus.ORDERED
+                              : currentStatus === CustomOrderStatus.ORDERED
+                                ? CustomOrderStatus.RECEIVED
+                                : CustomOrderStatus.COMPLETED
+                          )}
+                          . You can still cancel.
+                        </Body>
+                      </div>
+                    )}
+                    {newStatus !== currentStatus && (
+                      <Body className="text-xs text-amber-400 mt-2">
+                        Status will change from {getCustomOrderStatusLabel(currentStatus)} to{' '}
+                        {getCustomOrderStatusLabel(newStatus as CustomOrderStatus)}
+                      </Body>
+                    )}
+                  </div>
                 </div>
 
                 {/* Customer Information */}
                 {(() => {
-                  const detailOrder = orderDetailData?.customOrder || selectedOrder;
                   const customer = getCustomer(detailOrder);
                   const vehicle = detailOrder.vehicleDetails;
                   const part = detailOrder.partDetails;
@@ -487,6 +665,18 @@ export const AdminCustomOrders = () => {
                   </div>
                 )}
 
+                {canSuggestCatalog && (
+                  <CatalogSuggestionsPanel
+                    dark
+                    title="Possible catalog matches"
+                    subtitle="Assistive only — confirm before telling the customer a catalog part fits. Dismiss if not useful."
+                    suggestions={catalogSuggestionData?.suggestions || []}
+                    isLoading={isFetchingCatalogSuggestions}
+                    dismissed={dismissCatalogSuggestions}
+                    onDismiss={() => setDismissCatalogSuggestions(true)}
+                  />
+                )}
+
                 {/* Order Details */}
                 <div>
                   <Body className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
@@ -529,25 +719,6 @@ export const AdminCustomOrders = () => {
                           ]
                             .filter(Boolean)
                             .join(' · ')}
-                        </Body>
-                      </div>
-                    )}
-                    {detailOrder.estimatedPrice != null && detailOrder.estimatedPrice > 0 && (
-                      <div>
-                        <Body className="text-xs text-gray-400 mb-1">Estimated Price</Body>
-                        <div className="flex items-center gap-2">
-                          <Banknote className="h-4 w-4 text-gray-400" />
-                          <Body className="text-gray-50 font-medium">
-                            MWK {detailOrder.estimatedPrice.toLocaleString()}
-                          </Body>
-                        </div>
-                      </div>
-                    )}
-                    {detailOrder.supplier && (
-                      <div>
-                        <Body className="text-xs text-gray-400 mb-1">Supplier</Body>
-                        <Body className="text-gray-50">
-                          {detailOrder.supplier}
                         </Body>
                       </div>
                     )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useGetProductsQuery, useGetCategoriesQuery } from '../store/api/productApi';
 import { useAppSelector, useAppDispatch } from '../store/types';
@@ -11,10 +11,35 @@ import { QuickViewModal } from '../components/QuickViewModal';
 import { ProductComparison } from '../components/ProductComparison';
 import { SearchAutocomplete } from '../components/SearchAutocomplete';
 import { FilterDrawer } from '../components/FilterDrawer';
-import { Input } from '../components/ui/Input';
+import { VehicleFitmentFilter } from '../components/VehicleFitmentFilter';
+import {
+  buildRequestPartPath,
+  emptySelectedVehicle,
+  type SelectedVehicle,
+} from '../utils/vehicleFitmentFilter';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
-import { Search, Filter, X, Settings, ChevronRight, Cog, CircleStop, Zap, Wrench, Package, Grid3x3, List, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, X, Settings, ChevronRight, Cog, CircleStop, Zap, Wrench, Package, Grid3x3, List, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Car } from 'lucide-react';
+import { getVehicleFitmentMatchStrength } from '@shared/utils/productFitmentMatch';
+import type { Product } from '../store/api/productApi';
+
+const VEHICLE_STORAGE_KEY = 'autotek.selectedVehicle';
+
+const readStoredVehicle = (): SelectedVehicle => {
+  if (typeof window === 'undefined') return emptySelectedVehicle();
+  try {
+    const raw = localStorage.getItem(VEHICLE_STORAGE_KEY);
+    if (!raw) return emptySelectedVehicle();
+    const parsed = JSON.parse(raw) as Partial<SelectedVehicle>;
+    return {
+      ...emptySelectedVehicle(),
+      ...parsed,
+      includeUniversal: parsed.includeUniversal !== false,
+    };
+  } catch {
+    return emptySelectedVehicle();
+  }
+};
 
 export const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,14 +56,14 @@ export const Products = () => {
   const { filters, pagination, viewMode } = useAppSelector((state) => state.product);
 
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
-  const [showFilters, setShowFilters] = useState(true);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [priceRange, setPriceRange] = useState({
     min: filters.minPrice || 5000,
     max: filters.maxPrice || 50000000,
   });
-  const [quickViewProduct, setQuickViewProduct] = useState<{ _id: string; name: string; description: string; category: string; price: number; stock: number; images: string[]; supplier?: string; status: 'available' | 'out-of-stock'; createdAt: string; updatedAt: string } | null>(null);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<SelectedVehicle>(() => readStoredVehicle());
 
   // Sync URL search params -> Redux (back/forward, external links)
   useEffect(() => {
@@ -47,6 +72,13 @@ export const Products = () => {
     const minPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined;
     const maxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined;
     const stockStatus = searchParams.get('stockStatus') || undefined;
+    const make = searchParams.get('make') || undefined;
+    const model = searchParams.get('model') || undefined;
+    const year = searchParams.get('year') ? Number(searchParams.get('year')) : undefined;
+    const engine = searchParams.get('engine') || undefined;
+    const includeUniversalParam = searchParams.get('includeUniversal');
+    const includeUniversal =
+      includeUniversalParam === null ? undefined : includeUniversalParam !== 'false';
     const urlPage = searchParams.get('page');
     const urlLimit = searchParams.get('limit');
 
@@ -55,7 +87,13 @@ export const Products = () => {
       filters.search !== search ||
       filters.minPrice !== minPrice ||
       filters.maxPrice !== maxPrice ||
-      (filters as { stockStatus?: string }).stockStatus !== stockStatus;
+      filters.stockStatus !== stockStatus ||
+      ((make || model) &&
+        (filters.make !== make ||
+          filters.model !== model ||
+          filters.year !== year ||
+          filters.engine !== engine ||
+          filters.includeUniversal !== includeUniversal));
 
     if (filtersDiffer) {
       dispatch(
@@ -65,12 +103,56 @@ export const Products = () => {
           minPrice,
           maxPrice,
           stockStatus: stockStatus as 'all' | 'in-stock' | 'low-stock' | 'out-of-stock' | undefined,
+          ...(make || model
+            ? {
+                make,
+                model,
+                year: Number.isInteger(year) ? year : undefined,
+                engine,
+                includeUniversal,
+              }
+            : {}),
         })
       );
       if (search !== undefined) {
         setSearchTerm(search);
       } else if (filters.search && !search) {
         setSearchTerm('');
+      }
+    }
+
+    if (make || model) {
+      setSelectedVehicle({
+        make: make || '',
+        model: model || '',
+        year: year && Number.isInteger(year) ? String(year) : '',
+        engine: engine || '',
+        includeUniversal: includeUniversal !== false,
+      });
+    } else {
+      const stored = readStoredVehicle();
+      if (stored.make && stored.model) {
+        setSelectedVehicle(stored);
+        const storedYear = stored.year ? Number(stored.year) : undefined;
+        if (
+          filters.make !== stored.make ||
+          filters.model !== stored.model ||
+          filters.year !== (Number.isInteger(storedYear) ? storedYear : undefined) ||
+          filters.engine !== (stored.engine || undefined) ||
+          filters.includeUniversal !== stored.includeUniversal
+        ) {
+          dispatch(
+            setFilters({
+              make: stored.make,
+              model: stored.model,
+              year: Number.isInteger(storedYear) ? storedYear : undefined,
+              engine: stored.engine || undefined,
+              includeUniversal: stored.includeUniversal,
+            })
+          );
+        }
+      } else if (selectedVehicle.make || selectedVehicle.model) {
+        setSelectedVehicle(emptySelectedVehicle());
       }
     }
 
@@ -94,9 +176,12 @@ export const Products = () => {
     if (filters.search) params.set('search', filters.search);
     if (filters.minPrice !== undefined) params.set('minPrice', filters.minPrice.toString());
     if (filters.maxPrice !== undefined) params.set('maxPrice', filters.maxPrice.toString());
-    if ((filters as { stockStatus?: string }).stockStatus) {
-      params.set('stockStatus', (filters as { stockStatus?: string }).stockStatus!);
-    }
+    if (filters.stockStatus) params.set('stockStatus', filters.stockStatus);
+    if (filters.make) params.set('make', filters.make);
+    if (filters.model) params.set('model', filters.model);
+    if (filters.year !== undefined) params.set('year', filters.year.toString());
+    if (filters.engine) params.set('engine', filters.engine);
+    if (filters.includeUniversal === false) params.set('includeUniversal', 'false');
     if (pagination.page > 1) params.set('page', pagination.page.toString());
     if (pagination.limit !== 12) params.set('limit', pagination.limit.toString());
 
@@ -108,14 +193,40 @@ export const Products = () => {
     }, { replace: true });
   }, [filters, pagination.page, pagination.limit, setSearchParams]);
 
-  const { data, isLoading, error } = useGetProductsQuery(
-    {
+  useEffect(() => {
+    localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(selectedVehicle));
+  }, [selectedVehicle]);
+
+  const vehicleFilterActive = Boolean(filters.make && filters.model);
+
+  const queryArgs = useMemo(
+    () => ({
       page: pagination.page,
       limit: pagination.limit,
-      ...filters,
-    },
-    { refetchOnMountOrArgChange: true }
+      category: filters.category,
+      search: filters.search,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      status: filters.status,
+      stockStatus: filters.stockStatus,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+      ...(vehicleFilterActive
+        ? {
+            make: filters.make,
+            model: filters.model,
+            year: filters.year,
+            engine: filters.engine,
+            includeUniversal: filters.includeUniversal !== false,
+          }
+        : {}),
+    }),
+    [filters, pagination.page, pagination.limit, vehicleFilterActive]
   );
+
+  const { data, isLoading, error } = useGetProductsQuery(queryArgs, {
+    refetchOnMountOrArgChange: true,
+  });
 
   const { data: categoriesData } = useGetCategoriesQuery();
 
@@ -154,6 +265,34 @@ export const Products = () => {
     dispatch(clearFilters());
     setSearchTerm('');
     setPriceRange({ min: 5000, max: 50000000 });
+    setSelectedVehicle(emptySelectedVehicle());
+  };
+
+  const handleVehicleChange = (vehicle: SelectedVehicle) => {
+    setSelectedVehicle(vehicle);
+    const yearNum = vehicle.year ? Number(vehicle.year) : undefined;
+    dispatch(
+      setFilters({
+        make: vehicle.make || undefined,
+        model: vehicle.model || undefined,
+        year: Number.isInteger(yearNum) ? yearNum : undefined,
+        engine: vehicle.engine.trim() || undefined,
+        includeUniversal: vehicle.includeUniversal,
+      })
+    );
+  };
+
+  const handleClearVehicle = () => {
+    setSelectedVehicle(emptySelectedVehicle());
+    dispatch(
+      setFilters({
+        make: undefined,
+        model: undefined,
+        year: undefined,
+        engine: undefined,
+        includeUniversal: undefined,
+      })
+    );
   };
 
   const handlePageChange = (newPage: number) => {
@@ -161,7 +300,18 @@ export const Products = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const hasActiveFilters = Object.keys(filters).length > 0;
+  const hasActiveFilters = Object.keys(filters).some(
+    (key) => filters[key as keyof typeof filters] !== undefined
+  );
+  const requestPartPath = buildRequestPartPath(selectedVehicle);
+  const vehicleQueryForMatch = vehicleFilterActive
+    ? {
+        make: filters.make,
+        model: filters.model,
+        year: filters.year,
+        engine: filters.engine,
+      }
+    : null;
   const startItem = data?.pagination ? (pagination.page - 1) * pagination.limit + 1 : 0;
   const endItem = data?.pagination 
     ? Math.min(pagination.page * pagination.limit, data.pagination.total) 
@@ -212,7 +362,8 @@ export const Products = () => {
                 Find Your <span className="text-teal-600">Auto Parts</span>
               </H1>
               <Body className="text-lg text-gray-700 mb-6 max-w-xl">
-                Browse our extensive catalog of quality automotive spare parts. Search by category, price, or product name.
+                Browse quality spare parts for Malawi and Southern Africa. Filter by your vehicle to
+                see parts listed for your make and model.
               </Body>
 
               <div className="mb-6 rounded-2xl border border-teal-200 bg-white/90 p-4 shadow-sm">
@@ -336,6 +487,12 @@ export const Products = () => {
             </div>
             
             <div className={filtersCollapsed ? 'hidden lg:block' : ''}>
+
+            <VehicleFitmentFilter
+              value={selectedVehicle}
+              onChange={handleVehicleChange}
+              onClear={handleClearVehicle}
+            />
 
             {/* Enhanced Category Section */}
             <div className="mb-6">
@@ -755,16 +912,29 @@ export const Products = () => {
           ) : !data?.products || data.products.length === 0 ? (
             <div className="text-center py-20 bg-gray-50 rounded-lg border-2 border-gray-200">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <Body className="text-gray-700 text-lg font-semibold mb-2">No products found</Body>
-              <Body className="text-gray-600 mb-3">Try adjusting your filters or search terms.</Body>
-              <Body className="text-gray-600 mb-6">
-                We couldn&apos;t find that part. Request a part and we&apos;ll source it for you.
+              <Body className="text-gray-700 text-lg font-semibold mb-2">
+                {vehicleFilterActive ? 'No parts listed for this vehicle' : 'No products found'}
               </Body>
+              <Body className="text-gray-600 mb-3">
+                {vehicleFilterActive
+                  ? 'We could not find catalog parts matching your vehicle filter. Request the part and we will help source it.'
+                  : 'Try adjusting your filters or search terms.'}
+              </Body>
+              {vehicleFilterActive && (
+                <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 border border-teal-200 px-4 py-2 mb-6">
+                  <Car className="h-4 w-4 text-teal-600" />
+                  <Body className="text-sm text-teal-800">
+                    {[filters.year, filters.make, filters.model, filters.engine]
+                      .filter(Boolean)
+                      .join(' ')}
+                  </Body>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Button variant="secondary" onClick={handleResetFilters}>
                   Clear Filters
                 </Button>
-                <Link to="/request-part">
+                <Link to={requestPartPath}>
                   <Button className="gap-2">
                     <Package className="h-4 w-4" />
                     Request a Part
@@ -782,10 +952,11 @@ export const Products = () => {
                       className="animate-fade-in"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <ProductCard 
-                      product={product} 
-                      onQuickView={(product) => setQuickViewProduct(product)}
-                    />
+                      <ProductCard
+                        product={product}
+                        fitmentMatch={getVehicleFitmentMatchStrength(product, vehicleQueryForMatch)}
+                        onQuickView={(product) => setQuickViewProduct(product)}
+                      />
                     </div>
                   ))}
                 </div>
@@ -797,7 +968,10 @@ export const Products = () => {
                       className="animate-fade-in"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <ProductCardList product={product} />
+                      <ProductCardList
+                        product={product}
+                        fitmentMatch={getVehicleFitmentMatchStrength(product, vehicleQueryForMatch)}
+                      />
                     </div>
                   ))}
                 </div>

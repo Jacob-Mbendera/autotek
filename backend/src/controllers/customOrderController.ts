@@ -5,6 +5,7 @@ import CustomOrder from '../models/CustomOrder';
 import { CustomOrderStatus } from '../types/shared';
 import { uploadImage, deleteImage } from '../config/cloudinary';
 import { cleanupFile } from '../middleware/upload';
+import { assertValidCustomOrderStatusTransition } from '../utils/customOrderStatusTransitions';
 
 const optionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined;
@@ -146,15 +147,56 @@ export const updateCustomOrder = async (
       return;
     }
 
-    if (status && !Object.values(CustomOrderStatus).includes(status)) {
-      res.status(400).json({ message: 'Invalid status' });
-      return;
+    if (status !== undefined && status !== null && status !== '') {
+      if (!Object.values(CustomOrderStatus).includes(status)) {
+        res.status(400).json({ message: 'Invalid status' });
+        return;
+      }
     }
 
-    if (status) customOrder.status = status;
-    if (estimatedPrice !== undefined) customOrder.estimatedPrice = estimatedPrice;
-    if (supplier) customOrder.supplier = supplier;
-    if (notes) customOrder.notes = notes;
+    const mergedPrice =
+      estimatedPrice !== undefined
+        ? Number(estimatedPrice)
+        : customOrder.estimatedPrice;
+    const mergedSupplier =
+      supplier !== undefined
+        ? optionalString(supplier) ?? ''
+        : customOrder.supplier ?? '';
+    const mergedNotes =
+      notes !== undefined ? optionalString(notes) : customOrder.notes;
+
+    if (status && status !== customOrder.status) {
+      const transition = assertValidCustomOrderStatusTransition(
+        customOrder.status as CustomOrderStatus,
+        status as CustomOrderStatus,
+        {
+          estimatedPrice: Number.isFinite(mergedPrice as number)
+            ? (mergedPrice as number)
+            : undefined,
+          supplier: mergedSupplier,
+        }
+      );
+      if (!transition.ok) {
+        res.status(400).json({ message: transition.message });
+        return;
+      }
+      customOrder.status = status;
+    }
+
+    if (estimatedPrice !== undefined) {
+      const priceNum = Number(estimatedPrice);
+      if (!Number.isFinite(priceNum) || priceNum < 0) {
+        res.status(400).json({ message: 'Estimated price must be a non-negative number' });
+        return;
+      }
+      customOrder.estimatedPrice = priceNum;
+    }
+    if (supplier !== undefined) {
+      customOrder.supplier = optionalString(supplier);
+    }
+    if (notes !== undefined) {
+      customOrder.notes = mergedNotes;
+    }
 
     await customOrder.save();
     res.json(customOrder);

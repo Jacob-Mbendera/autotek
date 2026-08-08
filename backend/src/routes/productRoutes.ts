@@ -6,6 +6,7 @@ import {
   updateProduct,
   deleteProduct,
   getCategories,
+  getProductSuggestions,
   assignMediaToProduct,
   setPrimaryProductImage,
 } from '../controllers/productController';
@@ -16,6 +17,7 @@ const router = Router();
 
 router.get('/', getProducts);
 router.get('/categories', getCategories);
+router.get('/suggestions', getProductSuggestions);
 router.post('/:id/assign-media', authMiddleware, adminMiddleware, assignMediaToProduct);
 router.patch('/:id/primary-image', authMiddleware, adminMiddleware, setPrimaryProductImage);
 router.get('/:id', getProduct);

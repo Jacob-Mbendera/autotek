@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '@shared/types';
 import { useAppDispatch, useAppSelector } from '../store/types';
-import { useGetCategoriesQuery } from '../store/api/productApi';
+import { useGetCategoriesQuery, useGetProductSuggestionsQuery } from '../store/api/productApi';
 import {
   useCreateCustomOrderMutation,
   type BodyStyle,
@@ -28,6 +28,7 @@ import {
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { CatalogSuggestionsPanel } from '../components/CatalogSuggestionsPanel';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -112,31 +113,102 @@ export const RequestPart = () => {
   const [showMoreVehicleDetails, setShowMoreVehicleDetails] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [formData, setFormData] = useState({
-    productName: '',
-    category: '',
-    otherCategory: '',
-    description: '',
-    estimatedPrice: '',
-    make: '',
-    otherMake: '',
-    model: '',
-    otherModel: '',
-    year: '',
-    engine: '',
-    trim: '',
-    transmission: '' as Transmission | '',
-    drivetrain: '' as Drivetrain | '',
-    bodyStyle: '' as BodyStyle | '',
-    vinOrChassis: '',
-    position: '' as PartPosition | '',
-    partNumber: '',
-    quantity: '1',
-    preference: 'no-preference' as PartPreference,
+  const [formData, setFormData] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const make = params.get('make') || '';
+    const model = params.get('model') || '';
+    const year = params.get('year') || '';
+    const engine = params.get('engine') || '';
+    const knownMake = (VEHICLE_MAKES as readonly string[]).includes(make);
+    const modelsForMake = knownMake ? getModelsForMake(make) : [];
+    const knownModel = modelsForMake.includes(model);
+
+    return {
+      productName: '',
+      category: '',
+      otherCategory: '',
+      description: '',
+      estimatedPrice: '',
+      make: knownMake ? make : make ? OTHER_VEHICLE_VALUE : '',
+      otherMake: knownMake ? '' : make,
+      model: knownMake && knownModel ? model : model ? OTHER_VEHICLE_VALUE : '',
+      otherModel: knownMake && knownModel ? '' : model,
+      year,
+      engine,
+      trim: '',
+      transmission: '' as Transmission | '',
+      drivetrain: '' as Drivetrain | '',
+      bodyStyle: '' as BodyStyle | '',
+      vinOrChassis: '',
+      position: '' as PartPosition | '',
+      partNumber: '',
+      quantity: '1',
+      preference: 'no-preference' as PartPreference,
+    };
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dismissSuggestions, setDismissSuggestions] = useState(false);
+  const [suggestionQuery, setSuggestionQuery] = useState({
+    make: '',
+    model: '',
+    year: undefined as number | undefined,
+    engine: '',
+    productName: '',
+    partNumber: '',
+    category: '',
+  });
 
   const modelOptions = useMemo(() => getModelsForMake(formData.make), [formData.make]);
+
+  const resolvedCategory =
+    formData.category === OTHER_CATEGORY_VALUE ? formData.otherCategory.trim() : formData.category.trim();
+  const resolvedMake =
+    formData.make === OTHER_VEHICLE_VALUE ? formData.otherMake.trim() : formData.make.trim();
+  const resolvedModel =
+    formData.model === OTHER_VEHICLE_VALUE ? formData.otherModel.trim() : formData.model.trim();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const yearNum = Number(formData.year);
+      setSuggestionQuery({
+        make: resolvedMake,
+        model: resolvedModel,
+        year: Number.isInteger(yearNum) ? yearNum : undefined,
+        engine: formData.engine.trim(),
+        productName: formData.productName.trim(),
+        partNumber: formData.partNumber.trim(),
+        category: resolvedCategory,
+      });
+      setDismissSuggestions(false);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [
+    formData.engine,
+    formData.partNumber,
+    formData.productName,
+    formData.year,
+    resolvedCategory,
+    resolvedMake,
+    resolvedModel,
+  ]);
+
+  const canSuggest =
+    Boolean(suggestionQuery.make && suggestionQuery.model) &&
+    (suggestionQuery.productName.length >= 3 || suggestionQuery.partNumber.length >= 3);
+
+  const { data: suggestionData, isFetching: isFetchingSuggestions } = useGetProductSuggestionsQuery(
+    {
+      make: suggestionQuery.make,
+      model: suggestionQuery.model,
+      year: suggestionQuery.year,
+      engine: suggestionQuery.engine || undefined,
+      productName: suggestionQuery.productName || undefined,
+      partNumber: suggestionQuery.partNumber || undefined,
+      category: suggestionQuery.category || undefined,
+      limit: 5,
+    },
+    { skip: !canSuggest }
+  );
 
   useEffect(() => {
     if (!user) {
@@ -154,13 +226,6 @@ export const RequestPart = () => {
       navigate('/admin/dashboard', { replace: true });
     }
   }, [dispatch, navigate, user]);
-
-  const resolvedCategory =
-    formData.category === OTHER_CATEGORY_VALUE ? formData.otherCategory.trim() : formData.category.trim();
-  const resolvedMake =
-    formData.make === OTHER_VEHICLE_VALUE ? formData.otherMake.trim() : formData.make.trim();
-  const resolvedModel =
-    formData.model === OTHER_VEHICLE_VALUE ? formData.otherModel.trim() : formData.model.trim();
 
   const updateField = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -755,6 +820,16 @@ export const RequestPart = () => {
                 </div>
               </div>
             </div>
+
+            {canSuggest && (
+              <CatalogSuggestionsPanel
+                suggestions={suggestionData?.suggestions || []}
+                isLoading={isFetchingSuggestions}
+                dismissed={dismissSuggestions}
+                onDismiss={() => setDismissSuggestions(true)}
+                subtitle="If one of these is correct, open it and order from the catalog instead of submitting a request. Suggestions are not guaranteed fits."
+              />
+            )}
 
             {Object.keys(errors).length > 0 && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">

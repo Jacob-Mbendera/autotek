@@ -1,6 +1,10 @@
 import { baseApi } from './baseApi';
 import { patchProductInCaches } from './productCacheUtils';
 import type { RootState } from '../index';
+import type {
+  ProductCompatibilityEntry,
+  ProductFitmentStatus,
+} from '@shared/types';
 
 export interface ProductImage {
   url: string;
@@ -19,8 +23,16 @@ export interface Product {
   stock: number;
   images: ProductImageField[];
   supplier?: string;
+  brand?: string;
+  oemPartNumber?: string;
+  alternatePartNumbers: string[];
+  isUniversal: boolean;
+  compatibility: ProductCompatibilityEntry[];
+  fitmentStatus: ProductFitmentStatus;
   status: 'available' | 'out-of-stock';
   badge?: 'new' | 'sale' | 'featured';
+  averageRating?: number;
+  reviewCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +59,11 @@ interface ProductsQueryParams {
   sortBy?: 'price' | 'name' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
   missingImages?: boolean;
+  make?: string;
+  model?: string;
+  year?: number;
+  engine?: string;
+  includeUniversal?: boolean;
 }
 
 interface CreateProductRequest {
@@ -56,6 +73,12 @@ interface CreateProductRequest {
   price: number;
   stock: number;
   supplier?: string;
+  brand?: string;
+  oemPartNumber?: string;
+  alternatePartNumbers?: string[];
+  isUniversal?: boolean;
+  compatibility?: ProductCompatibilityEntry[];
+  fitmentStatus?: ProductFitmentStatus;
   status?: 'available' | 'out-of-stock';
   images?: File[];
 }
@@ -63,6 +86,28 @@ interface CreateProductRequest {
 interface UpdateProductRequest extends Partial<CreateProductRequest> {
   images?: File[];
 }
+
+const appendProductFormData = (
+  formData: FormData,
+  body: CreateProductRequest | UpdateProductRequest
+) => {
+  Object.keys(body).forEach((key) => {
+    const value = body[key as keyof CreateProductRequest];
+    if (value === undefined) return;
+
+    if (key === 'images' && Array.isArray(value)) {
+      (value as File[]).forEach((file) => formData.append('images', file));
+      return;
+    }
+
+    if (key === 'compatibility' || key === 'alternatePartNumbers') {
+      formData.append(key, JSON.stringify(value));
+      return;
+    }
+
+    formData.append(key, String(value));
+  });
+};
 
 export interface MediaAsset {
   _id: string;
@@ -95,6 +140,28 @@ export interface MediaLibraryUploadResponse {
   summary: { total: number; ok: number; failed: number };
 }
 
+export interface ProductSuggestionParams {
+  make?: string;
+  model?: string;
+  year?: number;
+  engine?: string;
+  productName?: string;
+  partNumber?: string;
+  category?: string;
+  limit?: number;
+}
+
+export interface ProductSuggestion {
+  product: Product;
+  confidence: 'exact' | 'strong' | 'possible';
+  reasons: string[];
+  score: number;
+}
+
+export interface ProductSuggestionsResponse {
+  suggestions: ProductSuggestion[];
+}
+
 export const productApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getProducts: builder.query<ProductsResponse, ProductsQueryParams>({
@@ -111,6 +178,13 @@ export const productApi = baseApi.injectEndpoints({
         if (params.sortBy) searchParams.append('sortBy', params.sortBy);
         if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
         if (params.missingImages) searchParams.append('missingImages', 'true');
+        if (params.make) searchParams.append('make', params.make);
+        if (params.model) searchParams.append('model', params.model);
+        if (params.year !== undefined) searchParams.append('year', params.year.toString());
+        if (params.engine) searchParams.append('engine', params.engine);
+        if (params.includeUniversal !== undefined) {
+          searchParams.append('includeUniversal', String(params.includeUniversal));
+        }
 
         return {
           url: `/products?${searchParams.toString()}`,
@@ -125,6 +199,23 @@ export const productApi = baseApi.injectEndpoints({
             ]
           : [{ type: 'Product' as const, id: 'LIST' }],
     }),
+    getProductSuggestions: builder.query<ProductSuggestionsResponse, ProductSuggestionParams>({
+      query: (params) => {
+        const searchParams = new URLSearchParams();
+        if (params.make) searchParams.append('make', params.make);
+        if (params.model) searchParams.append('model', params.model);
+        if (params.year !== undefined) searchParams.append('year', String(params.year));
+        if (params.engine) searchParams.append('engine', params.engine);
+        if (params.productName) searchParams.append('productName', params.productName);
+        if (params.partNumber) searchParams.append('partNumber', params.partNumber);
+        if (params.category) searchParams.append('category', params.category);
+        if (params.limit) searchParams.append('limit', String(params.limit));
+        return {
+          url: `/products/suggestions?${searchParams.toString()}`,
+          method: 'GET',
+        };
+      },
+    }),
     getProduct: builder.query<{ product: Product }, string>({
       query: (id) => `/products/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Product', id }],
@@ -132,15 +223,7 @@ export const productApi = baseApi.injectEndpoints({
     createProduct: builder.mutation<{ product: Product }, CreateProductRequest>({
       query: (body) => {
         const formData = new FormData();
-        Object.keys(body).forEach((key) => {
-          if (key === 'images' && body.images) {
-            body.images.forEach((file) => {
-              formData.append('images', file);
-            });
-          } else if (body[key as keyof CreateProductRequest] !== undefined) {
-            formData.append(key, String(body[key as keyof CreateProductRequest]));
-          }
-        });
+        appendProductFormData(formData, body);
 
         return {
           url: '/products',
@@ -154,15 +237,7 @@ export const productApi = baseApi.injectEndpoints({
       {
         query: ({ id, data }) => {
           const formData = new FormData();
-          Object.keys(data).forEach((key) => {
-            if (key === 'images' && data.images) {
-              data.images.forEach((file) => {
-                formData.append('images', file);
-              });
-            } else if (data[key as keyof UpdateProductRequest] !== undefined) {
-              formData.append(key, String(data[key as keyof UpdateProductRequest]));
-            }
-          });
+          appendProductFormData(formData, data);
 
           return {
             url: `/products/${id}`,
@@ -271,6 +346,7 @@ export const productApi = baseApi.injectEndpoints({
 
 export const {
   useGetProductsQuery,
+  useGetProductSuggestionsQuery,
   useGetProductQuery,
   useCreateProductMutation,
   useUpdateProductMutation,

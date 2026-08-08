@@ -8,6 +8,7 @@ import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { addToComparison } from '../store/slices/comparisonSlice';
 import type { Product } from '../store/api/productApi';
+import type { VehicleFitmentMatchStrength } from '@shared/utils/productFitmentMatch';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { Button } from './ui/Button';
 import { OptimizedImage } from './ui/OptimizedImage';
@@ -17,9 +18,10 @@ interface ProductCardProps {
   product: Product;
   onQuickView?: (product: Product) => void;
   onAddToCart?: (product: Product) => void | Promise<void>;
+  fitmentMatch?: VehicleFitmentMatchStrength;
 }
 
-export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardProps) => {
+export const ProductCard = ({ product, onQuickView, onAddToCart, fitmentMatch = 'none' }: ProductCardProps) => {
   const dispatch = useAppDispatch();
   const { guardedAddToCart } = useGuardedAddToCart();
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
@@ -151,8 +153,7 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
     );
   };
 
-  // Format brand and category (assuming supplier is brand, or use category)
-  const brand = product.supplier || 'UNIVERSAL';
+  const brand = product.brand || product.supplier || 'Brand not listed';
   const categoryDisplay = product.category.toUpperCase();
 
   return (
@@ -202,6 +203,26 @@ export const ProductCard = ({ product, onQuickView, onAddToCart }: ProductCardPr
         <div className="absolute top-3 left-3 z-10">
           {getStatusBadge()}
         </div>
+
+        {fitmentMatch !== 'none' && (
+          <div className="absolute bottom-3 left-3 z-10">
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold shadow border ${
+                fitmentMatch === 'strong'
+                  ? 'bg-green-100 text-green-800 border-green-200'
+                  : fitmentMatch === 'universal'
+                    ? 'bg-teal-100 text-teal-800 border-teal-200'
+                    : 'bg-amber-100 text-amber-800 border-amber-200'
+              }`}
+            >
+              {fitmentMatch === 'strong'
+                ? 'Fits your vehicle'
+                : fitmentMatch === 'universal'
+                  ? 'Universal part'
+                  : 'Check year/engine'}
+            </span>
+          </div>
+        )}
 
         {/* Quick actions on hover */}
         <div className="absolute top-14 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30 flex flex-col gap-2">

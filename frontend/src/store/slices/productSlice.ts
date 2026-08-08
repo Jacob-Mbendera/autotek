@@ -7,6 +7,14 @@ interface ProductFilters {
   minPrice?: number;
   maxPrice?: number;
   status?: 'available' | 'out-of-stock';
+  stockStatus?: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
+  sortBy?: 'price' | 'name' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+  make?: string;
+  model?: string;
+  year?: number;
+  engine?: string;
+  includeUniversal?: boolean;
 }
 
 interface PaginationState {
@@ -57,7 +65,13 @@ const productSlice = createSlice({
   initialState,
   reducers: {
     setFilters: (state, action: PayloadAction<Partial<ProductFilters>>) => {
-      state.filters = { ...state.filters, ...action.payload };
+      const next: ProductFilters = { ...state.filters, ...action.payload };
+      (Object.keys(next) as (keyof ProductFilters)[]).forEach((key) => {
+        if (next[key] === undefined) {
+          delete next[key];
+        }
+      });
+      state.filters = next;
       state.pagination.page = 1;
     },
     clearFilters: (state) => {
