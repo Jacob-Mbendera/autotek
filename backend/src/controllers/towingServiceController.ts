@@ -5,9 +5,13 @@ import User from '../models/User';
 import { ProviderType, ServiceStatus, UserRole, PaymentStatus } from '../types/shared';
 import { assertProviderAssignable } from '../utils/serviceProviderAssignment';
 import { assertValidServiceStatusTransition } from '../utils/serviceStatusTransitions';
-import { assertEstimatedArrivalRequiresProvider } from '../utils/serviceEtaRules';
+import {
+  assertEstimatedArrivalRequiresProvider,
+  parseAndValidateEstimatedArrival,
+} from '../utils/serviceEtaRules';
 import {
   PROVIDER_REQUIRED_WHILE_IN_PROGRESS_MESSAGE,
+  PROVIDER_REQUIRED_WHILE_COMPLETED_MESSAGE,
   resolveAutoStatusForProviderChange,
 } from '../utils/serviceAssignmentStatusSync';
 import { hasTowingServiceProvider } from '../utils/serviceProviderOnRecord';
@@ -520,12 +524,12 @@ export const updateTowingService = async (
             res.status(400).json({ message: etaCheck.message });
             return;
           }
-          const d = new Date(estimatedArrivalAt);
-          if (Number.isNaN(d.getTime())) {
-            res.status(400).json({ message: 'Invalid estimatedArrivalAt' });
+          const parsedEta = parseAndValidateEstimatedArrival(estimatedArrivalAt);
+          if (!parsedEta.ok) {
+            res.status(400).json({ message: parsedEta.message });
             return;
           }
-          towingService.estimatedArrivalAt = d;
+          towingService.estimatedArrivalAt = parsedEta.date;
           towingService.etaUpdatedAt = new Date();
         }
       } else if (!hasTowingServiceProvider(towingService) && towingService.estimatedArrivalAt) {
@@ -539,6 +543,14 @@ export const updateTowingService = async (
         previousStatus === ServiceStatus.IN_PROGRESS
       ) {
         res.status(400).json({ message: PROVIDER_REQUIRED_WHILE_IN_PROGRESS_MESSAGE });
+        return;
+      }
+
+      if (
+        !hasTowingServiceProvider(towingService) &&
+        previousStatus === ServiceStatus.COMPLETED
+      ) {
+        res.status(400).json({ message: PROVIDER_REQUIRED_WHILE_COMPLETED_MESSAGE });
         return;
       }
 

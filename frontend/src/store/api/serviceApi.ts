@@ -248,7 +248,7 @@ export const serviceApi = baseApi.injectEndpoints({
         url: `/towing/${id}/cancel`,
         method: 'PUT',
       }),
-      invalidatesTags: ['TowingService'],
+      invalidatesTags: ['TowingService', 'Admin'],
     }),
     cancelCarService: builder.mutation<
       { message: string; service: CarService; refund: any },
@@ -258,7 +258,7 @@ export const serviceApi = baseApi.injectEndpoints({
         url: `/car-services/${id}/cancel`,
         method: 'PUT',
       }),
-      invalidatesTags: ['CarService'],
+      invalidatesTags: ['CarService', 'Admin'],
     }),
     requestTowingQuote: builder.mutation<{ message: string }, { id: string; body: ServiceQuoteRequestBody }>({
       query: ({ id, body }) => ({

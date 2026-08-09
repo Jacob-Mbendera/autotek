@@ -121,6 +121,7 @@ export const AdminServices = () => {
   const [providerPickId, setProviderPickId] = useState('');
   const [etaDateInput, setEtaDateInput] = useState('');
   const [etaTimeInput, setEtaTimeInput] = useState('');
+  const todayDateString = new Date().toISOString().slice(0, 10);
 
   const [updateTowingService, { isLoading: isUpdatingTowing }] = useUpdateTowingServiceMutation();
   const [updateCarService, { isLoading: isUpdatingCar }] = useUpdateCarServiceMutation();
@@ -803,6 +804,7 @@ export const AdminServices = () => {
                         <input
                           id="admin-service-eta-date"
                           type="date"
+                          min={todayDateString}
                           value={etaDateInput}
                           onChange={(e) => setEtaDateInput(e.target.value)}
                           disabled={!providerPickId}

@@ -31,3 +31,6 @@ export function resolveAutoStatusForProviderChange(params: {
 
 export const PROVIDER_REQUIRED_WHILE_IN_PROGRESS_MESSAGE =
   'Cannot remove the assigned provider while the service is in progress. Move it back to Assigned first, or cancel the service.';
+
+export const PROVIDER_REQUIRED_WHILE_COMPLETED_MESSAGE =
+  'Cannot remove the assigned provider from a completed service. The provider record is needed for ratings and payout history.';
