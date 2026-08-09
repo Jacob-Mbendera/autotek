@@ -206,7 +206,14 @@ export const customOrderApi = baseApi.injectEndpoints({
     }),
     updateCustomOrder: builder.mutation<
       CustomOrder,
-      { id: string; status?: CustomOrderStatus; estimatedPrice?: number; supplier?: string; notes?: string }
+      {
+        id: string;
+        status?: CustomOrderStatus;
+        estimatedPrice?: number;
+        supplier?: string;
+        notes?: string;
+        expectedUpdatedAt?: string;
+      }
     >({
       query: ({ id, ...body }) => ({
         url: `/custom-orders/${id}`,

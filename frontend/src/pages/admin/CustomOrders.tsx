@@ -108,10 +108,11 @@ export const AdminCustomOrders = () => {
   // Backend handles search, so no need for client-side filtering
   const filteredCustomOrders = data?.customOrders || [];
 
-  const { data: orderDetailData, isLoading: isLoadingDetail } = useGetCustomOrderQuery(
-    selectedOrder?._id || '',
-    { skip: !selectedOrder }
-  );
+  const {
+    data: orderDetailData,
+    isLoading: isLoadingDetail,
+    refetch: refetchDetail,
+  } = useGetCustomOrderQuery(selectedOrder?._id || '', { skip: !selectedOrder });
 
   // Set form fields when order is selected
   const handleOrderSelect = (order: AdminCustomOrder) => {
@@ -233,7 +234,8 @@ export const AdminCustomOrders = () => {
         status?: CustomOrderStatus;
         estimatedPrice?: number;
         supplier?: string;
-      } = { id: selectedOrder._id };
+        expectedUpdatedAt?: string;
+      } = { id: selectedOrder._id, expectedUpdatedAt: detailOrder?.updatedAt };
 
       if (!statusUnchanged) {
         body.status = newStatus as CustomOrderStatus;
@@ -263,6 +265,9 @@ export const AdminCustomOrders = () => {
         message: errorInfo.message,
         type: 'error',
       }));
+      if (errorInfo.statusCode === 409) {
+        await Promise.all([refetch(), refetchDetail()]);
+      }
       if (import.meta.env.DEV) {
         console.error('Error updating custom order:', error);
       }

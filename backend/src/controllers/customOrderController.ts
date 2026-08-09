@@ -133,7 +133,7 @@ export const updateCustomOrder = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { status, estimatedPrice, supplier, notes } = req.body;
+    const { status, estimatedPrice, supplier, notes, expectedUpdatedAt } = req.body;
 
     const customOrder = await CustomOrder.findById(req.params.id);
     if (!customOrder) {
@@ -165,6 +165,9 @@ export const updateCustomOrder = async (
     const mergedNotes =
       notes !== undefined ? optionalString(notes) : customOrder.notes;
 
+    const set: Record<string, unknown> = {};
+    const unset: Record<string, ''> = {};
+
     if (status && status !== customOrder.status) {
       const transition = assertValidCustomOrderStatusTransition(
         customOrder.status as CustomOrderStatus,
@@ -180,7 +183,7 @@ export const updateCustomOrder = async (
         res.status(400).json({ message: transition.message });
         return;
       }
-      customOrder.status = status;
+      set.status = status;
     }
 
     if (estimatedPrice !== undefined) {
@@ -189,17 +192,42 @@ export const updateCustomOrder = async (
         res.status(400).json({ message: 'Estimated price must be a non-negative number' });
         return;
       }
-      customOrder.estimatedPrice = priceNum;
+      set.estimatedPrice = priceNum;
     }
     if (supplier !== undefined) {
-      customOrder.supplier = optionalString(supplier);
+      const s = optionalString(supplier);
+      if (s === undefined) unset.supplier = '';
+      else set.supplier = s;
     }
     if (notes !== undefined) {
-      customOrder.notes = mergedNotes;
+      if (mergedNotes === undefined) unset.notes = '';
+      else set.notes = mergedNotes;
     }
 
-    await customOrder.save();
-    res.json(customOrder);
+    // Atomic write guarded on the updatedAt the client last saw: if another admin's
+    // update landed in between our read above and this write, updatedAt has moved
+    // and this matches nothing, so we report a conflict instead of silently
+    // overwriting their change (the check-then-act race this closes).
+    const filter: Record<string, unknown> = { _id: req.params.id };
+    if (expectedUpdatedAt !== undefined) {
+      filter.updatedAt = new Date(expectedUpdatedAt);
+    }
+
+    const mongoUpdate: Record<string, unknown> = {};
+    if (Object.keys(set).length > 0) mongoUpdate.$set = set;
+    if (Object.keys(unset).length > 0) mongoUpdate.$unset = unset;
+
+    const updated = Object.keys(mongoUpdate).length > 0
+      ? await CustomOrder.findOneAndUpdate(filter, mongoUpdate, { new: true, runValidators: true })
+      : await CustomOrder.findOne(filter);
+    if (!updated) {
+      res.status(409).json({
+        message: 'This custom order was changed by someone else. Refresh and try again.',
+      });
+      return;
+    }
+
+    res.json(updated);
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to update custom order' });
   }
