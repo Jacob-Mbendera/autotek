@@ -5,14 +5,15 @@ import { UserRole } from '@shared/types';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   adminOnly?: boolean;
+  guestAllowed?: boolean;
 }
 
-export const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({ children, adminOnly = false, guestAllowed = false }: ProtectedRouteProps) => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const user = useAppSelector((state) => state.auth.user);
   const location = useLocation();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !guestAllowed) {
     // Preserve the current location as return URL
     const returnUrl = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;

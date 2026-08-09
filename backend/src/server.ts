@@ -56,7 +56,28 @@ app.use(
 );
 
 // Middleware
-app.use(cors());
+// Allowlist the known frontend origin(s) instead of reflecting any origin.
+// CORS_ALLOWED_ORIGINS supports a comma-separated list for multi-environment setups
+// (e.g. staging + production); FRONTEND_URL alone covers the common single-origin case.
+const allowedOrigins = (
+  process.env.CORS_ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) || [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+  ]
+);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow same-origin/non-browser requests (no Origin header) and any allowlisted origin.
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

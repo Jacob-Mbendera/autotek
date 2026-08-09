@@ -6,7 +6,7 @@ import User from '../models/User';
 import DeliveryLocation from '../models/DeliveryLocation';
 import { OrderStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
-import { hashPassword } from '../utils/password';
+import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { applyOrderCancellation } from '../utils/orderCancelSideEffects';
 import { assertCustomerCanCancelOrder, assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
@@ -192,9 +192,20 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       });
 
       if (existingUser) {
-        // User already exists, link order to existing user
-        orderData.user = existingUser._id;
-        createdUser = existingUser;
+        // User already exists — only link the order if the supplied password
+        // actually matches the account. Otherwise this is a guest checkout
+        // whose email happens to collide with someone else's account; do not
+        // attach the order to that account without proof of ownership.
+        const passwordMatches = await comparePassword(password, existingUser.password);
+        if (passwordMatches) {
+          orderData.user = existingUser._id;
+          createdUser = existingUser;
+          authToken = generateToken({
+            userId: existingUser._id.toString(),
+            email: existingUser.email,
+            role: existingUser.role,
+          });
+        }
       } else {
         // Create new user account
         try {

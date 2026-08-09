@@ -9,7 +9,7 @@ import { emailService } from '../services/emailService';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, name, phone, address, role } = req.body;
+    const { email, password, name, phone, address } = req.body;
 
     // Validate required fields (validation middleware should have caught these, but double-check)
     if (!email || !password || !name || !phone) {
@@ -42,7 +42,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       name: name.trim(),
       phone: phone.trim(),
       address: address?.trim() || undefined,
-      role: role || UserRole.CUSTOMER,
+      role: UserRole.CUSTOMER,
     });
 
     await user.save();

@@ -228,7 +228,7 @@ function App() {
         <Route
           path="/orders/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute guestAllowed>
               <Layout>
                 <OrderDetail />
               </Layout>
@@ -248,7 +248,7 @@ function App() {
         <Route
           path="/returns"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute guestAllowed>
               <Layout>
                 <Returns />
               </Layout>
@@ -258,7 +258,7 @@ function App() {
         <Route
           path="/returns/new"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute guestAllowed>
               <Layout>
                 <RequestReturn />
               </Layout>
@@ -268,7 +268,7 @@ function App() {
         <Route
           path="/returns/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute guestAllowed>
               <Layout>
                 <ReturnDetail />
               </Layout>

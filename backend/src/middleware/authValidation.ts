@@ -1,5 +1,4 @@
 import { body } from 'express-validator';
-import { UserRole } from '../types/shared';
 
 export const validateRegister = [
   body('email')
@@ -29,10 +28,6 @@ export const validateRegister = [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Address must be less than 500 characters'),
-  body('role')
-    .optional()
-    .isIn(Object.values(UserRole))
-    .withMessage('Invalid role'),
 ];
 
 export const validateLogin = [
@@ -46,4 +41,38 @@ export const validateLogin = [
   body('password')
     .notEmpty()
     .withMessage('Password is required'),
+];
+
+export const validateForgotPassword = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+];
+
+export const validateVerifyResetToken = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('Reset token is required')
+    .isString()
+    .isLength({ min: 10, max: 256 })
+    .withMessage('Invalid reset token'),
+];
+
+export const validateResetPassword = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('Reset token is required')
+    .isString()
+    .isLength({ min: 10, max: 256 })
+    .withMessage('Invalid reset token'),
+  body('newPassword')
+    .isString()
+    .isLength({ min: 6, max: 128 })
+    .withMessage('New password must be between 6 and 128 characters'),
 ];
