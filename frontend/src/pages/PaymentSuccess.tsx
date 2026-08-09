@@ -420,7 +420,16 @@ export const PaymentSuccess = () => {
         )}
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button variant="primary" onClick={() => navigate(`/orders/${orderId}`)}>
+          <Button
+            variant="primary"
+            onClick={() =>
+              navigate(
+                email
+                  ? `/orders/${orderId}?email=${encodeURIComponent(email)}`
+                  : `/orders/${orderId}`
+              )
+            }
+          >
             View Order Details
           </Button>
           <Button variant="secondary" onClick={() => navigate('/products')}>
