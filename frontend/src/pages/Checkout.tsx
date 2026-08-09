@@ -276,9 +276,12 @@ export const Checkout = () => {
       // Create order first
       const orderResult = await createOrder(orderData).unwrap();
 
-      // If account was created, log the user in automatically
+      // If account was created, log the user in automatically. orderResult.token
+      // is just a signal here (the actual session cookie is already set by the
+      // server response) — not stored client-side.
       if (orderResult.token && orderResult.user) {
-        dispatch(setUser({ user: orderResult.user, token: orderResult.token }));
+        dispatch(setUser({ user: orderResult.user }));
+        broadcastClientSync('auth');
         dispatch(showNotification({ 
           message: 'Account created successfully! You are now logged in.', 
           type: 'success' 

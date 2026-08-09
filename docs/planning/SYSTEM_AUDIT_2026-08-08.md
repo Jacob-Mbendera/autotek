@@ -134,8 +134,8 @@ In `createOrder`, when an unauthenticated request supplies `guestInfo` + `passwo
 | 14 | **Returns Quick Actions stale UI** — already documented as a known issue; root cause confirmed: no polling fallback on the returns query, and order-status polling is explicitly disabled once status is `completed` (the exact state needed for return actions to show) | Returns & Refunds | Yes |
 | 15 | No unique constraint/atomic guard on return creation — check-then-act race lets a double-click create two `Return` docs for the same order | Returns & Refunds | Yes |
 | 16 | `processRefund` has the same check-then-act race — no atomic guard against double-processing a refund | Returns & Refunds | Yes |
-| 17 | JWT persisted to `localStorage` via redux-persist — any XSS on this payments-handling app can exfiltrate the token for full account (incl. admin) takeover | Auth | **No** — design decision (httpOnly cookie migration) |
-| 18 | No token revocation/versioning — password reset/change doesn't invalidate previously issued JWTs (valid up to 48h after) | Auth | **No** — design decision (needs `tokenVersion` field + middleware change) |
+| 17 | JWT persisted to `localStorage` via redux-persist — any XSS on this payments-handling app can exfiltrate the token for full account (incl. admin) takeover | Auth | **Fixed** — migrated to an `httpOnly`/`SameSite=Lax` cookie (`autotek_token`); no token is stored in Redux/localStorage anymore, session is re-derived via `GET /auth/me` on app load |
+| 18 | No token revocation/versioning — password reset/change doesn't invalidate previously issued JWTs (valid up to 48h after) | Auth | **Fixed** — added `User.tokenVersion`, embedded in the JWT and checked on every request; bumped on logout, password change, and password reset, so any other outstanding token for that user is invalidated immediately, not just the current browser's cookie |
 | 19 | `GET /api/products?search=` builds unescaped `$regex` — ReDoS, unauthenticated (sibling suggestions endpoint already escapes correctly) | Security | Yes |
 | 20 | Admin mutation routes (garages, service providers, payouts, refunds, media, custom order/order status updates) have no Joi validation, unlike list endpoints and the order-create endpoint | Security | **No** — broad schema-authoring effort, admin-only blast radius |
 | 21 | CORS fully open (`cors()` with no origin option) — already a known, documented open item in the security doc, not new drift | Security | Yes |
@@ -165,7 +165,9 @@ Per the agreed scope: fix every **fixable now** item as a clear bug; leave every
 
 **Fixed:** #1, #2, #3 (deferred to end, resolved against live PayChangu docs), #4, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #19, #21, #22, #23, #24, #28, #29, #30, #31. All 22 fixable-now items are complete.
 
-**Left for follow-up (documented, not touched — require a product/design decision):** #5 (payout timing vs. cancel/refund clawback), #6 (per-return refund completion tracking), #17 (JWT storage — httpOnly cookie migration), #18 (token revocation/versioning), #20 (broad Joi validation for admin mutation routes), #25 (optimistic concurrency on custom order updates), #27 (mechanic role authorization surface).
+**Left for follow-up (documented, not touched — require a product/design decision):** #5 (payout timing vs. cancel/refund clawback), #6 (per-return refund completion tracking), #20 (broad Joi validation for admin mutation routes), #25 (optimistic concurrency on custom order updates), #27 (mechanic role authorization surface).
+
+**Fixed in a later pass (2026-08-09):** #17 and #18 — see "httpOnly cookie + token revocation migration" below.
 
 **No action needed:** #26 (verified correct — payment-before-in-progress is properly server-enforced).
 
@@ -194,3 +196,36 @@ Per the agreed scope: fix every **fixable now** item as a clear bug; leave every
    - #14: as a customer, opened Order Detail for a completed order (Quick Actions showed "Request Return"), created a return for that same order via a separate API call (simulating another tab/device), left the open tab untouched for 50+ seconds — Quick Actions changed on its own to "View Return Request", with no click or reload.
 
 All test data created during verification (test users, orders, services, returns) was removed from the database afterward. One legitimate pending refund from real seed data was processed as part of testing #11 (correct, intended behavior — it was already flagged pending).
+
+---
+
+## httpOnly cookie + token revocation migration (2026-08-09) — fixes #17 and #18
+
+Both were left as "not fixable now" in the original pass because they needed a design decision, not a quick patch. The user chose the full fix for both: migrate the JWT off `localStorage` into an `httpOnly` cookie (closes #17 completely, not just shrinks the exposure window), and add per-user token versioning for real revocation (closes #18 with no new infrastructure).
+
+**Backend:**
+- Added `cookie-parser`. `User` gained `tokenVersion` (default `0`).
+- `generateToken`'s payload now includes `tokenVersion`; new `setAuthCookie`/`clearAuthCookie` helpers (`backend/src/utils/jwt.ts`) set/clear an `autotek_token` cookie: `httpOnly`, `secure` in production, `sameSite: 'lax'` (not `'strict'` — PayChangu's post-checkout redirect is a top-level cross-site navigation that `strict` would drop the cookie on), 48h `maxAge`.
+- `authMiddleware`/`optionalAuthMiddleware` (`backend/src/middleware/auth.ts`) read the token from the cookie instead of the `Authorization` header, and reject any token whose `tokenVersion` doesn't match the user's current value (`"Session expired, please log in again"`).
+- `register`, `login`, and the guest-checkout-links-to-account branch in `createOrder` all call `setAuthCookie`. The JSON body still includes `token` for now (harmless, and `Checkout.tsx` uses its presence as a signal) but nothing reads it as the actual credential anymore.
+- New `POST /auth/logout` (`optionalAuthMiddleware`, always 200 — idempotent) clears the cookie and bumps `tokenVersion`, so logout invalidates every outstanding token for that user, not just the current browser's cookie.
+- `changePassword` and `resetPassword` both bump `tokenVersion`; `changePassword` also re-issues a fresh cookie so the session that just changed its own password isn't immediately logged out too.
+- `authLimiter` (5 req/15min) was moved from wrapping the entire `/api/auth` router down to only the actual credential-guessing-sensitive routes (`register`, `login`, `forgot-password`, `verify-reset-token`, `reset-password`). It was catching `GET /me` too, which is now called on every page load via the bootstrap hook below — that combination was locking every user out of session checks for 15 minutes almost immediately. Found live during verification (274 requests to `/me` in 6 seconds, all `429`), not by inspection.
+
+**Frontend:**
+- `baseApi.ts`: `fetchBaseQuery` gets `credentials: 'include'`; the manual `Authorization: Bearer` header attachment is gone.
+- `authSlice` no longer holds `token`; `'auth'` was removed from the redux-persist whitelist entirely.
+- New `useAuthBootstrap`/`<AuthBootstrap />` (mounted at app root) calls `getMe` once on load and populates `user` from whatever the cookie resolves to — the httpOnly-cookie equivalent of rehydrating from localStorage.
+- `Login.tsx`, `Register.tsx`, `Checkout.tsx`'s auto-login branch, and both logout handlers (`Header.tsx`, `AdminHeader.tsx`) all call `broadcastClientSync('auth')` so other open tabs pick up the change (see below).
+- `useCrossTabSync.ts` no longer reads `token`/`user` out of persisted `localStorage` (nothing sensitive is there to read). Login/logout instead broadcast an `'auth'` scope; other tabs invalidate the `User` RTK Query tag, causing their own `getMe` to refetch and reflect the shared cookie's actual state.
+- `PaymentSuccess.tsx`'s two raw `fetch()` calls (added for #7 in the prior pass) dropped their manual `Authorization` header for `credentials: 'include'`.
+- Logout is now `async`: it awaits the server call before dispatching the client-side `logout()` action. Firing both concurrently was a real bug caught during verification — `logout()` triggers `resetApiState()`, which aborts every in-flight RTK Query request, including the logout mutation itself if it hadn't resolved yet, surfacing as an uncaught `AbortError`.
+
+**Bugs found and fixed during this pass (not present in the original design, caught only by testing live):**
+1. `authLimiter` router-wide placement would have made the app effectively unusable within minutes of real traffic (see above) — found by watching backend logs during verification, not anticipated in the plan.
+2. `Login.tsx`/`Register.tsx`/`Checkout.tsx` never broadcast the `'auth'` cross-tab signal — cross-tab login sync silently didn't work until this was added. Found by testing two tabs side by side.
+3. Logout's `dispatch(logout())` racing its own `logoutRequest()` mutation via `resetApiState()`'s abort — found via console `AbortError` during the first logout click.
+
+**Verification:**
+- Live curl: `Set-Cookie` on login has correct `HttpOnly`/`SameSite=Lax`/`Max-Age` attributes; `/auth/me` works via cookie jar with zero `Authorization` header and 401s with none; logout clears the cookie; a token captured before logout is rejected after it (`tokenVersion` mismatch) even though it was never individually blacklisted; the same mechanism was verified for the password-change path via a direct DB simulation (issue a token at `tokenVersion: 0`, bump to `1` exactly as `changePassword` does, confirm the old token is rejected).
+- Browser: confirmed `document.cookie` is empty and `persist:root` has no `auth` key after login (httpOnly cookie genuinely invisible to page JS); session survives a hard full-page reload with no token anywhere client-side; logout redirects and clears the cookie; two tabs open side by side — logging in on one instantly updates the other (header shows the logged-in state with no reload), and logging out on one instantly logs out the other — with no manual refresh in either direction.

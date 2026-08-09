@@ -1,19 +1,15 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { RootState } from '../index';
 
 const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Create base query with error transformation
 const baseQueryWithErrorHandling = fetchBaseQuery({
   baseUrl,
-  prepareHeaders: (headers, { getState, arg, endpoint }) => {
-    const state = getState() as RootState;
-    const token = state.auth.token;
-
-    if (token) {
-      headers.set('authorization', `Bearer ${token}`);
-    }
-
+  // Auth is an httpOnly cookie set by the server; the browser attaches it
+  // automatically on same-origin/CORS requests when credentials are included.
+  // There is no token in Redux state to attach manually anymore.
+  credentials: 'include',
+  prepareHeaders: (headers, { arg, endpoint }) => {
     // Multipart uploads: never force application/json; browser must set boundary on FormData.
     const filesArg = arg as { files?: unknown[]; images?: unknown[] } | undefined;
     const isMultipartFileUpload =

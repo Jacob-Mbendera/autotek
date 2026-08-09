@@ -7,7 +7,7 @@ import DeliveryLocation from '../models/DeliveryLocation';
 import { OrderStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { hashPassword, comparePassword } from '../utils/password';
-import { generateToken } from '../utils/jwt';
+import { generateToken, setAuthCookie } from '../utils/jwt';
 import { applyOrderCancellation } from '../utils/orderCancelSideEffects';
 import { assertCustomerCanCancelOrder, assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
 import {
@@ -204,6 +204,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
             userId: existingUser._id.toString(),
             email: existingUser.email,
             role: existingUser.role,
+            tokenVersion: existingUser.tokenVersion,
           });
         }
       } else {
@@ -231,6 +232,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
             userId: newUser._id.toString(),
             email: newUser.email,
             role: newUser.role,
+            tokenVersion: newUser.tokenVersion,
           });
         } catch (userError: any) {
           console.error('Failed to create user account:', userError);
@@ -278,6 +280,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     // Prepare response
     const response: any = { order };
     if (authToken) {
+      setAuthCookie(res, authToken);
       response.token = authToken;
       response.user = {
         id: createdUser._id,

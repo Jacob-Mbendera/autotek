@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
+import { useLogoutMutation } from '../store/api/authApi';
+import { broadcastClientSync } from '../utils/crossTabSync';
 import { Search, Bell, User, LogOut } from 'lucide-react';
 import { Button } from './ui/Button';
 import { BrandLogo } from './BrandLogo';
@@ -11,9 +13,20 @@ export const AdminHeader = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [logoutRequest] = useLogoutMutation();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Await the server call before resetting client state — dispatching
+    // logout() triggers rtkQueryCacheResetMiddleware's resetApiState(),
+    // which aborts every in-flight RTK Query request, including this
+    // mutation itself if fired concurrently with it.
+    try {
+      await logoutRequest().unwrap();
+    } catch {
+      // Proceed with client-side logout regardless (e.g. offline).
+    }
     dispatch(logout());
+    broadcastClientSync('auth');
     navigate('/login');
   };
 

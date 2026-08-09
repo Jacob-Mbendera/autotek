@@ -32,7 +32,9 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'cart', 'comparison'],
+  // 'auth' is intentionally not persisted: the session lives in an httpOnly
+  // cookie, not Redux/localStorage. User state is re-derived via getMe on load.
+  whitelist: ['cart', 'comparison'],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

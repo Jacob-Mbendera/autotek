@@ -4,6 +4,8 @@ import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings, 
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
 import { useGetWishlistQuery } from '../store/api/wishlistApi';
+import { useLogoutMutation } from '../store/api/authApi';
+import { broadcastClientSync } from '../utils/crossTabSync';
 import { UserRole } from '@shared/types';
 import { Button } from './ui/Button';
 import { BrandLogo } from './BrandLogo';
@@ -33,8 +35,23 @@ export const Header = () => {
     setTimeout(() => setIsCountAnimating(false), 300);
   }
 
-  const handleLogout = () => {
+  const [logoutRequest] = useLogoutMutation();
+
+  const handleLogout = async () => {
+    // Await the server call before resetting client state — dispatching
+    // logout() triggers rtkQueryCacheResetMiddleware's resetApiState(),
+    // which aborts every in-flight RTK Query request, including this
+    // mutation itself if fired concurrently with it.
+    try {
+      await logoutRequest().unwrap();
+    } catch {
+      // Proceed with client-side logout regardless (e.g. offline) — the
+      // cookie may still be set server-side, but there's nothing more the
+      // client can do about that here, and the user still expects to end
+      // up logged out locally.
+    }
     dispatch(logout());
+    broadcastClientSync('auth');
     navigate('/login');
     setMobileMenuOpen(false);
   };

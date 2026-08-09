@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+import { verifyToken, AUTH_COOKIE_NAME } from '../utils/jwt';
 import User, { IUser } from '../models/User';
 
 export interface AuthRequest extends Request {
@@ -12,7 +12,7 @@ export const authMiddleware = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = req.cookies?.[AUTH_COOKIE_NAME];
 
     if (!token) {
       res.status(401).json({ message: 'No token provided' });
@@ -24,6 +24,13 @@ export const authMiddleware = async (
 
     if (!user) {
       res.status(401).json({ message: 'User not found' });
+      return;
+    }
+
+    // Token issued before a password change / explicit logout has a stale
+    // version and must be rejected even though it hasn't expired yet.
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      res.status(401).json({ message: 'Session expired, please log in again' });
       return;
     }
 
@@ -65,13 +72,13 @@ export const optionalAuthMiddleware = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = req.cookies?.[AUTH_COOKIE_NAME];
 
     if (token) {
       try {
         const decoded = verifyToken(token);
         const user = await User.findById(decoded.userId).select('-password');
-        if (user) {
+        if (user && decoded.tokenVersion === user.tokenVersion) {
           req.user = user;
         }
       } catch (error) {

@@ -11,6 +11,7 @@ export interface IUser extends Document {
   address?: IShippingAddress | string;
   resetToken?: string;
   resetTokenExpiry?: Date;
+  tokenVersion: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +52,10 @@ const UserSchema = new Schema<IUser>(
     },
     resetTokenExpiry: {
       type: Date,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
     },
   },
   {

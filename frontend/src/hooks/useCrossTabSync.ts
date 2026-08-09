@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/types';
-import { logout, replaceAuthState, type User } from '../store/slices/authSlice';
+import { useAppDispatch } from '../store/types';
 import { replaceCartState, type CartState } from '../store/slices/cartSlice';
 import { replaceComparisonState } from '../store/slices/comparisonSlice';
 import { baseApi } from '../store/api/baseApi';
@@ -13,18 +12,18 @@ import {
 } from '../utils/crossTabSync';
 
 /**
- * Keeps cart, auth, compare (redux-persist) and wishlist/orders (RTK Query)
+ * Keeps cart, compare (redux-persist), auth, and wishlist/orders (RTK Query)
  * in sync across browser tabs.
+ *
+ * Auth is not read out of localStorage — the session lives in an httpOnly
+ * cookie, which the browser already shares across tabs on its own. What tabs
+ * need from each other is just the *signal* that login/logout happened, so
+ * each tab's own getMe query (see useAuthBootstrap) can refetch and pick up
+ * the shared cookie's current state — see the 'auth' scope below.
  */
 export function useCrossTabSync(): void {
   const dispatch = useAppDispatch();
-  const currentToken = useAppSelector((state) => state.auth.token);
   const lastPersistFingerprintRef = useRef<string>('');
-  const lastTokenRef = useRef<string | null>(currentToken);
-
-  useEffect(() => {
-    lastTokenRef.current = currentToken;
-  }, [currentToken]);
 
   useEffect(() => {
     const invalidateScope = (scope: ClientSyncScope) => {
@@ -37,6 +36,9 @@ export function useCrossTabSync(): void {
       if (scope === 'products') {
         dispatch(baseApi.util.invalidateTags(['Product']));
       }
+      if (scope === 'auth') {
+        dispatch(baseApi.util.invalidateTags(['User', 'Wishlist', 'Order']));
+      }
     };
 
     const applyPersistSlices = (raw: string | null) => {
@@ -48,27 +50,6 @@ export function useCrossTabSync(): void {
       if (!parsed) return;
 
       lastPersistFingerprintRef.current = raw;
-
-      const inboundAuth = parsed.auth;
-      const inboundToken = inboundAuth?.token ?? null;
-      const wasLoggedIn = Boolean(lastTokenRef.current);
-      const isLoggedIn = Boolean(inboundToken);
-
-      if (wasLoggedIn && !isLoggedIn) {
-        dispatch(logout());
-      } else if (inboundAuth) {
-        dispatch(
-          replaceAuthState({
-            user: (inboundAuth.user as User | null) ?? null,
-            token: inboundToken,
-            isAuthenticated: Boolean(inboundToken) && inboundAuth.isAuthenticated,
-          })
-        );
-
-        if (!wasLoggedIn && isLoggedIn) {
-          dispatch(baseApi.util.invalidateTags(['Wishlist', 'Order']));
-        }
-      }
 
       if (parsed.cart) {
         dispatch(replaceCartState(parsed.cart as CartState));
@@ -84,8 +65,6 @@ export function useCrossTabSync(): void {
           })
         );
       }
-
-      lastTokenRef.current = inboundToken;
     };
 
     const onStorage = (event: StorageEvent) => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../store/types';
+import { useAppDispatch } from '../store/types';
 import { useGetOrderQuery } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/api/paymentApi';
 import { baseApi } from '../store/api/baseApi';
@@ -30,7 +30,6 @@ interface ServicePaymentSummary {
 export const PaymentSuccess = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const authToken = useAppSelector((state) => state.auth.token);
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const email = searchParams.get('email');
@@ -85,7 +84,7 @@ export const PaymentSuccess = () => {
     const url = `${apiBase}/payments/verify-txref?tx_ref=${encodeURIComponent(txRef)}`;
 
     fetch(url, {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+      credentials: 'include',
     })
       .then(async (res) => {
         const data = await res.json();
@@ -126,7 +125,7 @@ export const PaymentSuccess = () => {
         }
         setServiceVerifyState('error');
       });
-  }, [isServicePaymentReturn, txRef, dispatch, authToken]);
+  }, [isServicePaymentReturn, txRef, dispatch]);
 
   useEffect(() => {
     if (!isOrderPayment || !orderId) {
@@ -138,7 +137,7 @@ export const PaymentSuccess = () => {
         `${import.meta.env.VITE_API_URL}/payments/verify-txref?orderId=${orderId}${
           txRef ? `&tx_ref=${encodeURIComponent(txRef)}` : ''
         }${email ? `&email=${encodeURIComponent(email)}` : ''}`,
-        { headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined }
+        { credentials: 'include' }
       )
         .then((res) => res.json())
         .then((data) => {
@@ -202,7 +201,6 @@ export const PaymentSuccess = () => {
     verifyPayment,
     refetchPayment,
     verificationAttempts,
-    authToken,
   ]);
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import { useLoginMutation } from '../store/api/authApi';
 import { useAppDispatch } from '../store/types';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
+import { broadcastClientSync } from '../utils/crossTabSync';
 import { getErrorInfo } from '../utils/errorHandler';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -33,7 +34,8 @@ export const Login = () => {
 
     try {
       const result = await login(formData).unwrap();
-      dispatch(setUser({ user: result.user, token: result.token }));
+      dispatch(setUser({ user: result.user }));
+      broadcastClientSync('auth');
       dispatch(showNotification({ message: 'Login successful', type: 'success' }));
       const redirectTo = getSafeRedirectPath(returnUrl, '/');
       navigate(redirectTo, { replace: true });

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import User from '../models/User';
 import { hashPassword, comparePassword } from '../utils/password';
-import { generateToken } from '../utils/jwt';
+import { generateToken, setAuthCookie, clearAuthCookie } from '../utils/jwt';
 import { UserRole } from '../types/shared';
 import { sendPasswordResetEmail } from '../utils/email';
 import { emailService } from '../services/emailService';
@@ -60,7 +60,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       userId: user._id.toString(),
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion,
     });
+
+    setAuthCookie(res, token);
 
     res.status(201).json({
       token,
@@ -126,7 +129,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       userId: user._id.toString(),
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion,
     });
+
+    setAuthCookie(res, token);
 
     res.json({
       token,
@@ -164,6 +170,24 @@ export const getMe = async (req: any, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to get user' });
+  }
+};
+
+/**
+ * Log out: clears the auth cookie and bumps tokenVersion so this token (and any
+ * other token issued to this user) is invalid everywhere, not just in this browser.
+ * Idempotent — always returns 200, whether or not there was a valid session.
+ */
+export const logout = async (req: any, res: Response): Promise<void> => {
+  try {
+    if (req.user) {
+      await User.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 } });
+    }
+    clearAuthCookie(res);
+    res.json({ message: 'Logged out successfully' });
+  } catch (error: any) {
+    clearAuthCookie(res);
+    res.json({ message: 'Logged out successfully' });
   }
 };
 
@@ -229,9 +253,21 @@ export const changePassword = async (req: any, res: Response): Promise<void> => 
       return;
     }
 
-    // Hash and update password
+    // Hash and update password, bumping tokenVersion so any other token issued
+    // before this change (e.g. stolen/leaked) stops working immediately.
     user.password = await hashPassword(newPassword);
+    user.tokenVersion += 1;
     await user.save();
+
+    // Re-issue a cookie with the new tokenVersion so the current session
+    // that just changed its own password isn't immediately logged out too.
+    const freshToken = generateToken({
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      tokenVersion: user.tokenVersion,
+    });
+    setAuthCookie(res, freshToken);
 
     res.json({ message: 'Password updated successfully' });
   } catch (error: any) {
@@ -341,13 +377,15 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Hash and update password
+    // Hash and update password, bumping tokenVersion so any token issued before
+    // this reset (e.g. from a compromised account) stops working immediately.
     user.password = await hashPassword(newPassword);
-    
+    user.tokenVersion += 1;
+
     // Clear reset token
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
-    
+
     await user.save();
 
     res.json({ message: 'Password reset successfully' });

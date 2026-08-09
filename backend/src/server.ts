@@ -7,11 +7,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 // import mongoSanitize from 'express-mongo-sanitize'; // Disabled due to Express 4.x compatibility issue
 import connectDB from './config/database';
 import { startStaleOrderCleanupScheduler } from './jobs/staleOrderCleanupScheduler';
 import { errorHandler } from './middleware/errorHandler';
-import { generalLimiter, authLimiter } from './middleware/rateLimiter';
+import { generalLimiter } from './middleware/rateLimiter';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
@@ -80,6 +81,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // HTTP request logging
 if (process.env.NODE_ENV === 'production') {
@@ -110,8 +112,9 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// Apply specific rate limiters to critical endpoints
-app.use('/api/auth', authLimiter, authRoutes);
+// authLimiter is applied per-route inside authRoutes.ts, not to the whole
+// router here — /me is called on every page load and must not share that budget.
+app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/custom-orders', customOrderRoutes);

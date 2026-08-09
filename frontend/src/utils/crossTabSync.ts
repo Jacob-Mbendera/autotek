@@ -1,4 +1,4 @@
-export type ClientSyncScope = 'wishlist' | 'orders' | 'products';
+export type ClientSyncScope = 'wishlist' | 'orders' | 'products' | 'auth';
 
 const SYNC_STORAGE_KEY = 'autotek_client_sync';
 export const CLIENT_SYNC_EVENT = 'autotek-client-sync';
@@ -7,6 +7,7 @@ export interface ClientSyncPayload {
   wishlist?: number;
   orders?: number;
   products?: number;
+  auth?: number;
 }
 
 function readSyncPayload(): ClientSyncPayload {
@@ -57,11 +58,12 @@ export function subscribeClientSync(
     if (newPayload.wishlist !== oldPayload.wishlist) handler('wishlist');
     if (newPayload.orders !== oldPayload.orders) handler('orders');
     if (newPayload.products !== oldPayload.products) handler('products');
+    if (newPayload.auth !== oldPayload.auth) handler('auth');
   };
 
   const onCustom = (event: Event) => {
     const scope = (event as CustomEvent<{ scope?: ClientSyncScope }>).detail?.scope;
-    if (scope === 'wishlist' || scope === 'orders' || scope === 'products') {
+    if (scope === 'wishlist' || scope === 'orders' || scope === 'products' || scope === 'auth') {
       handler(scope);
     }
   };
@@ -77,8 +79,10 @@ export function subscribeClientSync(
 
 export const PERSIST_ROOT_KEY = 'persist:root';
 
+// 'auth' is intentionally absent: the session lives in an httpOnly cookie, not
+// persisted Redux state, so there is nothing to read out of localStorage for it.
+// Cross-tab auth sync instead uses the 'auth' ClientSyncScope broadcast below.
 export interface ParsedPersistSlices {
-  auth: { user: unknown; token: string | null; isAuthenticated: boolean } | null;
   cart: Record<string, unknown> | null;
   comparison: { products: unknown[]; maxProducts: number } | null;
 }
@@ -89,14 +93,10 @@ export function parsePersistRoot(raw: string | null): ParsedPersistSlices | null
   try {
     const root = JSON.parse(raw) as Record<string, string>;
     const result: ParsedPersistSlices = {
-      auth: null,
       cart: null,
       comparison: null,
     };
 
-    if (root.auth) {
-      result.auth = JSON.parse(root.auth);
-    }
     if (root.cart) {
       result.cart = JSON.parse(root.cart);
     }

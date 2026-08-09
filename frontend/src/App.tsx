@@ -53,6 +53,7 @@ import { Layout } from './components/Layout';
 import { AdminLayout } from './components/AdminLayout';
 import { Toast } from './components/ui/Toast';
 import { CrossTabSync } from './components/CrossTabSync';
+import { AuthBootstrap } from './components/AuthBootstrap';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -67,6 +68,7 @@ const PageLoader = () => (
 function App() {
   return (
     <BrowserRouter>
+      <AuthBootstrap />
       <CrossTabSync />
       <Toast />
       <Suspense fallback={<PageLoader />}>
