@@ -10,6 +10,8 @@ export interface IPayment extends Document {
   method: PaymentMethod;
   transactionId?: string;
   chargeId?: string;
+  /** PayChangu's own "reference" field from the charge/webhook — distinct from our tx_ref (transactionId). */
+  paychanguReference?: string;
   refundId?: string;
   refundReason?: string;
   refundRequestedAt?: Date;
@@ -52,6 +54,10 @@ const PaymentSchema = new Schema<IPayment>(
       type: String,
     },
     chargeId: {
+      type: String,
+      index: true,
+    },
+    paychanguReference: {
       type: String,
       index: true,
     },

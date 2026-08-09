@@ -17,7 +17,7 @@ router.post('/initiate', paymentLimiter, optionalAuthMiddleware, initiatePayment
 router.get('/order/:orderId', authMiddleware, getPaymentByOrder);
 router.get('/towing-service/:serviceId', authMiddleware, getPaymentByTowingService);
 router.get('/car-service/:serviceId', authMiddleware, getPaymentByCarService);
-router.get('/verify-txref', verifyPaymentByTxRef as any); // Public endpoint for PayChangu callback verification
+router.get('/verify-txref', optionalAuthMiddleware, verifyPaymentByTxRef as any); // Public endpoint for PayChangu callback verification; ownership gates response detail
 router.get('/:id', authMiddleware, getPayment);
 router.post('/webhook/paychangu', payChanguWebhook as any); // PayChangu webhook endpoint
 

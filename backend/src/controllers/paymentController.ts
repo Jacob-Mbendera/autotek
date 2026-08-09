@@ -78,23 +78,57 @@ async function findPaymentByTxRef(txRefRaw: string) {
   }).sort({ createdAt: -1 });
 }
 
+/**
+ * PayChangu's webhook payload never carries our own tx_ref (stored as
+ * payment.transactionId) — only PayChangu's own charge_id/reference, which are
+ * distinct values assigned once the charge happens. So the reliable match order is:
+ *
+ *   1. chargeId / paychanguReference already persisted on a payment (seeded by
+ *      verify-txref, which sees tx_ref + charge_id + reference together — see
+ *      verifyPaymentByTxRef below) — exact, unambiguous.
+ *   2. Legacy candidates (transactionId/sessionId/reference) directly against
+ *      payment.transactionId, in case any of these ever do line up (defensive; kept
+ *      from the pre-existing matcher, not something the docs guarantee).
+ *   3. First webhook delivery for a payment, before anything has been persisted:
+ *      fall back to amount + still-PENDING + created recently. Narrow and bounded —
+ *      this is best-effort, not a substitute for verify-txref, which remains the
+ *      authoritative completion path.
+ *
+ * On any match, persist chargeId/reference immediately so every later webhook for
+ * this same payment (retries, subsequent events) hits step 1 exactly.
+ */
 async function findPaymentForWebhook(params: {
   transactionId?: string;
   sessionId?: string;
   reference?: string;
+  chargeId?: string;
+  amount?: number;
 }) {
-  const candidates = [params.transactionId, params.sessionId, params.reference]
+  const chargeCandidates = [params.chargeId, params.reference]
     .map((v) => String(v || '').trim())
     .filter(Boolean);
 
-  for (const candidate of candidates) {
+  for (const candidate of chargeCandidates) {
+    const byChargeOrReference = await Payment.findOne({
+      $or: [{ chargeId: candidate }, { paychanguReference: candidate }],
+    });
+    if (byChargeOrReference) {
+      return byChargeOrReference;
+    }
+  }
+
+  const legacyCandidates = [params.transactionId, params.sessionId, params.reference]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+
+  for (const candidate of legacyCandidates) {
     const direct = await Payment.findOne({ transactionId: candidate });
     if (direct) {
       return direct;
     }
   }
 
-  for (const candidate of candidates) {
+  for (const candidate of legacyCandidates) {
     const exactInsensitive = await Payment.findOne({
       transactionId: new RegExp(`^${escapeRegex(candidate)}$`, 'i'),
     });
@@ -103,10 +137,29 @@ async function findPaymentForWebhook(params: {
     }
   }
 
-  for (const candidate of candidates) {
+  for (const candidate of legacyCandidates) {
     const byTxRef = await findPaymentByTxRef(candidate);
     if (byTxRef) {
       return byTxRef;
+    }
+  }
+
+  // Best-effort fallback for a first-ever webhook delivery with no prior charge
+  // linkage: match a still-pending payment of the same amount created recently.
+  // Bounded to a short window and PENDING-only to keep the candidate set narrow.
+  if (typeof params.amount === 'number' && Number.isFinite(params.amount)) {
+    const recentWindow = new Date(Date.now() - 30 * 60 * 1000);
+    const byAmount = await Payment.findOne({
+      amount: params.amount,
+      status: PaymentStatus.PENDING,
+      createdAt: { $gte: recentWindow },
+    }).sort({ createdAt: -1 });
+    if (byAmount) {
+      log.warn('PayChangu webhook: matched payment by amount+pending+recency fallback (no charge_id/reference/tx_ref match)', {
+        paymentId: byAmount._id.toString(),
+        amount: params.amount,
+      });
+      return byAmount;
     }
   }
 
@@ -508,16 +561,18 @@ export const getPaymentByCarService = async (req: AuthRequest, res: Response): P
 
 export const payChanguWebhook = async (req: Request, res: Response): Promise<Response | void> => {
   try {
-    // PayChangu webhook handler
-    // PayChangu will send webhook with payment status updates
-    const { sessionId, status, transactionId, reference, amount, charge_id, chargeId } = req.body as {
-      sessionId?: string;
+    // PayChangu webhook handler.
+    // Payload is FLAT (not nested under "data") per https://developer.paychangu.com/docs/webhooks:
+    //   { event_type, currency, amount, charge, mode, type, status, charge_id, reference, authorization, created_at, updated_at }
+    // Notably there is NO tx_ref field in the webhook body — tx_ref (our own reference,
+    // stored as payment.transactionId) only appears in the separate verify-transaction
+    // API response, not here. See findPaymentForWebhook for how matching is resolved.
+    const { event_type, status, reference, amount, charge_id } = req.body as {
+      event_type?: string;
       status?: string;
-      transactionId?: string;
       reference?: string;
       amount?: number;
-      charge_id?: string; // PayChangu's charge ID (snake_case)
-      chargeId?: string; // PayChangu's charge ID (camelCase) - check both formats
+      charge_id?: string;
     };
 
     // Verify webhook signature for security
@@ -543,52 +598,78 @@ export const payChanguWebhook = async (req: Request, res: Response): Promise<Res
           .update(JSON.stringify(req.body))
           .digest('hex');
 
-        if (signature !== expectedSignature) {
-          const sigStr = Array.isArray(signature) ? signature[0] : signature;
+        const sigStr = Array.isArray(signature) ? signature[0] : signature;
+        const receivedBuf = Buffer.from(sigStr, 'utf8');
+        const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+        const signatureValid =
+          receivedBuf.length === expectedBuf.length &&
+          crypto.timingSafeEqual(receivedBuf, expectedBuf);
+
+        if (!signatureValid) {
           log.error('PayChangu webhook: Invalid signature', {
             receivedSignature: sigStr.substring(0, 10) + '...',
-            sessionId,
             reference
           });
           res.status(401).json({ message: 'Invalid webhook signature' });
           return;
         }
-        log.payment.webhook('PayChangu', 'Signature verified', { sessionId, reference });
+        log.payment.webhook('PayChangu', 'Signature verified', { reference });
       } else {
-        // If webhook secret is configured but no signature received
-        log.warn('PayChangu webhook: No signature provided but PAYCHANGU_WEBHOOK_SECRET is set');
-        // In development, allow webhooks without signatures for testing
-        // In production, reject unsigned webhooks
-        if (process.env.NODE_ENV === 'production') {
-          res.status(401).json({ message: 'Webhook signature required in production' });
-          return;
-        }
+        // Webhook secret is configured but no signature was sent — always reject.
+        // Accepting this would mean any caller who knows a valid orderId/tx_ref could
+        // fake a "payment succeeded" webhook and mark an order paid with zero proof.
+        log.error('PayChangu webhook: No signature provided but PAYCHANGU_WEBHOOK_SECRET is set');
+        res.status(401).json({ message: 'Webhook signature required' });
+        return;
       }
+    } else if (process.env.NODE_ENV === 'production') {
+      // Unreachable in practice (the production+missing-secret check above already
+      // returns), kept as a defensive fail-closed fallback if that check is ever removed.
+      log.error('PayChangu webhook blocked: PAYCHANGU_WEBHOOK_SECRET not configured in production.');
+      res.status(500).json({ message: 'Webhook signature configuration missing' });
+      return;
     } else {
-      // Webhook secret not configured - log warning
-      log.warn('PayChangu webhook: PAYCHANGU_WEBHOOK_SECRET not configured. Webhook verification disabled.');
-      // TODO: Contact PayChangu support at support@paychangu.com to get webhook secret
+      // No webhook secret configured outside production (e.g. local dev). Allow through
+      // unverified only here — never in production, and never for a configured-but-unsent
+      // signature (handled above).
+      log.warn('PayChangu webhook: PAYCHANGU_WEBHOOK_SECRET not configured. Webhook verification disabled (non-production only).');
+    }
+
+    // PayChangu sends more than one event type to this URL if webhooks are broadly
+    // enabled on the dashboard (e.g. "api.payout" for disbursements, which this app
+    // never initiates). Only charge/payment events are relevant here — anything else
+    // must not fall through to the amount+pending+recency fallback matcher below,
+    // which could otherwise mismatch an unrelated event onto a real pending payment.
+    if (event_type && event_type !== 'api.charge.payment') {
+      log.payment.webhook('PayChangu', 'Ignoring unhandled webhook event type', { event_type });
+      res.json({ success: true, ignored: true });
+      return;
     }
 
     const payment = await findPaymentForWebhook({
-      transactionId,
-      sessionId,
+      chargeId: typeof charge_id === 'string' ? charge_id : undefined,
       reference: typeof reference === 'string' ? reference : undefined,
+      amount: typeof amount === 'number' ? amount : undefined,
     });
 
     if (!payment) {
-      log.warn('PayChangu webhook: Payment not found', { sessionId, transactionId, reference });
+      log.warn('PayChangu webhook: Payment not found', { event_type, charge_id, reference, amount });
       res.status(404).json({ message: 'Payment not found' });
       return;
+    }
+
+    // Persist PayChangu's own identifiers so any later webhook delivery for this
+    // same payment (retries, subsequent events) matches directly in step 1 above.
+    if (charge_id) {
+      payment.chargeId = charge_id;
+    }
+    if (reference) {
+      payment.paychanguReference = reference;
     }
 
     // Update payment status based on PayChangu response
     if (status === 'success' || status === 'completed' || status === 'paid') {
       payment.status = PaymentStatus.COMPLETED;
-      payment.transactionId = transactionId || payment.transactionId;
-      // Store PayChangu's charge_id for refund purposes
-      payment.chargeId = charge_id || chargeId || payment.chargeId;
-
       await syncCompletedPaymentToRelatedEntities(payment);
     } else if (status === 'failed' || status === 'cancelled') {
       payment.status = PaymentStatus.FAILED;
@@ -631,14 +712,27 @@ function isPaychanguVerifySuccess(payload: unknown): boolean {
   return s === 'success' || s === 'successful';
 }
 
-export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise<void> => {
+/**
+ * Payment fields safe to return to a caller who has not proven ownership of the
+ * underlying order/service (public PayChangu redirect callback — no session guaranteed).
+ * Omits transactionId/chargeId/amount, which are sensitive and not needed for the
+ * success/pending UI state.
+ */
+const redactPaymentForUnverifiedCaller = (payment: any) => {
+  const plain = typeof payment.toObject === 'function' ? payment.toObject() : payment;
+  const { transactionId, chargeId, amount, ...safe } = plain;
+  return safe;
+};
+
+export const verifyPaymentByTxRef = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     // Verify payment using transaction reference (for PayChangu callback)
-    const { tx_ref, orderId, towingServiceId, carServiceId } = req.query as {
+    const { tx_ref, orderId, towingServiceId, carServiceId, email } = req.query as {
       tx_ref?: string;
       orderId?: string;
       towingServiceId?: string;
       carServiceId?: string;
+      email?: string;
     };
 
     if (!tx_ref && !orderId && !towingServiceId && !carServiceId) {
@@ -681,9 +775,41 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
       }
     }
 
+    // Determine ownership so we know whether to return sensitive gateway fields.
+    // This endpoint must stay reachable without a session (PayChangu redirect callback),
+    // so unverified callers get a redacted payment instead of a hard 403.
+    let isOwner = false;
+    if (payment.order) {
+      const order = await Order.findById(payment.order);
+      if (order) {
+        if (req.user && order.user && order.user.toString() === req.user._id.toString()) {
+          isOwner = true;
+        } else if (email && order.guestInfo?.email && order.guestInfo.email.toLowerCase() === email.toLowerCase().trim()) {
+          isOwner = true;
+        }
+      }
+    } else if (payment.towingService) {
+      const service = await TowingService.findById(payment.towingService);
+      if (service && req.user && service.user.toString() === req.user._id.toString()) {
+        isOwner = true;
+      }
+    } else if (payment.carService) {
+      const service = await CarService.findById(payment.carService);
+      if (service && req.user && service.user.toString() === req.user._id.toString()) {
+        isOwner = true;
+      }
+    }
+    if (req.user?.role === 'admin') {
+      isOwner = true;
+    }
+
+    const respondWithPayment = (body: Record<string, unknown>) => {
+      res.json({ ...body, payment: isOwner ? payment : redactPaymentForUnverifiedCaller(payment) });
+    };
+
     if (payment.status === PaymentStatus.COMPLETED) {
       await syncCompletedPaymentToRelatedEntities(payment);
-      res.json({ verified: true, payment });
+      respondWithPayment({ verified: true });
       return;
     }
 
@@ -692,11 +818,7 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
 
     if (!apiSecret || !payment.transactionId) {
       log.warn('verifyPaymentByTxRef: missing PAYCHANGU_API_SECRET or payment.transactionId; cannot verify with PayChangu');
-      res.json({
-        verified: false,
-        payment,
-        message: 'Payment is still pending gateway verification',
-      });
+      respondWithPayment({ verified: false, message: 'Payment is still pending gateway verification' });
       return;
     }
 
@@ -715,19 +837,19 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
           status: verifyResponse.status,
           tx: payment.transactionId,
         });
-        res.json({ verified: false, payment, message: 'Gateway verification did not confirm payment yet' });
+        respondWithPayment({ verified: false, message: 'Gateway verification did not confirm payment yet' });
         return;
       }
 
       verifyData = await verifyResponse.json();
     } catch (error) {
       log.error('Error verifying payment with PayChangu', error);
-      res.json({ verified: false, payment, message: 'Gateway verification failed' });
+      respondWithPayment({ verified: false, message: 'Gateway verification failed' });
       return;
     }
 
     if (!isPaychanguVerifySuccess(verifyData)) {
-      res.json({ verified: false, payment, message: 'Payment not successful at gateway' });
+      respondWithPayment({ verified: false, message: 'Payment not successful at gateway' });
       return;
     }
 
@@ -735,8 +857,13 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
     const dataObj = vd.data as Record<string, unknown> | undefined;
     if (dataObj?.charge_id) {
       payment.chargeId = String(dataObj.charge_id);
-    } else if (dataObj?.reference) {
-      payment.chargeId = String(dataObj.reference);
+    }
+    // PayChangu's own "reference" is distinct from our tx_ref (payment.transactionId).
+    // Persist it now — this is the one place we reliably see tx_ref and reference
+    // together — so a later webhook delivery for this same payment (which carries
+    // reference/charge_id but never our tx_ref) can match it directly.
+    if (dataObj?.reference) {
+      payment.paychanguReference = String(dataObj.reference);
     }
 
     payment.status = PaymentStatus.COMPLETED;
@@ -747,7 +874,7 @@ export const verifyPaymentByTxRef = async (req: Request, res: Response): Promise
       await createPayoutAfterPaymentSave(payment._id.toString());
     }
 
-    res.json({ verified: true, payment });
+    respondWithPayment({ verified: true });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to verify payment' });
   }

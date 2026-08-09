@@ -76,7 +76,26 @@ export const refundApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body: notes ? { notes } : {},
       }),
-      invalidatesTags: ['AdminRefunds'],
+      invalidatesTags: (result) => {
+        const payment = result?.payment;
+        const orderId = typeof payment?.order === 'string' ? payment.order : payment?.order?._id;
+        const towingServiceId =
+          typeof payment?.towingService === 'string' ? payment.towingService : payment?.towingService?._id;
+        const carServiceId =
+          typeof payment?.carService === 'string' ? payment.carService : payment?.carService?._id;
+
+        return [
+          'AdminRefunds',
+          'Order',
+          'Admin',
+          'Payment',
+          'TowingService',
+          'CarService',
+          ...(orderId ? [{ type: 'Order' as const, id: orderId }, { type: 'Admin' as const, id: orderId }, { type: 'Payment' as const, id: orderId }] : []),
+          ...(towingServiceId ? [{ type: 'TowingService' as const, id: towingServiceId }] : []),
+          ...(carServiceId ? [{ type: 'CarService' as const, id: carServiceId }] : []),
+        ];
+      },
     }),
   }),
 });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAppDispatch } from '../store/types';
+import { useAppDispatch, useAppSelector } from '../store/types';
 import { useGetOrderQuery } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/api/paymentApi';
 import { baseApi } from '../store/api/baseApi';
@@ -30,6 +30,7 @@ interface ServicePaymentSummary {
 export const PaymentSuccess = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const authToken = useAppSelector((state) => state.auth.token);
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const email = searchParams.get('email');
@@ -83,7 +84,9 @@ export const PaymentSuccess = () => {
     const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const url = `${apiBase}/payments/verify-txref?tx_ref=${encodeURIComponent(txRef)}`;
 
-    fetch(url)
+    fetch(url, {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+    })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
@@ -123,7 +126,7 @@ export const PaymentSuccess = () => {
         }
         setServiceVerifyState('error');
       });
-  }, [isServicePaymentReturn, txRef, dispatch]);
+  }, [isServicePaymentReturn, txRef, dispatch, authToken]);
 
   useEffect(() => {
     if (!isOrderPayment || !orderId) {
@@ -134,7 +137,8 @@ export const PaymentSuccess = () => {
       fetch(
         `${import.meta.env.VITE_API_URL}/payments/verify-txref?orderId=${orderId}${
           txRef ? `&tx_ref=${encodeURIComponent(txRef)}` : ''
-        }`
+        }${email ? `&email=${encodeURIComponent(email)}` : ''}`,
+        { headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined }
       )
         .then((res) => res.json())
         .then((data) => {
@@ -165,7 +169,11 @@ export const PaymentSuccess = () => {
       ) {
         const verifyTimer = setTimeout(async () => {
           try {
-            const verifyResult = await verifyPayment(payment._id).unwrap();
+            const verifyResult = await verifyPayment({
+              orderId: orderId || undefined,
+              txRef: txRef || undefined,
+              email: email || undefined,
+            }).unwrap();
             if (verifyResult?.verified || verifyResult?.payment?.status === PaymentStatus.COMPLETED) {
               setPaymentVerified(true);
               clearCartOnce();
@@ -187,12 +195,14 @@ export const PaymentSuccess = () => {
     isOrderPayment,
     orderId,
     txRef,
+    email,
     paymentData,
     dispatch,
     navigate,
     verifyPayment,
     refetchPayment,
     verificationAttempts,
+    authToken,
   ]);
 
   useEffect(() => {
