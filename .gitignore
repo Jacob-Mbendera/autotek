@@ -14,6 +14,19 @@ build/
 **/dist/
 **/build/
 
+# Compiled output committed alongside its own .ts source is a resolution hazard:
+# Node's require() prefers a sibling .js over the .ts source under ts-node, so an
+# edit to the .ts file is silently invisible at runtime until the .js is rebuilt
+# or removed. shared/types and backend/src/types/shared are TS-source-only.
+shared/types/*.js
+shared/types/*.js.map
+shared/types/*.d.ts
+shared/types/*.d.ts.map
+backend/src/types/shared/*.js
+backend/src/types/shared/*.js.map
+backend/src/types/shared/*.d.ts
+backend/src/types/shared/*.d.ts.map
+
 # Logs
 *.log
 logs/
