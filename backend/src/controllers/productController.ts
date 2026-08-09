@@ -12,6 +12,7 @@ import type {
 } from '../../../shared/types';
 import { buildVehicleFitmentMongoFilter, rankCatalogProductSuggestions } from '../../../shared/utils/productFitmentMatch';
 import type { CatalogSuggestionCandidate } from '../../../shared/utils/productFitmentMatch';
+import { escapeRegex } from '../../../shared/utils/regex';
 
 // Extend Request type to include files
 interface MulterRequest extends Request {
@@ -219,13 +220,14 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
     }
 
     if (search) {
+      const safeSearch = escapeRegex(String(search));
       andConditions.push({
         $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { brand: { $regex: search, $options: 'i' } },
-          { oemPartNumber: { $regex: search, $options: 'i' } },
-          { alternatePartNumbers: { $regex: search, $options: 'i' } },
+          { name: { $regex: safeSearch, $options: 'i' } },
+          { description: { $regex: safeSearch, $options: 'i' } },
+          { brand: { $regex: safeSearch, $options: 'i' } },
+          { oemPartNumber: { $regex: safeSearch, $options: 'i' } },
+          { alternatePartNumbers: { $regex: safeSearch, $options: 'i' } },
         ],
       });
     }

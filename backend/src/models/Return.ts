@@ -139,4 +139,16 @@ ReturnSchema.index({ user: 1, createdAt: -1 });
 ReturnSchema.index({ status: 1 });
 ReturnSchema.index({ 'guestInfo.email': 1, createdAt: -1 });
 
+// Prevent two open (pending/approved) returns existing for the same order at once —
+// guards against a double-click/race creating duplicate return requests (and downstream
+// duplicate refunds) even if the application-level check-then-create is raced.
+ReturnSchema.index(
+  { order: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: { $in: ['pending', 'approved'] } },
+    name: 'order_open_return_unique',
+  }
+);
+
 export default mongoose.model<IReturn>('Return', ReturnSchema);

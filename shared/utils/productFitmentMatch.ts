@@ -1,4 +1,5 @@
 import type { ProductCompatibilityEntry, ProductFitmentStatus } from '../types';
+import { escapeRegex } from './regex';
 
 export interface VehicleFitmentQuery {
   make: string;
@@ -10,11 +11,15 @@ export interface VehicleFitmentQuery {
 
 export type VehicleFitmentMatchStrength = 'strong' | 'weak' | 'universal' | 'none';
 
-const escapeRegex = (value: string): string =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 export const normalizeVehicleText = (value?: string): string =>
   (value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * Minimum length before an engine code is used in a substring match. Below this,
+ * short/generic tokens (e.g. "i", "v", "2") would coincidentally substring-match
+ * many unrelated engine codes ("vti", "gdi", "i-VTEC") and overclaim fitment confidence.
+ */
+const MIN_ENGINE_MATCH_LENGTH = 2;
 
 export const buildVehicleFitmentMongoFilter = (
   vehicle: VehicleFitmentQuery
@@ -105,7 +110,12 @@ const entryMatchesVehicle = (
 
   const selectedEngine = normalizeVehicleText(vehicle.engine);
   const entryEngine = normalizeVehicleText(entry.engine);
-  if (selectedEngine && entryEngine && !entryEngine.includes(selectedEngine) && !selectedEngine.includes(entryEngine)) {
+  if (
+    selectedEngine.length >= MIN_ENGINE_MATCH_LENGTH &&
+    entryEngine.length >= MIN_ENGINE_MATCH_LENGTH &&
+    !entryEngine.includes(selectedEngine) &&
+    !selectedEngine.includes(entryEngine)
+  ) {
     return false;
   }
 
@@ -122,6 +132,11 @@ export const getVehicleFitmentMatchStrength = (
 ): VehicleFitmentMatchStrength => {
   if (!vehicle?.make?.trim() || !vehicle?.model?.trim()) return 'none';
   if (product.isUniversal) return 'universal';
+  // Defense-in-depth: a non-universal product explicitly marked fitmentStatus 'none'
+  // should never present as a vehicle match, even if compatibility rows exist on it
+  // (write-time validation should prevent that combination, but this guard doesn't
+  // rely on that invariant holding everywhere data can be written).
+  if (product.fitmentStatus === 'none') return 'none';
 
   const query: VehicleFitmentQuery = {
     make: vehicle.make,
@@ -148,7 +163,11 @@ export const getVehicleFitmentMatchStrength = (
     !selectedEngine ||
     matches.some((entry) => {
       const entryEngine = normalizeVehicleText(entry.engine);
-      return !entryEngine || entryEngine.includes(selectedEngine) || selectedEngine.includes(entryEngine);
+      if (!entryEngine) return true;
+      if (selectedEngine.length < MIN_ENGINE_MATCH_LENGTH || entryEngine.length < MIN_ENGINE_MATCH_LENGTH) {
+        return selectedEngine === entryEngine;
+      }
+      return entryEngine.includes(selectedEngine) || selectedEngine.includes(entryEngine);
     });
 
   if (hasVerified && yearSatisfied && engineSatisfied) return 'strong';

@@ -21,6 +21,11 @@ export const validateGetAllCustomOrders = [
     .optional()
     .isIn(Object.values(CustomOrderStatus))
     .withMessage('Invalid custom order status'),
+  query('search')
+    .optional()
+    .isString()
+    .isLength({ max: 200 })
+    .withMessage('Search must be 200 characters or fewer'),
   query('page')
     .optional()
     .isInt({ min: 1 })
@@ -40,6 +45,11 @@ export const validateGetAllServices = [
     .optional()
     .isIn(Object.values(ServiceStatus))
     .withMessage('Invalid service status'),
+  query('search')
+    .optional()
+    .isString()
+    .isLength({ max: 200 })
+    .withMessage('Search must be 200 characters or fewer'),
   query('page')
     .optional()
     .isInt({ min: 1 })

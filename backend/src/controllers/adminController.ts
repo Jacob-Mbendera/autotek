@@ -9,6 +9,7 @@ import Product from '../models/Product';
 import User from '../models/User';
 import { OrderStatus, CustomOrderStatus, ServiceStatus, PaymentStatus, UserRole } from '../types/shared';
 import { parsePagination, createPaginationResponse } from '../utils/pagination';
+import { escapeRegex } from '../utils/regex';
 
 /**
  * Get dashboard statistics for admin
@@ -181,7 +182,7 @@ export const getAllCustomOrders = async (
 
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search as string, 'i');
+      const searchRegex = new RegExp(escapeRegex(search as string), 'i');
       query.$or = [
         { productName: searchRegex },
         { description: searchRegex },
@@ -261,7 +262,7 @@ export const getAllServices = async (req: AuthRequest, res: Response): Promise<v
 
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search as string, 'i');
+      const searchRegex = new RegExp(escapeRegex(search as string), 'i');
       const searchOr = [
         { 'vehicleDetails.make': searchRegex },
         { 'vehicleDetails.model': searchRegex },
@@ -382,7 +383,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void
     }
 
     if (search) {
-      const searchRegex = new RegExp(search as string, 'i');
+      const searchRegex = new RegExp(escapeRegex(search as string), 'i');
       query.$or = [
         { name: searchRegex },
         { email: searchRegex },

@@ -278,6 +278,12 @@ export const createReturn = async (req: AuthRequest, res: Response): Promise<voi
       message: 'Return request created successfully',
     });
   } catch (error: any) {
+    // Duplicate-key from the partial unique index (order_open_return_unique) — a
+    // concurrent request already created the open return the findOne check missed.
+    if (error?.code === 11000) {
+      res.status(400).json({ message: 'A return request already exists for this order' });
+      return;
+    }
     res.status(500).json({ message: error.message || 'Failed to create return request' });
   }
 };
@@ -552,28 +558,24 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
     const { id } = req.params;
     const { refundAmount } = req.body;
 
-    const returnDoc = await Return.findById(id)
-      .populate('order')
-      .populate('user')
-      .populate('items.product');
-
-    if (!returnDoc) {
+    const existing = await Return.findById(id);
+    if (!existing) {
       res.status(404).json({ message: 'Return not found' });
       return;
     }
 
-    if (returnDoc.status !== 'approved') {
+    if (existing.status !== 'approved') {
       res.status(400).json({ message: 'Only approved returns can be refunded' });
       return;
     }
 
-    if (returnDoc.refundStatus === 'completed') {
+    if (existing.refundStatus === 'completed') {
       res.status(400).json({ message: 'Refund has already been processed' });
       return;
     }
 
     // Use provided refund amount or calculated amount
-    const finalRefundAmount = refundAmount !== undefined ? Number(refundAmount) : returnDoc.refundAmount;
+    const finalRefundAmount = refundAmount !== undefined ? Number(refundAmount) : existing.refundAmount;
 
     if (finalRefundAmount < 0) {
       res.status(400).json({ message: 'Refund amount must be positive' });
@@ -581,7 +583,7 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     // Get the original payment record
-    const orderId = (returnDoc.order as any)._id || returnDoc.order;
+    const orderId = (existing.order as any)._id || existing.order;
     const payment = await Payment.findOne({ order: orderId, type: 'order' }).sort({ createdAt: -1 });
 
     if (!payment || !payment.transactionId) {
@@ -591,10 +593,30 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Update refund amount and queue manual PayChangu refund (no API)
-    returnDoc.refundAmount = finalRefundAmount;
-    returnDoc.refundStatus = 'processing' as any;
-    await returnDoc.save();
+    // Atomic guard against double-processing: only transition to 'processing' if the
+    // document is still exactly in the state we just checked. A concurrent request that
+    // already moved it (e.g. also to 'processing', or to 'completed'/'failed') matches
+    // nothing here and we bail out below instead of queueing a second refund.
+    const claimed = await Return.findOneAndUpdate(
+      { _id: id, status: 'approved', refundStatus: { $ne: 'completed' } },
+      { $set: { refundAmount: finalRefundAmount, refundStatus: 'processing' } },
+      { new: true }
+    );
+
+    if (!claimed) {
+      res.status(409).json({ message: 'This refund is already being processed or has completed.' });
+      return;
+    }
+
+    const returnDoc = await Return.findById(id)
+      .populate('order')
+      .populate('user')
+      .populate('items.product');
+
+    if (!returnDoc) {
+      res.status(404).json({ message: 'Return not found' });
+      return;
+    }
 
     const refundResult = await queueManualRefund({
       paymentId: payment._id.toString(),
