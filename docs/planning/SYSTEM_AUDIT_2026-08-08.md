@@ -73,7 +73,7 @@ The "provider required while in-progress" guard in `updateCarService`/`updateTow
 ---
 
 ### 5. Provider payout is created before work happens, with no clawback on later cancel+refund
-**Domain:** Car Services & Towing Bookings · **Fixable now:** No — design decision
+**Domain:** Car Services & Towing Bookings · **Fixable now:** No — design decision · **Status: Fixed** (2026-08-09, see "Payout clawback + per-return refund completion" below)
 
 `createServicePayoutIfNeeded` (`backend/src/utils/servicePayout.ts:12-64`) only checks `payment.status === COMPLETED`, never the service's own status. Because BR-07 intentionally allows pay-before-work (payment while status is still `assigned`), a `PENDING` payout row is created immediately on payment. If the customer then cancels before work starts (allowed — cancel is blocked only at `IN_PROGRESS`), a refund is queued against the `Payment`, but nothing voids the `ServicePayout` row. An admin who later bulk-processes pending payouts could pay the mechanic for a cancelled, refunded service.
 
@@ -82,7 +82,7 @@ The "provider required while in-progress" guard in `updateCarService`/`updateTow
 ---
 
 ### 6. Admin "Mark refund completed" bulk-completes ALL of an order's returns using the full order amount
-**Domain:** Returns & Refunds · **Fixable now:** No — design decision
+**Domain:** Returns & Refunds · **Fixable now:** No — design decision · **Status: Fixed** (2026-08-09, see "Payout clawback + per-return refund completion" below)
 
 `completeManualRefund` (`backend/src/utils/paymentRefunds.ts:254-267`) marks **every** `Return` on an order with `refundStatus` in `pending`/`processing` as `completed` in one `updateMany`, with no per-return amount reconciliation. The admin confirm dialog (`frontend/src/pages/admin/Refunds.tsx:220-222, 322-326`) shows/confirms the full `Payment.amount`, not each return's actual (possibly partial) `refundAmount`.
 
@@ -165,9 +165,9 @@ Per the agreed scope: fix every **fixable now** item as a clear bug; leave every
 
 **Fixed:** #1, #2, #3 (deferred to end, resolved against live PayChangu docs), #4, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #19, #21, #22, #23, #24, #28, #29, #30, #31. All 22 fixable-now items are complete.
 
-**Left for follow-up (documented, not touched — require a product/design decision):** #5 (payout timing vs. cancel/refund clawback), #6 (per-return refund completion tracking), #20 (broad Joi validation for admin mutation routes), #25 (optimistic concurrency on custom order updates), #27 (mechanic role authorization surface).
+**Left for follow-up (documented, not touched — require a product/design decision):** #20 (broad Joi validation for admin mutation routes), #25 (optimistic concurrency on custom order updates), #27 (mechanic role authorization surface).
 
-**Fixed in a later pass (2026-08-09):** #17 and #18 — see "httpOnly cookie + token revocation migration" below.
+**Fixed in a later pass (2026-08-09):** #17 and #18 — see "httpOnly cookie + token revocation migration" below. #5 and #6 — see "Payout clawback + per-return refund completion" below.
 
 **No action needed:** #26 (verified correct — payment-before-in-progress is properly server-enforced).
 
@@ -229,3 +229,30 @@ Both were left as "not fixable now" in the original pass because they needed a d
 **Verification:**
 - Live curl: `Set-Cookie` on login has correct `HttpOnly`/`SameSite=Lax`/`Max-Age` attributes; `/auth/me` works via cookie jar with zero `Authorization` header and 401s with none; logout clears the cookie; a token captured before logout is rejected after it (`tokenVersion` mismatch) even though it was never individually blacklisted; the same mechanism was verified for the password-change path via a direct DB simulation (issue a token at `tokenVersion: 0`, bump to `1` exactly as `changePassword` does, confirm the old token is rejected).
 - Browser: confirmed `document.cookie` is empty and `persist:root` has no `auth` key after login (httpOnly cookie genuinely invisible to page JS); session survives a hard full-page reload with no token anywhere client-side; logout redirects and clears the cookie; two tabs open side by side — logging in on one instantly updates the other (header shows the logged-in state with no reload), and logging out on one instantly logs out the other — with no manual refresh in either direction.
+
+---
+
+## Payout clawback + per-return refund completion (2026-08-09) — fixes #5 and #6
+
+Both were left as "not fixable now" in the original pass because they needed a data-model/product decision, not a one-line patch. The user chose: for #5, add a `VOIDED` payout status with clawback on cancel+refund (not a payout-timing change); for #6, track refund completion per-`Return` instead of per-`Payment`.
+
+**#5 — ServicePayout clawback:**
+- `ServicePayoutStatus` gained a `VOIDED` value (`backend/src/types/shared/index.ts`, mirrored in `shared/types/index.ts`); `ServicePayout` gained `voidedAt`/`voidReason`.
+- New `voidServicePayoutIfPending(serviceKind, serviceId, reason)` (`backend/src/utils/servicePayout.ts`) atomically flips a `PENDING` payout to `VOIDED`; no-ops if the payout was never created or already paid — an already-paid payout is never retroactively touched.
+- Wired into `processPaidServiceCancelRefund` (`backend/src/utils/serviceCancelRefund.ts`), the single place both `cancelTowingService` and `cancelCarService` already route through for a paid-service cancel — called only after the manual refund is successfully queued.
+- `markPayoutPaid` (`backend/src/controllers/providerAdminController.ts`) now rejects `VOIDED` payouts explicitly (400) and uses an atomic `findOneAndUpdate` with a `PENDING` precondition instead of an unconditional update, closing a check-then-act race against a second concurrent "mark paid" click (409 if lost). No frontend change was needed — `Providers.tsx` already only renders the "Mark paid" action `if (p.status === 'pending')`, so a voided row shows the status with no action.
+
+**#6 — Per-Return refund completion:**
+- `Return` gained `refundCompletedAt` (`backend/src/models/Return.ts`). `refundAmount`/`refundStatus` already existed and were already set correctly per-return by `processRefund` — the gap was purely in *completion*, not in tracking the amount.
+- New `completeReturnRefund(returnId, notes)` (`backend/src/utils/paymentRefunds.ts`) atomically claims one `Return` (`refundStatus: 'processing'` precondition), marks it `completed` with its own `refundAmount`, emails the customer using that amount (not `payment.amount`), then checks whether the *sum* of all completed returns on the order now covers the full `Payment.amount` — only then does it call `completeManualRefund` (now accepting a `skipCustomerEmail` option to avoid a duplicate customer email) to close out the shared `Payment`/`Order`. Partial coverage leaves the `Payment` at `refund_pending`, correctly reflecting that money is still owed.
+- `completeManualRefund`'s blanket `Return.updateMany(...)` completion block was removed — order-level returns now only complete via the new per-return path.
+- New endpoint `PATCH /api/admin/returns/:id/complete-refund` (`adminRefundController.ts` + `returnRoutes.ts`), and `getAllReturns` gained an `orderId` filter so the admin UI can fetch just the returns linked to one order.
+- Admin Refunds page (`frontend/src/pages/admin/Refunds.tsx`): completing a refund for an order-type payment now fetches its linked `processing` returns; if any exist, shows a per-return list (each with its own amount and its own "Mark completed" action) instead of the old single blanket confirm dialog. Orders with no linked returns (direct order-level refunds) keep the original single-button flow, which is correct there since there's nothing to split.
+
+**Bug found and fixed during this pass (infrastructure, not in the original plan):**
+Stale compiled `.js`/`.d.ts` files for `backend/src/types/shared/index.ts` and `shared/types/index.ts` were committed to git alongside their `.ts` sources (last built weeks earlier). Under `ts-node`, Node's `require()` resolution prefers a sibling `.js` over the `.ts` source, so edits to these two files were silently invisible at runtime — caught when live curl testing showed `ServicePayoutStatus` missing the newly-added `VOIDED` key at runtime despite the source clearly having it. Confirmed the frontend was unaffected (`frontend/vite.config.ts` explicitly aliases `@shared/types` straight to the `.ts` source). Fixed by deleting the 16 stale compiled artifacts (`git rm`) across both directories, removing a stale leftover `backend/dist/`, and adding `.gitignore` rules so compiled output can never again be committed alongside these TS-source-only directories.
+
+**Verification:**
+- Live curl: cancelling a paid towing service with an assigned provider voids its `ServicePayout` (`status: "voided"`, `voidedAt`/`voidReason` set); `markPayoutPaid` on that voided row returns 400 with the new message, and on an already-paid row returns 409; the pending→paid happy path still works. Two sequential returns on one order (30,000 then 20,000 MWK, full payment 50,000): completing the first independently leaves the Payment/Order at `refund_pending` and doesn't touch the second; completing the second flips Payment/Order to `refunded` only once the sum covers the full amount; exactly two customer emails were sent (not three); re-completing an already-completed return is a clean no-op.
+- Browser: Admin → Providers → Payouts tab shows a voided payout row with "Voided" status and no action button. Admin → Refunds, clicking "Mark completed" on an order with one linked `processing` return shows the new "Complete return refunds" list (return's own amount, its own action) instead of the old single-payment dialog; completing it succeeds and the Payment correctly stays `refund_pending` when the return's amount doesn't cover the full payment.
+- All test data (users, orders, payments, returns, service payouts) created for this verification was removed from the database afterward.
