@@ -195,7 +195,10 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   const searchParams = new URLSearchParams(location.search);
   const guestEmail = sessionStorage.getItem('guestOrderEmail') || searchParams.get('email') || undefined;
   
-  // Returns for this order only (skip if admin) — avoids paginated global list staleness
+  // Returns for this order only (skip if admin) — avoids paginated global list staleness.
+  // Polls independently of order-status polling below, which stops once the order is
+  // COMPLETED — the exact status required for Quick Actions (Request/View Return) to show,
+  // so without its own polling this view could never pick up a return made elsewhere.
   const { data: returnsData } = useGetReturnsQuery(
     id
       ? {
@@ -203,7 +206,13 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
           ...(guestEmail ? { email: guestEmail } : {}),
         }
       : undefined,
-    { skip: isAdmin || !id, refetchOnMountOrArgChange: true }
+    {
+      skip: isAdmin || !id,
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      pollingInterval: 45000,
+    }
   );
 
   // Use admin API if admin, otherwise use regular order API

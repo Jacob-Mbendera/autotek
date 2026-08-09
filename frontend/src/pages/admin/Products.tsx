@@ -90,7 +90,7 @@ export const AdminProducts = () => {
   const cropQueueIndexRef = useRef(0);
   const croppedResultsRef = useRef<File[]>([]);
 
-  const adminListQueryOptions = useAdminListQueryOptions();
+  const adminListQueryOptions = useAdminListQueryOptions(undefined, showModal);
 
   const { data, isLoading } = useGetProductsQuery(
     {

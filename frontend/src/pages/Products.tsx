@@ -197,6 +197,18 @@ export const Products = () => {
     localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(selectedVehicle));
   }, [selectedVehicle]);
 
+  // Pick up a vehicle selection made in another tab, mirroring useCrossTabSync's pattern
+  // for auth/cart/comparison — otherwise an already-open Products tab keeps showing a
+  // stale vehicle filter until it's navigated away and back.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== VEHICLE_STORAGE_KEY) return;
+      setSelectedVehicle(readStoredVehicle());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const vehicleFilterActive = Boolean(filters.make && filters.model);
 
   const queryArgs = useMemo(
