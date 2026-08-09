@@ -1,17 +1,22 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { AuthRequest } from '../middleware/auth';
 import Garage from '../models/Garage';
 import ServiceProvider from '../models/ServiceProvider';
 import ServicePayout from '../models/ServicePayout';
+import User from '../models/User';
 import {
   GarageVerificationStatus,
   ProviderType,
   ProviderVettingStatus,
   ServicePayoutStatus,
+  UserRole,
 } from '../types/shared';
 import { countActiveAssignmentsForProvider } from '../utils/serviceProviderAssignment';
 import { parsePagination, createPaginationResponse } from '../utils/pagination';
+import { hashPassword } from '../utils/password';
+import { emailService } from '../services/emailService';
 
 export const listGarages = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -210,6 +215,13 @@ export const createServiceProvider = async (req: AuthRequest, res: Response): Pr
 
 export const updateServiceProvider = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (req.body.garage) {
+      const g = await Garage.findById(req.body.garage);
+      if (!g) {
+        res.status(400).json({ message: 'Garage not found' });
+        return;
+      }
+    }
     const p = await ServiceProvider.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -221,6 +233,63 @@ export const updateServiceProvider = async (req: AuthRequest, res: Response): Pr
     res.json(p);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Failed to update provider' });
+  }
+};
+
+export const inviteServiceProviderAsMechanic = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const provider = await ServiceProvider.findById(req.params.id);
+    if (!provider) {
+      res.status(404).json({ message: 'Provider not found' });
+      return;
+    }
+    if (provider.vettingStatus !== ProviderVettingStatus.VETTED) {
+      res.status(400).json({ message: 'Only a vetted provider can be invited' });
+      return;
+    }
+
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) {
+      res.status(400).json({ message: 'Email is required' });
+      return;
+    }
+
+    const alreadyLinked = await User.findOne({ serviceProvider: provider._id });
+    if (alreadyLinked) {
+      res.status(400).json({ message: 'This provider already has a mechanic account' });
+      return;
+    }
+
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      res.status(400).json({ message: 'A user with this email already exists' });
+      return;
+    }
+
+    const placeholderPassword = await hashPassword(crypto.randomBytes(32).toString('hex'));
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+    const user = await User.create({
+      email,
+      password: placeholderPassword,
+      name: provider.name,
+      phone: provider.phone,
+      role: UserRole.MECHANIC,
+      serviceProvider: provider._id,
+      resetToken,
+      resetTokenExpiry,
+    });
+
+    const setPasswordUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    await emailService.sendMechanicInviteEmail(email, provider.name, setPasswordUrl);
+
+    res.status(201).json({
+      message: 'Invite sent',
+      user: { _id: user._id, email: user.email, role: user.role, serviceProvider: user.serviceProvider },
+    });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Failed to invite provider' });
   }
 };
 

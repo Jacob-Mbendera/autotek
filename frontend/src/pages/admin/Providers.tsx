@@ -5,6 +5,7 @@ import {
   useGetServiceProvidersQuery,
   useCreateServiceProviderMutation,
   useUpdateServiceProviderMutation,
+  useInviteServiceProviderMutation,
   useGetServicePayoutsQuery,
   useMarkServicePayoutPaidMutation,
   type AdminGarage,
@@ -17,7 +18,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { H1, Body } from '../../components/ui/Typography';
-import { Building2, Loader2, Save, Users, Wrench, Truck, Banknote, CheckCircle } from 'lucide-react';
+import { Building2, Loader2, Save, Users, Wrench, Truck, Banknote, CheckCircle, Mail } from 'lucide-react';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
 type Tab = 'garages' | 'drivers' | 'mechanics' | 'payouts';
@@ -43,6 +44,8 @@ export const AdminProviders = () => {
     vettingStatus: 'pending_review',
     certificationNote: '',
   });
+  const [inviteTargetId, setInviteTargetId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
 
   const adminListQueryOptions = useAdminListQueryOptions();
 
@@ -75,6 +78,7 @@ export const AdminProviders = () => {
   const [createProvider, { isLoading: creatingP }] = useCreateServiceProviderMutation();
   const [updateProvider, { isLoading: updatingP }] = useUpdateServiceProviderMutation();
   const [markPaid, { isLoading: marking }] = useMarkServicePayoutPaidMutation();
+  const [inviteProvider, { isLoading: inviting }] = useInviteServiceProviderMutation();
 
   const openProviderModal = (role: 'driver' | 'mechanic') => {
     setProviderModalRole(role);
@@ -144,6 +148,19 @@ export const AdminProviders = () => {
       await refetchMechanics();
     } catch (e: unknown) {
       dispatch(showNotification({ message: getErrorInfo(e, 'Update failed').message, type: 'error' }));
+    }
+  };
+
+  const handleInvite = async () => {
+    if (!inviteTargetId || !inviteEmail.trim()) return;
+    try {
+      await inviteProvider({ id: inviteTargetId, email: inviteEmail.trim() }).unwrap();
+      dispatch(showNotification({ message: 'Invite sent', type: 'success' }));
+      setInviteTargetId(null);
+      setInviteEmail('');
+      await refetchMechanics();
+    } catch (e: unknown) {
+      dispatch(showNotification({ message: getErrorInfo(e, 'Failed to send invite').message, type: 'error' }));
     }
   };
 
@@ -305,7 +322,7 @@ export const AdminProviders = () => {
                     <td className="py-2 pr-4">{p.phone}</td>
                     <td className="py-2 pr-4 capitalize">{p.vettingStatus}</td>
                     <td className="py-2 pr-4">{p.activeAssignmentCount ?? 0}</td>
-                    <td className="py-2">
+                    <td className="py-2 flex flex-wrap gap-2">
                       {p.vettingStatus !== 'vetted' && (
                         <Button
                           variant="outline"
@@ -318,6 +335,22 @@ export const AdminProviders = () => {
                         >
                           <CheckCircle className="h-3 w-3" />
                           Mark vetted
+                        </Button>
+                      )}
+                      {p.vettingStatus === 'vetted' && (
+                        <Button
+                          variant="outline"
+                          size="small"
+                          dark
+                          type="button"
+                          className="gap-1"
+                          onClick={() => {
+                            setInviteTargetId(p._id);
+                            setInviteEmail('');
+                          }}
+                        >
+                          <Mail className="h-3 w-3" />
+                          Invite as mechanic
                         </Button>
                       )}
                     </td>
@@ -503,6 +536,46 @@ export const AdminProviders = () => {
               <Button variant="primary" dark onClick={handleCreateProvider} disabled={creatingP} className="gap-2">
                 {creatingP ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {inviteTargetId && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <Card variant="lg" className="w-full max-w-md bg-slate-800 border border-gray-700 p-6">
+            <H1 className="text-lg text-gray-50 mb-2">Invite as mechanic</H1>
+            <Body className="text-gray-400 mb-4">
+              Sends a set-password link so this provider can log in and manage their assigned jobs.
+            </Body>
+            <Input
+              dark
+              type="email"
+              placeholder="Email address"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+            />
+            <div className="flex gap-2 mt-6">
+              <Button
+                variant="ghost"
+                dark
+                onClick={() => {
+                  setInviteTargetId(null);
+                  setInviteEmail('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                dark
+                onClick={handleInvite}
+                disabled={inviting || !inviteEmail.trim()}
+                className="gap-2"
+              >
+                {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                Send invite
               </Button>
             </div>
           </Card>

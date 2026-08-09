@@ -377,6 +377,10 @@ export const adminApi = baseApi.injectEndpoints({
       query: ({ id, body }) => ({ url: `/admin/service-providers/${id}`, method: 'PATCH', body }),
       invalidatesTags: ['ServiceProvider', 'Admin'],
     }),
+    inviteServiceProvider: builder.mutation<{ message: string }, { id: string; email: string }>({
+      query: ({ id, email }) => ({ url: `/admin/service-providers/${id}/invite`, method: 'POST', body: { email } }),
+      invalidatesTags: ['ServiceProvider'],
+    }),
     getServicePayouts: builder.query<
       { payouts: ServicePayoutRow[]; pagination: unknown },
       { page?: number; limit?: number; status?: string } | void
@@ -416,6 +420,7 @@ export const {
   useGetProvidersForAssignmentQuery,
   useCreateServiceProviderMutation,
   useUpdateServiceProviderMutation,
+  useInviteServiceProviderMutation,
   useGetServicePayoutsQuery,
   useMarkServicePayoutPaidMutation,
 } = adminApi;

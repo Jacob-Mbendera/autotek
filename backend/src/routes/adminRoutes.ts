@@ -21,6 +21,7 @@ import {
   listProvidersForAssignment,
   createServiceProvider,
   updateServiceProvider,
+  inviteServiceProviderAsMechanic,
   listAdminPayouts,
   markPayoutPaid,
 } from '../controllers/providerAdminController';
@@ -34,6 +35,11 @@ import {
   validateGetAllOrders,
   validateGetAllCustomOrders,
   validateGetAllServices,
+  validateCreateGarage,
+  validateUpdateGarage,
+  validateCreateServiceProvider,
+  validateUpdateServiceProvider,
+  validateInviteServiceProvider,
 } from '../middleware/adminValidation';
 
 const router = Router();
@@ -53,14 +59,19 @@ router.get('/users/:id', getUser);
 router.patch('/users/:id/role', updateUserRole);
 
 router.get('/garages', listGarages);
-router.post('/garages', createGarage);
-router.patch('/garages/:id', updateGarage);
+router.post('/garages', validate(validateCreateGarage), createGarage);
+router.patch('/garages/:id', validate(validateUpdateGarage), updateGarage);
 router.delete('/garages/:id', deleteGarage);
 
 router.get('/service-providers', listServiceProviders);
 router.get('/service-providers/for-assignment', listProvidersForAssignment);
-router.post('/service-providers', createServiceProvider);
-router.patch('/service-providers/:id', updateServiceProvider);
+router.post('/service-providers', validate(validateCreateServiceProvider), createServiceProvider);
+router.patch('/service-providers/:id', validate(validateUpdateServiceProvider), updateServiceProvider);
+router.post(
+  '/service-providers/:id/invite',
+  validate(validateInviteServiceProvider),
+  inviteServiceProviderAsMechanic
+);
 
 router.get('/service-payouts', listAdminPayouts);
 router.patch('/service-payouts/:id/mark-paid', markPayoutPaid);

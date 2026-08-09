@@ -6,9 +6,15 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   adminOnly?: boolean;
   guestAllowed?: boolean;
+  allowedRoles?: UserRole[];
 }
 
-export const ProtectedRoute = ({ children, adminOnly = false, guestAllowed = false }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({
+  children,
+  adminOnly = false,
+  guestAllowed = false,
+  allowedRoles,
+}: ProtectedRouteProps) => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const user = useAppSelector((state) => state.auth.user);
   const location = useLocation();
@@ -21,6 +27,10 @@ export const ProtectedRoute = ({ children, adminOnly = false, guestAllowed = fal
 
   if (adminOnly && user?.role !== UserRole.ADMIN) {
     // Redirect non-admin users trying to access admin routes
+    return <Navigate to="/" replace />;
+  }
+
+  if (allowedRoles && (!user || !allowedRoles.includes(user.role))) {
     return <Navigate to="/" replace />;
   }
 

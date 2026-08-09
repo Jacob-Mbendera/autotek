@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { UserRole } from '../types/shared';
 import { IShippingAddress } from './Order';
 
@@ -12,6 +12,8 @@ export interface IUser extends Document {
   resetToken?: string;
   resetTokenExpiry?: Date;
   tokenVersion: number;
+  /** Only meaningful when role === 'mechanic': links this login to the garage-side ServiceProvider record. */
+  serviceProvider?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +58,10 @@ const UserSchema = new Schema<IUser>(
     tokenVersion: {
       type: Number,
       default: 0,
+    },
+    serviceProvider: {
+      type: Schema.Types.ObjectId,
+      ref: 'ServiceProvider',
     },
   },
   {

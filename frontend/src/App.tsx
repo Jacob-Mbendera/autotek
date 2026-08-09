@@ -17,6 +17,7 @@ const CompareProducts = lazy(() => import('./pages/CompareProducts').then(m => (
 const ProductDetail = lazy(() => import('./pages/ProductDetail').then(m => ({ default: m.ProductDetail })));
 const BookService = lazy(() => import('./pages/BookService').then(m => ({ default: m.BookService })));
 const MyServices = lazy(() => import('./pages/MyServices').then(m => ({ default: m.MyServices })));
+const MyJobs = lazy(() => import('./pages/mechanic/MyJobs').then(m => ({ default: m.MyJobs })));
 const RequestPart = lazy(() => import('./pages/RequestPart').then(m => ({ default: m.RequestPart })));
 const MyPartRequests = lazy(() => import('./pages/MyPartRequests').then(m => ({ default: m.MyPartRequests })));
 const ServicePayment = lazy(() => import('./pages/ServicePayment').then(m => ({ default: m.ServicePayment })));
@@ -54,6 +55,7 @@ import { AdminLayout } from './components/AdminLayout';
 import { Toast } from './components/ui/Toast';
 import { CrossTabSync } from './components/CrossTabSync';
 import { AuthBootstrap } from './components/AuthBootstrap';
+import { UserRole } from '@shared/types';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -175,6 +177,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <MyServices />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mechanic/jobs"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.MECHANIC]}>
+              <Layout>
+                <MyJobs />
               </Layout>
             </ProtectedRoute>
           }

@@ -145,6 +145,14 @@ export const Header = () => {
                     </Button>
                   </Link>
                 )}
+                {user.role === UserRole.MECHANIC && (
+                  <Link to="/mechanic/jobs">
+                    <Button variant="ghost" size="small">
+                      <Wrench className="h-4 w-4 mr-2" />
+                      My Jobs
+                    </Button>
+                  </Link>
+                )}
                 <Link to="/profile">
                   <div className="flex items-center space-x-2 text-gray-700 hover:text-teal-600 transition-colors cursor-pointer">
                     <User className="h-5 w-5" />
@@ -212,6 +220,16 @@ export const Header = () => {
                     >
                       <Settings className="h-5 w-5" />
                       <span className="font-medium">Admin</span>
+                    </Link>
+                  )}
+                  {user.role === UserRole.MECHANIC && (
+                    <Link
+                      to="/mechanic/jobs"
+                      className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Wrench className="h-5 w-5" />
+                      <span className="font-medium">My Jobs</span>
                     </Link>
                   )}
                   <div className="px-4 py-2 border-t border-gray-200 mt-2">
