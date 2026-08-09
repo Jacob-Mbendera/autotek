@@ -519,8 +519,12 @@ export const rejectReturn = async (req: AuthRequest, res: Response): Promise<voi
     const { id } = req.params;
     const { adminNotes } = req.body;
 
-    if (!adminNotes || adminNotes.trim().length === 0) {
+    if (typeof adminNotes !== 'string' || adminNotes.trim().length === 0) {
       res.status(400).json({ message: 'Admin notes are required when rejecting a return' });
+      return;
+    }
+    if (adminNotes.trim().length > 2000) {
+      res.status(400).json({ message: 'Admin notes must be 2000 characters or fewer' });
       return;
     }
 
@@ -581,8 +585,8 @@ export const processRefund = async (req: AuthRequest, res: Response): Promise<vo
     // Use provided refund amount or calculated amount
     const finalRefundAmount = refundAmount !== undefined ? Number(refundAmount) : existing.refundAmount;
 
-    if (finalRefundAmount < 0) {
-      res.status(400).json({ message: 'Refund amount must be positive' });
+    if (!Number.isFinite(finalRefundAmount) || finalRefundAmount < 0) {
+      res.status(400).json({ message: 'Refund amount must be a positive number' });
       return;
     }
 
