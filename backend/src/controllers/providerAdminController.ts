@@ -253,13 +253,27 @@ export const listAdminPayouts = async (req: AuthRequest, res: Response): Promise
 
 export const markPayoutPaid = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const p = await ServicePayout.findByIdAndUpdate(
-      req.params.id,
+    const existing = await ServicePayout.findById(req.params.id);
+    if (!existing) {
+      res.status(404).json({ message: 'Payout not found' });
+      return;
+    }
+    if (existing.status === ServicePayoutStatus.VOIDED) {
+      res.status(400).json({
+        message: 'This payout was voided (service was cancelled and refunded) and cannot be marked paid',
+      });
+      return;
+    }
+
+    // Atomic guard: only transition PENDING -> PAID. Prevents paying an
+    // already-PAID payout again, or one that got voided in the same window.
+    const p = await ServicePayout.findOneAndUpdate(
+      { _id: req.params.id, status: ServicePayoutStatus.PENDING },
       { status: ServicePayoutStatus.PAID, paidAt: new Date() },
       { new: true }
     );
     if (!p) {
-      res.status(404).json({ message: 'Payout not found' });
+      res.status(409).json({ message: 'This payout is no longer pending' });
       return;
     }
     res.json(p);

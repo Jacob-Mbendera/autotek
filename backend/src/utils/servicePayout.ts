@@ -70,3 +70,20 @@ export async function createPayoutAfterPaymentSave(paymentId: string): Promise<v
   }
   await createServicePayoutIfNeeded(payment);
 }
+
+/**
+ * Voids a still-PENDING payout for a service that got cancelled and refunded after
+ * payment, so it can never be paid out. A payout that has already been marked PAID
+ * is left untouched — that money is already gone, this only prevents new payouts.
+ * No-ops cleanly if no payout was ever created (no provider was assigned).
+ */
+export async function voidServicePayoutIfPending(
+  serviceKind: 'towing' | 'car-service',
+  serviceId: string,
+  reason: string
+): Promise<void> {
+  await ServicePayout.updateOne(
+    { service: serviceId, serviceKind, status: ServicePayoutStatus.PENDING },
+    { status: ServicePayoutStatus.VOIDED, voidedAt: new Date(), voidReason: reason }
+  );
+}

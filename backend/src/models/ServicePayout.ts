@@ -10,6 +10,8 @@ export interface IServicePayout extends Document {
   amountMwk: number;
   status: ServicePayoutStatus;
   paidAt?: Date;
+  voidedAt?: Date;
+  voidReason?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +50,8 @@ const ServicePayoutSchema = new Schema<IServicePayout>(
       default: ServicePayoutStatus.PENDING,
     },
     paidAt: { type: Date },
+    voidedAt: { type: Date },
+    voidReason: { type: String, trim: true, maxlength: 500 },
     notes: { type: String, trim: true, maxlength: 2000 },
   },
   { timestamps: true }

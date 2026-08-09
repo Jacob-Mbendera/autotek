@@ -115,4 +115,5 @@ export enum ProviderVettingStatus {
 export enum ServicePayoutStatus {
   PENDING = 'pending',
   PAID = 'paid',
+  VOIDED = 'voided',
 }

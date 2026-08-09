@@ -8,6 +8,7 @@ import {
   CUSTOMER_REFUND_PENDING_MESSAGE,
   queueManualRefund,
 } from './paymentRefunds';
+import { voidServicePayoutIfPending } from './servicePayout';
 import { log } from './logger';
 
 export type ServiceRefundKind = 'towing' | 'car-service';
@@ -65,6 +66,26 @@ export async function processPaidServiceCancelRefund(params: {
     reason: reason || 'Service cancelled by customer',
     referenceId: serviceId,
   });
+
+  if (result.success) {
+    // Refund is now queued (or already was) for this service's payment — any
+    // still-pending payout for it must not be paid out. Already-PAID payouts
+    // are left alone; that's a separate reconciliation concern, not this guard.
+    try {
+      await voidServicePayoutIfPending(
+        kind,
+        serviceId,
+        reason || 'Service cancelled and refunded before payout'
+      );
+    } catch (voidError) {
+      log.error('Failed to void service payout after cancel refund', {
+        kind,
+        serviceId,
+        paymentId: payment._id.toString(),
+        error: voidError,
+      });
+    }
+  }
 
   return {
     attempted: true,
