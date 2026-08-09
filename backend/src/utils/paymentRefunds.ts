@@ -210,7 +210,8 @@ export async function processPayChanguRefund(params: {
 
 export async function completeManualRefund(
   paymentId: string,
-  notes?: string
+  notes?: string,
+  options?: { skipCustomerEmail?: boolean }
 ): Promise<ManualRefundResult> {
   const payment = await Payment.findById(paymentId);
   if (!payment) {
@@ -256,14 +257,10 @@ export async function completeManualRefund(
       { _id: payment.order },
       { paymentStatus: PaymentStatus.REFUNDED }
     );
-
-    await Return.updateMany(
-      {
-        order: payment.order,
-        refundStatus: { $in: ['pending', 'processing'] },
-      },
-      { refundStatus: 'completed', status: 'completed' }
-    );
+    // Any Return docs on this order are completed individually via
+    // completeReturnRefund (below), each using its own refundAmount — not
+    // blanket-completed here, since this Payment may cover multiple returns
+    // whose actual PayChangu-side refund status can differ per return.
   }
   if (payment.towingService) {
     await TowingService.updateOne(
@@ -278,47 +275,52 @@ export async function completeManualRefund(
     );
   }
 
-  try {
-    let customerEmail = '';
-    let customerName = 'Customer';
-    let referenceLabel = payment._id.toString().slice(-8).toUpperCase();
+  if (!options?.skipCustomerEmail) {
+    // When called as an order-closeout side effect of completeReturnRefund,
+    // each underlying Return already emailed the customer for its own
+    // amount — sending this too would double-notify for the same money.
+    try {
+      let customerEmail = '';
+      let customerName = 'Customer';
+      let referenceLabel = payment._id.toString().slice(-8).toUpperCase();
 
-    if (payment.order) {
-      const order = await Order.findById(payment.order);
-      if (order) {
-        referenceLabel = order._id.toString().slice(-8).toUpperCase();
-        if (order.user) {
-          const user = await User.findById(order.user);
+      if (payment.order) {
+        const order = await Order.findById(payment.order);
+        if (order) {
+          referenceLabel = order._id.toString().slice(-8).toUpperCase();
+          if (order.user) {
+            const user = await User.findById(order.user);
+            customerEmail = user?.email || '';
+            customerName = user?.name || customerName;
+          } else if (order.guestInfo?.email) {
+            customerEmail = order.guestInfo.email;
+            customerName = order.guestInfo.name || customerName;
+          }
+        }
+      } else if (payment.towingService || payment.carService) {
+        const serviceId = payment.towingService || payment.carService;
+        const service = payment.towingService
+          ? await TowingService.findById(serviceId)
+          : await CarService.findById(serviceId);
+        if (service) {
+          referenceLabel = service._id.toString().slice(-8).toUpperCase();
+          const user = await User.findById(service.user);
           customerEmail = user?.email || '';
           customerName = user?.name || customerName;
-        } else if (order.guestInfo?.email) {
-          customerEmail = order.guestInfo.email;
-          customerName = order.guestInfo.name || customerName;
         }
       }
-    } else if (payment.towingService || payment.carService) {
-      const serviceId = payment.towingService || payment.carService;
-      const service = payment.towingService
-        ? await TowingService.findById(serviceId)
-        : await CarService.findById(serviceId);
-      if (service) {
-        referenceLabel = service._id.toString().slice(-8).toUpperCase();
-        const user = await User.findById(service.user);
-        customerEmail = user?.email || '';
-        customerName = user?.name || customerName;
-      }
-    }
 
-    if (customerEmail) {
-      await emailService.sendManualRefundCompletedEmail({
-        email: customerEmail,
-        customerName,
-        referenceLabel,
-        refundAmount: payment.amount,
-      });
+      if (customerEmail) {
+        await emailService.sendManualRefundCompletedEmail({
+          email: customerEmail,
+          customerName,
+          referenceLabel,
+          refundAmount: payment.amount,
+        });
+      }
+    } catch (emailError) {
+      log.error('Failed to send customer refund-completed email', emailError);
     }
-  } catch (emailError) {
-    log.error('Failed to send customer refund-completed email', emailError);
   }
 
   log.info('Manual refund marked completed', {
@@ -335,6 +337,133 @@ export async function completeManualRefund(
     chargeId: payment.chargeId,
     message: 'Refund marked as completed',
   };
+}
+
+export interface CompleteReturnRefundResult {
+  success: boolean;
+  message: string;
+  error?: string;
+  return?: unknown;
+}
+
+/**
+ * Marks ONE Return's refund as completed, using that return's own refundAmount —
+ * never the shared order Payment.amount, which can cover multiple returns.
+ *
+ * Once this return is completed, checks whether the sum of all completed
+ * returns on the order now covers the full Payment.amount; if so, the shared
+ * Payment/Order are also flipped to REFUNDED (reusing completeManualRefund's
+ * entity-update logic below). If the sum is still short, the Payment stays
+ * REFUND_PENDING — correctly reflecting that some of the order is still owed.
+ */
+export async function completeReturnRefund(
+  returnId: string,
+  notes?: string
+): Promise<CompleteReturnRefundResult> {
+  const existing = await Return.findById(returnId);
+  if (!existing) {
+    return { success: false, message: 'Return not found', error: 'Invalid return ID' };
+  }
+
+  if (existing.refundStatus === 'completed') {
+    return { success: true, message: 'Refund already marked completed', return: existing };
+  }
+
+  if (existing.refundStatus !== 'processing') {
+    return {
+      success: false,
+      message: 'Only returns with a refund queued (processing) can be marked completed',
+      error: `Return refundStatus is ${existing.refundStatus}`,
+    };
+  }
+
+  // Atomic guard against double-completion, same pattern used when the refund
+  // was first queued (returnController.processRefund).
+  const claimed = await Return.findOneAndUpdate(
+    { _id: returnId, refundStatus: 'processing' },
+    {
+      $set: {
+        refundStatus: 'completed',
+        status: 'completed',
+        refundCompletedAt: new Date(),
+        ...(notes?.trim()
+          ? { adminNotes: `${existing.adminNotes ? existing.adminNotes + ' | ' : ''}Admin: ${notes.trim()}` }
+          : {}),
+      },
+    },
+    { new: true }
+  );
+
+  if (!claimed) {
+    return {
+      success: false,
+      message: 'This refund is already being processed or has completed',
+      error: 'Concurrent update',
+    };
+  }
+
+  try {
+    const order = await Order.findById(claimed.order);
+    if (order) {
+      let customerEmail = '';
+      let customerName = 'Customer';
+      if (order.user) {
+        const user = await User.findById(order.user);
+        customerEmail = user?.email || '';
+        customerName = user?.name || customerName;
+      } else if (order.guestInfo?.email) {
+        customerEmail = order.guestInfo.email;
+        customerName = order.guestInfo.name || customerName;
+      }
+      if (customerEmail) {
+        await emailService.sendManualRefundCompletedEmail({
+          email: customerEmail,
+          customerName,
+          referenceLabel: order._id.toString().slice(-8).toUpperCase(),
+          refundAmount: claimed.refundAmount,
+        });
+      }
+    }
+  } catch (emailError) {
+    log.error('Failed to send customer refund-completed email for return', emailError);
+  }
+
+  // If every return on this order is now settled and their amounts cover the
+  // full payment, close out the shared Payment/Order too.
+  try {
+    const payment = await Payment.findOne({ order: claimed.order, type: 'order' }).sort({
+      createdAt: -1,
+    });
+    if (payment && payment.status === PaymentStatus.REFUND_PENDING) {
+      const stillOpen = await Return.exists({
+        order: claimed.order,
+        refundStatus: { $in: ['pending', 'processing'] },
+      });
+      if (!stillOpen) {
+        const completedReturns = await Return.find({
+          order: claimed.order,
+          refundStatus: 'completed',
+        }).select('refundAmount');
+        const totalRefunded = completedReturns.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
+        if (totalRefunded >= payment.amount) {
+          await completeManualRefund(payment._id.toString(), undefined, { skipCustomerEmail: true });
+        }
+      }
+    }
+  } catch (closeoutError) {
+    log.error('Failed to check/close out order Payment after return refund completion', {
+      returnId,
+      error: closeoutError,
+    });
+  }
+
+  log.info('Return refund marked completed', {
+    returnId,
+    orderId: claimed.order?.toString(),
+    amount: claimed.refundAmount,
+  });
+
+  return { success: true, message: 'Refund marked as completed', return: claimed };
 }
 
 /** Unused stub kept for older callers. */

@@ -23,6 +23,7 @@ export interface IReturn extends Document {
   refundAmount: number;
   refundMethod: RefundMethod;
   refundStatus: RefundStatus;
+  refundCompletedAt?: Date;
   shippingLabel?: string;
   adminNotes?: string;
   createdAt: Date;
@@ -118,6 +119,9 @@ const ReturnSchema = new Schema(
       type: String,
       enum: ['pending', 'processing', 'completed', 'failed'],
       default: 'pending',
+    },
+    refundCompletedAt: {
+      type: Date,
     },
     shippingLabel: {
       type: String,

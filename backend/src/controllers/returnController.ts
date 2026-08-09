@@ -425,13 +425,17 @@ export const cancelReturn = async (req: AuthRequest, res: Response): Promise<voi
 // Admin endpoints
 export const getAllReturns = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, startDate, endDate, page = 1, limit = 20 } = req.query;
+    const { status, startDate, endDate, orderId, page = 1, limit = 20 } = req.query;
 
     let query: any = {};
 
     const validReturnStatuses = ['pending', 'approved', 'rejected', 'completed', 'cancelled'];
     if (status && validReturnStatuses.includes(status as string)) {
       query.status = status;
+    }
+
+    if (orderId && typeof orderId === 'string') {
+      query.order = orderId;
     }
 
     if (startDate || endDate) {

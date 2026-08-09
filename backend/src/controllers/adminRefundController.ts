@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Payment from '../models/Payment';
 import { PaymentStatus } from '../types/shared';
-import { completeManualRefund } from '../utils/paymentRefunds';
+import { completeManualRefund, completeReturnRefund } from '../utils/paymentRefunds';
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -90,6 +90,35 @@ export const completeAdminRefund = async (req: AuthRequest, res: Response): Prom
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to complete refund';
+    res.status(500).json({ message });
+  }
+};
+
+export const completeAdminReturnRefund = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!id) {
+      res.status(400).json({ message: 'Return ID is required' });
+      return;
+    }
+    const notes = typeof req.body?.notes === 'string' ? req.body.notes : undefined;
+
+    const result = await completeReturnRefund(id, notes);
+
+    if (!result.success) {
+      res.status(400).json({
+        message: result.message,
+        error: result.error,
+      });
+      return;
+    }
+
+    res.json({
+      return: result.return,
+      message: result.message,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to complete return refund';
     res.status(500).json({ message });
   }
 };

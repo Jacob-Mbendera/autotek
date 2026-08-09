@@ -9,6 +9,7 @@ import {
   rejectReturn,
   processRefund,
 } from '../controllers/returnController';
+import { completeAdminReturnRefund } from '../controllers/adminRefundController';
 import { authMiddleware, adminMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import { uploadMultiple } from '../middleware/upload';
 
@@ -29,3 +30,4 @@ adminReturnRouter.get('/', authMiddleware, adminMiddleware, getAllReturns);
 adminReturnRouter.put('/:id/approve', authMiddleware, adminMiddleware, approveReturn);
 adminReturnRouter.put('/:id/reject', authMiddleware, adminMiddleware, rejectReturn);
 adminReturnRouter.post('/:id/refund', authMiddleware, adminMiddleware, processRefund);
+adminReturnRouter.patch('/:id/complete-refund', authMiddleware, adminMiddleware, completeAdminReturnRefund);

@@ -5,6 +5,10 @@ import {
   useCompleteAdminRefundMutation,
   type AdminRefundPayment,
 } from '../../store/api/refundApi';
+import {
+  useGetAllReturnsQuery,
+  useCompleteReturnRefundMutation,
+} from '../../store/api/returnApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
 import { getErrorInfo } from '../../utils/errorHandler';
@@ -71,6 +75,7 @@ export const AdminRefunds = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('refund_pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [completeTarget, setCompleteTarget] = useState<AdminRefundPayment | null>(null);
+  const [completeReturnId, setCompleteReturnId] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useGetAdminRefundsQuery(
     {
@@ -82,6 +87,23 @@ export const AdminRefunds = () => {
     adminListQueryOptions
   );
   const [completeRefund, { isLoading: isCompleting }] = useCompleteAdminRefundMutation();
+  const [completeReturnRefund, { isLoading: isCompletingReturn }] = useCompleteReturnRefundMutation();
+
+  // Order-type refunds can be backed by one or more Returns, each with its own
+  // refundAmount — only the modal for an order-type target needs this, fetched
+  // on demand rather than per-row for every payment in the list.
+  const completeTargetOrderId =
+    completeTarget?.type === 'order' && completeTarget.order && typeof completeTarget.order === 'object'
+      ? completeTarget.order._id
+      : undefined;
+  const { data: linkedReturnsData, isFetching: isLoadingLinkedReturns } = useGetAllReturnsQuery(
+    completeTargetOrderId ? { orderId: completeTargetOrderId, limit: 50 } : undefined,
+    { skip: !completeTargetOrderId }
+  );
+  const returnsAwaitingCompletion = (linkedReturnsData?.returns ?? []).filter(
+    (r) => r.refundStatus === 'processing'
+  );
+  const hasLinkedReturns = Boolean(completeTargetOrderId) && returnsAwaitingCompletion.length > 0;
 
   const refunds = data?.refunds ?? [];
   const pagination = data?.pagination;
@@ -103,6 +125,25 @@ export const AdminRefunds = () => {
       refetch();
     } catch (error) {
       const errorInfo = getErrorInfo(error, 'Failed to mark refund completed');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
+  const handleCompleteReturn = async (returnId: string) => {
+    try {
+      const result = await completeReturnRefund({ id: returnId }).unwrap();
+      dispatch(
+        showNotification({
+          message: result.message || 'Return refund marked as completed',
+          type: 'success',
+        })
+      );
+      setCompleteReturnId(null);
+      // If that was the last open return, the order/payment may now also be
+      // fully refunded server-side — refresh the payments list to reflect it.
+      refetch();
+    } catch (error) {
+      const errorInfo = getErrorInfo(error, 'Failed to mark return refund completed');
       dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
@@ -308,23 +349,91 @@ export const AdminRefunds = () => {
         ) : null}
       </AdminCard>
 
-      <ConfirmationModal
-        isOpen={Boolean(completeTarget)}
-        onClose={() => {
-          setCompleteTarget(null);
-        }}
-        onConfirm={handleComplete}
-        title="Mark refund completed"
-        confirmText="Mark completed"
-        variant="success"
-        dark
-        isLoading={isCompleting}
-        message={
-          completeTarget
-            ? `Confirm you already refunded MWK ${completeTarget.amount.toLocaleString()} in the PayChangu dashboard for transaction ${completeTarget.transactionId || 'N/A'}. The customer will be emailed that the refund is complete.`
-            : ''
-        }
-      />
+      {completeTarget && completeTargetOrderId && isLoadingLinkedReturns ? (
+        <ConfirmationModal
+          isOpen
+          onClose={() => setCompleteTarget(null)}
+          onConfirm={() => {}}
+          title="Mark refund completed"
+          confirmText="Mark completed"
+          variant="success"
+          dark
+          confirmDisabled
+          message="Checking this order for linked returns…"
+        />
+      ) : completeTarget && hasLinkedReturns ? (
+        <ConfirmationModal
+          isOpen
+          onClose={() => setCompleteTarget(null)}
+          onConfirm={() => {}}
+          title="Complete return refunds"
+          confirmText="Close"
+          variant="success"
+          dark
+          confirmDisabled
+          message={
+            <div className="space-y-3 text-left">
+              <p>
+                This order has {returnsAwaitingCompletion.length} return
+                {returnsAwaitingCompletion.length === 1 ? '' : 's'} with a refund queued. Complete each
+                one individually below — this order's payment total (MWK{' '}
+                {completeTarget.amount.toLocaleString()}) covers all of them, but each return may only be
+                for part of that amount.
+              </p>
+              <div className="space-y-2">
+                {returnsAwaitingCompletion.map((r) => (
+                  <div
+                    key={r._id}
+                    className="flex items-center justify-between gap-3 rounded border border-gray-700 bg-gray-900/60 p-3"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-100">
+                        Return #{r._id.slice(-8).toUpperCase()}
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        MWK {r.refundAmount.toLocaleString()} — {r.returnReason}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isCompletingReturn && completeReturnId !== r._id}
+                      onClick={() => {
+                        setCompleteReturnId(r._id);
+                        handleCompleteReturn(r._id);
+                      }}
+                    >
+                      {isCompletingReturn && completeReturnId === r._id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Mark completed'
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          }
+        />
+      ) : (
+        <ConfirmationModal
+          isOpen={Boolean(completeTarget)}
+          onClose={() => {
+            setCompleteTarget(null);
+          }}
+          onConfirm={handleComplete}
+          title="Mark refund completed"
+          confirmText="Mark completed"
+          variant="success"
+          dark
+          isLoading={isCompleting}
+          message={
+            completeTarget
+              ? `Confirm you already refunded MWK ${completeTarget.amount.toLocaleString()} in the PayChangu dashboard for transaction ${completeTarget.transactionId || 'N/A'}. The customer will be emailed that the refund is complete.`
+              : ''
+          }
+        />
+      )}
     </div>
   );
 };

@@ -232,7 +232,7 @@ export const returnApi = baseApi.injectEndpoints({
       },
     }),
     // Admin endpoints
-    getAllReturns: builder.query<ReturnsResponse, { status?: ReturnStatus; startDate?: string; endDate?: string; page?: number; limit?: number } | void>({
+    getAllReturns: builder.query<ReturnsResponse, { status?: ReturnStatus; startDate?: string; endDate?: string; orderId?: string; page?: number; limit?: number } | void>({
       query: (params) => {
         if (!params) {
           return '/admin/returns';
@@ -241,6 +241,7 @@ export const returnApi = baseApi.injectEndpoints({
         if (params.status) searchParams.append('status', params.status);
         if (params.startDate) searchParams.append('startDate', params.startDate);
         if (params.endDate) searchParams.append('endDate', params.endDate);
+        if (params.orderId) searchParams.append('orderId', params.orderId);
         if (params.page) searchParams.append('page', params.page.toString());
         if (params.limit) searchParams.append('limit', params.limit.toString());
 
@@ -293,6 +294,22 @@ export const returnApi = baseApi.injectEndpoints({
         'Return',
       ],
     }),
+    completeReturnRefund: builder.mutation<{ return: Return; message: string }, { id: string; notes?: string }>({
+      query: ({ id, notes }) => ({
+        url: `/admin/returns/${id}/complete-refund`,
+        method: 'PATCH',
+        body: notes ? { notes } : {},
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Return', id },
+        { type: 'Return', id: 'LIST' },
+        'Return',
+        'AdminRefunds',
+        'Order',
+        'Admin',
+        'Payment',
+      ],
+    }),
   }),
 });
 
@@ -305,4 +322,5 @@ export const {
   useApproveReturnMutation,
   useRejectReturnMutation,
   useProcessRefundMutation,
+  useCompleteReturnRefundMutation,
 } = returnApi;
