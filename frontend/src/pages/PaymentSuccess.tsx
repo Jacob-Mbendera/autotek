@@ -15,7 +15,7 @@ import {
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { H1, Body } from '../components/ui/Typography';
-import { CheckCircle, Package, Loader2, Truck, Wrench } from 'lucide-react';
+import { CheckCircle, Package, Loader2, Truck, Wrench, AlertTriangle } from 'lucide-react';
 import { PaymentStatus } from '@shared/types';
 
 type ServiceVerifyState = 'idle' | 'loading' | 'success' | 'error';
@@ -40,6 +40,7 @@ export const PaymentSuccess = () => {
 
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [verificationTimedOut, setVerificationTimedOut] = useState(false);
   const maxVerificationAttempts = 5;
   const hasClearedCartRef = useRef(false);
 
@@ -162,6 +163,12 @@ export const PaymentSuccess = () => {
         clearCartOnce();
       } else if (payment.status === PaymentStatus.FAILED) {
         navigate(`/payment/cancel?orderId=${orderId}`);
+      } else if (payment.status === PaymentStatus.PENDING && verificationAttempts >= maxVerificationAttempts) {
+        // Gateway never confirmed the payment after repeated checks (e.g. the
+        // customer's card was declined and PayChangu never redirected back
+        // with a success result). Stop polling and tell the customer instead
+        // of leaving them on an infinite "Verifying Payment" spinner.
+        setVerificationTimedOut(true);
       } else if (
         payment.status === PaymentStatus.PENDING &&
         verificationAttempts < maxVerificationAttempts
@@ -342,6 +349,53 @@ export const PaymentSuccess = () => {
 
   const order = orderData?.order;
   const payment = paymentData?.payment;
+
+  if (verificationTimedOut && payment?.status === PaymentStatus.PENDING && !paymentVerified) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Card variant="md" className="text-center">
+          <AlertTriangle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+          <H1 className="text-2xl font-bold text-gray-900 mb-2">We couldn't confirm your payment</H1>
+          <Body className="text-gray-600 mb-6">
+            Your payment hasn't gone through yet, or the card issuer declined it. If money was taken
+            from your account, it will be refunded automatically — no charge was recorded on this order.
+            You can try paying again or contact support with your order reference.
+          </Body>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left text-sm space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Order ID:</span>
+              <span className="font-medium text-gray-900">{orderId?.slice(0, 8)}...</span>
+            </div>
+            {payment?.transactionId && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Transaction ID:</span>
+                <span className="font-medium text-gray-900 font-mono text-xs">
+                  {payment.transactionId}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              variant="primary"
+              onClick={() =>
+                navigate(
+                  email ? `/orders/${orderId}?email=${encodeURIComponent(email)}` : `/orders/${orderId}`
+                )
+              }
+            >
+              View Order
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/products')}>
+              Continue Shopping
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

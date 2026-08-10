@@ -141,6 +141,11 @@ export const AdminRefunds = () => {
       setCompleteReturnId(null);
       // If that was the last open return, the order/payment may now also be
       // fully refunded server-side — refresh the payments list to reflect it.
+      // Close the modal rather than letting it fall through to the
+      // whole-payment confirmation dialog once no linked returns remain.
+      if (returnsAwaitingCompletion.length <= 1) {
+        setCompleteTarget(null);
+      }
       refetch();
     } catch (error) {
       const errorInfo = getErrorInfo(error, 'Failed to mark return refund completed');
@@ -415,9 +420,9 @@ export const AdminRefunds = () => {
             </div>
           }
         />
-      ) : (
+      ) : completeTarget && !completeTargetOrderId ? (
         <ConfirmationModal
-          isOpen={Boolean(completeTarget)}
+          isOpen
           onClose={() => {
             setCompleteTarget(null);
           }}
@@ -427,13 +432,9 @@ export const AdminRefunds = () => {
           variant="success"
           dark
           isLoading={isCompleting}
-          message={
-            completeTarget
-              ? `Confirm you already refunded MWK ${completeTarget.amount.toLocaleString()} in the PayChangu dashboard for transaction ${completeTarget.transactionId || 'N/A'}. The customer will be emailed that the refund is complete.`
-              : ''
-          }
+          message={`Confirm you already refunded MWK ${completeTarget.amount.toLocaleString()} in the PayChangu dashboard for transaction ${completeTarget.transactionId || 'N/A'}. The customer will be emailed that the refund is complete.`}
         />
-      )}
+      ) : null}
     </div>
   );
 };
