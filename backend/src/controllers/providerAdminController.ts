@@ -17,6 +17,7 @@ import { countActiveAssignmentsForProvider } from '../utils/serviceProviderAssig
 import { parsePagination, createPaginationResponse } from '../utils/pagination';
 import { hashPassword } from '../utils/password';
 import { emailService } from '../services/emailService';
+import { escapeRegex } from '../../../shared/utils/regex';
 
 export const listGarages = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -27,7 +28,7 @@ export const listGarages = async (req: AuthRequest, res: Response): Promise<void
     });
     const q: Record<string, unknown> = {};
     if (search && typeof search === 'string') {
-      const r = new RegExp(search, 'i');
+      const r = new RegExp(escapeRegex(search), 'i');
       q.$or = [{ name: r }, { town: r }, { contactPhone: r }];
     }
     const [items, total] = await Promise.all([
@@ -111,7 +112,7 @@ export const listServiceProviders = async (req: AuthRequest, res: Response): Pro
       q.garage = garageId;
     }
     if (search && typeof search === 'string') {
-      const r = new RegExp(search, 'i');
+      const r = new RegExp(escapeRegex(search), 'i');
       q.$or = [{ name: r }, { phone: r }, { whatsAppPhone: r }];
     }
     const [items, total] = await Promise.all([

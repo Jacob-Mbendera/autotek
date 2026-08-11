@@ -113,7 +113,7 @@ In `createOrder`, when an unauthenticated request supplies `guestInfo` + `passwo
 ---
 
 ### 9. Admin product edit modal never re-syncs with the polling cache while open
-**Domain:** Frontend State · **Fixable now:** Yes
+**Domain:** Frontend State · **Fixable now:** Yes · **Status: Fixed** (2026-08-11, see "Product edit concurrency guard + ReDoS fix" below — scope narrowed on reinvestigation, see that section)
 
 `admin/Products.tsx` snapshots the clicked product row into `useState` (`editingProduct`, `formData`) when the edit modal opens (`Products.tsx:134-152`), but the underlying list query polls every 30s. There is no effect that re-syncs the open modal's form state from the refreshed cache.
 
@@ -129,7 +129,7 @@ In `createOrder`, when an unauthenticated request supplies `guestInfo` + `passwo
 |---|---------|--------|--------------|
 | 10 | `useVerifyPaymentMutation` calls a non-existent route `POST /payments/verify` — every retry-verification call 404s silently | Orders & Payments | Yes |
 | 11 | `completeAdminRefund` only invalidates the `AdminRefunds` cache tag, leaving Order/Admin/Payment views showing stale `paymentStatus` after a refund completes | Orders & Payments | Yes |
-| 12 | Admin custom-order search builds `new RegExp(search, 'i')` from unescaped user input — ReDoS risk (sibling suggestions endpoint already escapes correctly) | Custom Orders / Fitment | Yes |
+| 12 | Admin custom-order search builds `new RegExp(search, 'i')` from unescaped user input — ReDoS risk (sibling suggestions endpoint already escapes correctly) | Custom Orders / Fitment | **Fixed** (2026-08-11) — see "Product edit concurrency guard + ReDoS fix" below |
 | 13 | Service ETA (`estimatedArrivalAt`) accepts any parseable date including past dates — no plausibility check, silently shown to customers as live tracking | Car Services | Yes |
 | 14 | **Returns Quick Actions stale UI** — already documented as a known issue; root cause confirmed: no polling fallback on the returns query, and order-status polling is explicitly disabled once status is `completed` (the exact state needed for return actions to show) | Returns & Refunds | Yes |
 | 15 | No unique constraint/atomic guard on return creation — check-then-act race lets a double-click create two `Return` docs for the same order | Returns & Refunds | Yes |
@@ -168,6 +168,8 @@ Per the agreed scope: fix every **fixable now** item as a clear bug; leave every
 **Left for follow-up (originally documented, not touched at the time — all since resolved, see below):** #20, #25, #27.
 
 **Fixed in a later pass (2026-08-09):** #17 and #18 — see "httpOnly cookie + token revocation migration" below. #5 and #6 — see "Payout clawback + per-return refund completion" below. #20 and #25 — see "Follow-up fixes" below. #27 — see "Mechanic role feature" below.
+
+**Fixed in a later pass (2026-08-11):** #9 and #12 — see "Product edit concurrency guard + ReDoS fix" below.
 
 **No action needed:** #26 (verified correct — payment-before-in-progress is properly server-enforced).
 
@@ -308,3 +310,21 @@ Found during an end-to-end edge-case pass covering partial refunds, payment fail
 - Live browser, real PayChangu sandbox: created a fresh 2-item order (MWK 180,000 + MWK 20,000), completed two sequential returns on it — after completing the first, Payment/Order correctly stayed `refund_pending`; after completing the second (the last one open), the modal closed cleanly with no fallthrough dialog and Payment/Order correctly flipped to `refunded`. Confirmed via MongoDB after each step.
 - Live browser, real PayChangu sandbox: repeated a declined-card checkout (`4000 0000 0000 0002`, fresh order, MWK 180,000), navigated to `/payment/success` as the customer would after a manual back-navigation, watched the "Verifying Payment" spinner run through its attempts and correctly transition to the new "We couldn't confirm your payment" screen after ~10 seconds. Immediately re-ran a full successful checkout afterward (same order shape, successful test card) to confirm the fix didn't regress the legitimate success path — payment correctly showed "Paid" with no interference from the new failure-state logic.
 - All test data (users, orders, payments, returns) created for this verification was removed from the database afterward.
+
+---
+
+## Product edit concurrency guard + ReDoS fix (2026-08-11) — fixes #9 and #12
+
+Found while re-verifying deployment readiness against live source rather than trusting this document's per-finding status markers — several items marked as open here (#1, #2, #4, #7, #8) turned out to already be fixed in earlier commits with the status column simply never updated; #9 and #12 were the only two genuinely still-open items from a full re-check of the Critical/High/Medium/Low tables.
+
+**#9 — reinvestigated scope.** The original finding assumed the hazard was a background poll silently overwriting the open edit modal's form state. On reinvestigation, `useAdminListQueryOptions(undefined, showModal)` already pauses the products list query's polling, refetch-on-focus, and refetch-on-reconnect while the modal is open — so a background poll cannot clobber an open modal's snapshot. The real, current risk is narrower: the modal's snapshot is only ever as fresh as when it was opened, and there is no way to detect that a *different* admin (or the same admin in another tab) saved a change to the same product in the interim — a save from the stale modal would still silently overwrite that other change. Scoped the fix accordingly (user selected the minimal option over a full atomic-rewrite or a deferred fix, given `updateProduct`'s added complexity from multipart file uploads and Cloudinary deletes versus the simpler JSON-only custom-order case #25 already solved).
+
+- `backend/src/controllers/productController.ts` (`updateProduct`): reused the `expectedUpdatedAt` optimistic-lock pattern from #25. Added a guard immediately after the `Product.findById`/404 check — if the client sent `expectedUpdatedAt` and it doesn't match the product's real `updatedAt`, the request is rejected with `409` ("This product was changed by someone else. Refresh and try again.") before any upload/delete side effects run (`cleanupUploadedFiles` is called on this path so no temp files are orphaned). The existing final write, `Product.findByIdAndUpdate(..., { new: true, runValidators: true })`, was already atomic — no change needed there.
+- `frontend/src/store/api/productApi.ts`: `UpdateProductRequest` gained an optional `expectedUpdatedAt`; the existing generic form-data serialization already forwards it with no other change.
+- `frontend/src/pages/admin/Products.tsx`: the edit-submit path now sends `expectedUpdatedAt: editingProduct.updatedAt`; a `409` response triggers a refetch of the product list so the admin sees the real current state instead of silently losing their edit with no explanation.
+
+**#12 — ReDoS in provider admin search.** `providerAdminController.ts` built `new RegExp(search, 'i')` directly from unescaped user input in both `listGarages` and `listServiceProviders` (the sibling `/products` and custom-order search endpoints already escaped correctly per #19). Fixed by routing both call sites through the existing shared `escapeRegex` utility (`shared/utils/regex.ts`), the same fix already applied elsewhere in the codebase for #19.
+
+**Verification:**
+- Live curl: logged in as a test admin, fetched a real product ("Bosch Brake Pads") and captured its `updatedAt` as the "modal just opened" snapshot. Simulated a concurrent edit from elsewhere (`stock: 999`, which moved `updatedAt` forward) — succeeded normally. Replayed a save using the original, now-stale `expectedUpdatedAt`: rejected with `409` and the expected message; confirmed via a follow-up fetch that `stock` remained `999` (the concurrent edit's value), not silently overwritten by the stale save.
+- Test admin account and scratch credentials created for this verification were removed afterward. The real product's `stock` was left at `999` from the concurrent-edit simulation (the pre-test value wasn't captured before the simulation ran) — flagged for a manual correction via the admin UI rather than guessed at.

@@ -92,7 +92,7 @@ export const AdminProducts = () => {
 
   const adminListQueryOptions = useAdminListQueryOptions(undefined, showModal);
 
-  const { data, isLoading } = useGetProductsQuery(
+  const { data, isLoading, refetch } = useGetProductsQuery(
     {
       page,
       limit,
@@ -310,7 +310,10 @@ export const AdminProducts = () => {
       };
 
       if (editingProduct) {
-        await updateProduct({ id: editingProduct._id, data: productData }).unwrap();
+        await updateProduct({
+          id: editingProduct._id,
+          data: { ...productData, expectedUpdatedAt: editingProduct.updatedAt },
+        }).unwrap();
         dispatch(showNotification({ message: 'Product updated successfully', type: 'success' }));
       } else {
         await createProduct(productData).unwrap();
@@ -323,6 +326,9 @@ export const AdminProducts = () => {
         message: errorInfo.message,
         type: 'error',
       }));
+      if (errorInfo.statusCode === 409) {
+        await refetch();
+      }
     }
   };
 

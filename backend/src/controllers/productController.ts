@@ -424,6 +424,23 @@ export const updateProduct = async (req: MulterRequest, res: Response): Promise<
       return;
     }
 
+    // Reject a save based on a stale snapshot (e.g. an edit modal left open while
+    // another admin's edit or a background poll changed this product) before any
+    // upload/delete side effects run, rather than silently overwriting the newer data.
+    const expectedUpdatedAt = req.body.expectedUpdatedAt;
+    if (
+      expectedUpdatedAt !== undefined &&
+      expectedUpdatedAt !== null &&
+      expectedUpdatedAt !== '' &&
+      new Date(String(expectedUpdatedAt)).getTime() !== product.updatedAt.getTime()
+    ) {
+      cleanupUploadedFiles(req);
+      res.status(409).json({
+        message: 'This product was changed by someone else. Refresh and try again.',
+      });
+      return;
+    }
+
     const uploadedEntries: { url: string; blurDataUrl: string }[] = [];
     const imagesToDelete: string[] = [];
     let fitmentFields: Record<string, unknown>;

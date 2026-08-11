@@ -85,6 +85,8 @@ interface CreateProductRequest {
 
 interface UpdateProductRequest extends Partial<CreateProductRequest> {
   images?: File[];
+  /** The product's updatedAt as last seen by this client — lets the server reject a save based on a stale snapshot. */
+  expectedUpdatedAt?: string;
 }
 
 const appendProductFormData = (
