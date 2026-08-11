@@ -163,13 +163,13 @@ In `createOrder`, when an unauthenticated request supplies `guestInfo` + `passwo
 
 Per the agreed scope: fix every **fixable now** item as a clear bug; leave every **not fixable now** item documented above for a deliberate follow-up decision rather than silently patched.
 
-**Fixed:** #1, #2, #3 (deferred to end, resolved against live PayChangu docs), #4, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #19, #21, #22, #23, #24, #28, #29, #30, #31. All 22 fixable-now items are complete.
+**Fixed:** #1, #2, #3 (deferred to end, resolved against live PayChangu docs), #4, #7, #8, #10, #11, #13, #14, #15, #16, #19, #21, #22, #23, #24, #28, #29, #30, #31.
 
-**Left for follow-up (originally documented, not touched at the time — all since resolved, see below):** #20, #25, #27.
+**Left for follow-up (originally documented, not touched at the time — all since resolved, see below):** #9, #12, #20, #25, #27.
 
 **Fixed in a later pass (2026-08-09):** #17 and #18 — see "httpOnly cookie + token revocation migration" below. #5 and #6 — see "Payout clawback + per-return refund completion" below. #20 and #25 — see "Follow-up fixes" below. #27 — see "Mechanic role feature" below.
 
-**Fixed in a later pass (2026-08-11):** #9 and #12 — see "Product edit concurrency guard + ReDoS fix" below.
+**Fixed in a later pass (2026-08-11):** #9 and #12 — see "Product edit concurrency guard + ReDoS fix" below. Re-verified in a second curl + live-browser pass the same day, including a real conflict reproduction in the Chrome admin UI — see the "second pass" verification entry in that section.
 
 **No action needed:** #26 (verified correct — payment-before-in-progress is properly server-enforced).
 
