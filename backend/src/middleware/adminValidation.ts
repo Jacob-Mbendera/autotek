@@ -1,4 +1,4 @@
-import { body, query } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import {
   OrderStatus,
   CustomOrderStatus,
@@ -250,4 +250,65 @@ export const validateUpdateServiceProvider = [
     .trim()
     .isLength({ max: 2000 })
     .withMessage('Certification note must be 2000 characters or fewer'),
+];
+
+export const validateMarkPayoutPaid = [
+  param('id').isMongoId().withMessage('Invalid payout ID format'),
+];
+
+export const validateCompleteAdminRefund = [
+  param('id').isMongoId().withMessage('Invalid payment ID format'),
+  body('notes')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Notes must be 1000 characters or fewer'),
+];
+
+export const validateDeleteMediaAsset = [
+  param('id').isMongoId().withMessage('Invalid media asset ID format'),
+];
+
+export const validateUpdateOrderStatus = [
+  param('id').isMongoId().withMessage('Invalid order ID format'),
+  body('status')
+    .trim()
+    .notEmpty()
+    .withMessage('Status is required')
+    .isIn(Object.values(OrderStatus))
+    .withMessage('Invalid order status'),
+  body('cancelReason')
+    .if(body('status').equals(OrderStatus.CANCELLED))
+    .trim()
+    .isLength({ min: 3, max: 500 })
+    .withMessage('Cancel reason must be between 3 and 500 characters'),
+];
+
+export const validateUpdateCustomOrder = [
+  param('id').isMongoId().withMessage('Invalid custom order ID format'),
+  body('status')
+    .optional({ values: 'falsy' })
+    .isIn(Object.values(CustomOrderStatus))
+    .withMessage('Invalid custom order status'),
+  body('estimatedPrice')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Estimated price must be a non-negative number'),
+  body('supplier')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Supplier must be 200 characters or fewer'),
+  body('notes')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Notes must be 2000 characters or fewer'),
+  body('expectedUpdatedAt')
+    .optional()
+    .isISO8601()
+    .withMessage('expectedUpdatedAt must be a valid date'),
 ];

@@ -40,6 +40,9 @@ import {
   validateCreateServiceProvider,
   validateUpdateServiceProvider,
   validateInviteServiceProvider,
+  validateMarkPayoutPaid,
+  validateCompleteAdminRefund,
+  validateDeleteMediaAsset,
 } from '../middleware/adminValidation';
 
 const router = Router();
@@ -74,13 +77,13 @@ router.post(
 );
 
 router.get('/service-payouts', listAdminPayouts);
-router.patch('/service-payouts/:id/mark-paid', markPayoutPaid);
+router.patch('/service-payouts/:id/mark-paid', validate(validateMarkPayoutPaid), markPayoutPaid);
 
 router.get('/refunds', getAdminRefunds);
-router.patch('/refunds/:id/complete', completeAdminRefund);
+router.patch('/refunds/:id/complete', validate(validateCompleteAdminRefund), completeAdminRefund);
 
 router.get('/media-assets', listMediaAssets);
 router.post('/media-assets', uploadLibraryFiles, uploadMediaLibrary);
-router.delete('/media-assets/:id', deleteMediaAsset);
+router.delete('/media-assets/:id', validate(validateDeleteMediaAsset), deleteMediaAsset);
 
 export default router;
