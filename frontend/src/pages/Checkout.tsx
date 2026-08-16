@@ -16,6 +16,7 @@ import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
 import { UserRole, PaymentStatus } from '@shared/types';
 import type { PaymentMethod } from '../../../shared/types';
 import { DeliveryLocationSelector } from '../components/DeliveryLocationSelector';
+import { useGetDeliveryLocationsQuery } from '../store/api/deliveryLocationApi';
 import { JournalCard, JournalButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
 import { cn } from '../utils/cn';
 import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil, Smartphone, Building2, Shield, Lock } from 'lucide-react';
@@ -91,8 +92,13 @@ export const Checkout = () => {
     }
   }, [user, dispatch, navigate]);
 
-  // Calculate final total with discount
-  const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
+  const { data: deliveryLocationsData } = useGetDeliveryLocationsQuery();
+  const deliveryFee =
+    deliveryLocationsData?.deliveryLocations.find((loc) => loc.town === shippingAddress?.town)
+      ?.deliveryFee ?? 0;
+
+  // Calculate final total with discount and delivery fee
+  const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0)) + deliveryFee;
 
   // Checkout steps
   const CHECKOUT_STEPS = [
@@ -880,7 +886,11 @@ export const Checkout = () => {
               )}
               <div className="flex justify-between text-journal-body text-[13px] font-sans">
                 <span>Shipping</span>
-                <span>MWK 0</span>
+                <span>
+                  {shippingAddress?.town
+                    ? `MWK ${deliveryFee.toLocaleString()}`
+                    : 'Select a delivery location'}
+                </span>
               </div>
               <div className="flex justify-between items-baseline pt-3 border-t border-journal-hairline">
                 <span className="font-sans font-semibold text-[15px] text-journal-ink">Total</span>

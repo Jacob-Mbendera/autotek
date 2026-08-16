@@ -41,6 +41,8 @@ export interface Order {
   };
   items: OrderItem[];
   totalAmount: number;
+  discount?: number;
+  deliveryFee: number;
   status: OrderStatus;
   paymentMethod?: PaymentMethod;
   paymentStatus: PaymentStatus;

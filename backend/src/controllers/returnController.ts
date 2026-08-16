@@ -74,11 +74,14 @@ const calculateRefundAmount = (order: any, returnItems: any[]): number => {
     }
   }
 
-  // Apply proportional discount if order had discount (guard against division by zero)
+  // Apply proportional discount if order had discount (guard against division by zero).
+  // Use the item subtotal (totalAmount minus deliveryFee, plus the discount that
+  // was subtracted from it) rather than totalAmount alone — totalAmount now also
+  // includes deliveryFee, which is never part of this proportional split.
   if (order.discount && order.discount > 0) {
-    const orderTotal = order.totalAmount + order.discount;
-    if (orderTotal > 0) {
-      const returnProportion = refundAmount / orderTotal;
+    const itemsSubtotal = order.totalAmount - (order.deliveryFee ?? 0) + order.discount;
+    if (itemsSubtotal > 0) {
+      const returnProportion = refundAmount / itemsSubtotal;
       refundAmount = refundAmount - (order.discount * returnProportion);
     }
   }

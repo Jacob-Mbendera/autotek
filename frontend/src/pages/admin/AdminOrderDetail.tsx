@@ -958,11 +958,19 @@ export const AdminOrderDetail = () => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <Body className="text-gray-600">Subtotal:</Body>
-                <Body className="text-gray-900">MWK {order.totalAmount.toLocaleString()}</Body>
+                <Body className="text-gray-900">
+                  MWK {(order.totalAmount - (order.deliveryFee ?? 0) + (order.discount ?? 0)).toLocaleString()}
+                </Body>
               </div>
+              {(order.discount ?? 0) > 0 && (
+                <div className="flex justify-between">
+                  <Body className="text-gray-600">Discount:</Body>
+                  <Body className="text-teal-600">-MWK {order.discount!.toLocaleString()}</Body>
+                </div>
+              )}
               <div className="flex justify-between">
                 <Body className="text-gray-600">Shipping:</Body>
-                <Body className="text-gray-900">MWK 0</Body>
+                <Body className="text-gray-900">MWK {(order.deliveryFee ?? 0).toLocaleString()}</Body>
               </div>
               <div className="border-t border-gray-200 pt-3">
                 <div className="flex justify-between">

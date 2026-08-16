@@ -10,6 +10,7 @@ export interface DeliveryLocation {
   _id: string;
   town: string;
   landmarks: Landmark[];
+  deliveryFee: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -22,11 +23,13 @@ interface DeliveryLocationsResponse {
 interface CreateTownRequest {
   town: string;
   landmarks: string[];
+  deliveryFee?: number;
 }
 
 interface UpdateTownRequest {
   town?: string;
   active?: boolean;
+  deliveryFee?: number;
 }
 
 interface CreateLandmarkRequest {

@@ -10,7 +10,7 @@ export const getDeliveryLocations = async (
 ): Promise<void> => {
   try {
     const deliveryLocations = await DeliveryLocation.find({ active: true })
-      .select('town landmarks active')
+      .select('town landmarks deliveryFee active')
       .lean();
 
     // Filter to only include active landmarks
@@ -31,7 +31,7 @@ export const createTown = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { town, landmarks } = req.body;
+    const { town, landmarks, deliveryFee } = req.body;
 
     if (!town || !town.trim()) {
       res.status(400).json({ message: 'Town name is required' });
@@ -40,6 +40,11 @@ export const createTown = async (
 
     if (!landmarks || !Array.isArray(landmarks) || landmarks.length === 0) {
       res.status(400).json({ message: 'At least one landmark is required' });
+      return;
+    }
+
+    if (deliveryFee !== undefined && (typeof deliveryFee !== 'number' || deliveryFee < 0)) {
+      res.status(400).json({ message: 'Delivery fee must be a non-negative number' });
       return;
     }
 
@@ -63,6 +68,7 @@ export const createTown = async (
     const deliveryLocation = new DeliveryLocation({
       town: town.trim(),
       landmarks: landmarksArray,
+      deliveryFee: deliveryFee ?? 0,
       active: true,
     });
 
@@ -84,7 +90,7 @@ export const updateTown = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { town, active } = req.body;
+    const { town, active, deliveryFee } = req.body;
 
     const deliveryLocation = await DeliveryLocation.findById(id);
 
@@ -111,6 +117,14 @@ export const updateTown = async (
       }
 
       deliveryLocation.town = town.trim();
+    }
+
+    if (deliveryFee !== undefined) {
+      if (typeof deliveryFee !== 'number' || deliveryFee < 0) {
+        res.status(400).json({ message: 'Delivery fee must be a non-negative number' });
+        return;
+      }
+      deliveryLocation.deliveryFee = deliveryFee;
     }
 
     if (active !== undefined) {

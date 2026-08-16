@@ -46,8 +46,10 @@ export const DeliveryLocations = () => {
   const [showAddTownModal, setShowAddTownModal] = useState(false);
   const [newTownName, setNewTownName] = useState('');
   const [newTownLandmarks, setNewTownLandmarks] = useState<string[]>(['']);
+  const [newTownFee, setNewTownFee] = useState('');
   const [editingTown, setEditingTown] = useState<string | null>(null);
   const [editTownName, setEditTownName] = useState('');
+  const [editTownFee, setEditTownFee] = useState('');
   const [editingLandmark, setEditingLandmark] = useState<{ townId: string; landmarkId: string } | null>(null);
   const [editLandmarkName, setEditLandmarkName] = useState('');
   const [newLandmarkName, setNewLandmarkName] = useState('');
@@ -73,29 +75,43 @@ export const DeliveryLocations = () => {
       return;
     }
 
+    const parsedFee = newTownFee.trim() ? Number(newTownFee) : 0;
+    if (Number.isNaN(parsedFee) || parsedFee < 0) {
+      dispatch(showNotification({ message: 'Delivery fee must be a non-negative number', type: 'error' }));
+      return;
+    }
+
     try {
-      await createTown({ town: newTownName.trim(), landmarks: validLandmarks }).unwrap();
+      await createTown({ town: newTownName.trim(), landmarks: validLandmarks, deliveryFee: parsedFee }).unwrap();
       dispatch(showNotification({ message: 'Town created successfully', type: 'success' }));
       setShowAddTownModal(false);
       setNewTownName('');
       setNewTownLandmarks(['']);
+      setNewTownFee('');
     } catch (error: any) {
       dispatch(showNotification({ message: error.data?.message || 'Failed to create town', type: 'error' }));
     }
   };
 
-  // Handle update town name
+  // Handle update town name and delivery fee
   const handleUpdateTown = async (townId: string) => {
     if (!editTownName.trim()) {
       dispatch(showNotification({ message: 'Town name cannot be empty', type: 'error' }));
       return;
     }
 
+    const parsedFee = editTownFee.trim() ? Number(editTownFee) : 0;
+    if (Number.isNaN(parsedFee) || parsedFee < 0) {
+      dispatch(showNotification({ message: 'Delivery fee must be a non-negative number', type: 'error' }));
+      return;
+    }
+
     try {
-      await updateTown({ id: townId, data: { town: editTownName.trim() } }).unwrap();
+      await updateTown({ id: townId, data: { town: editTownName.trim(), deliveryFee: parsedFee } }).unwrap();
       dispatch(showNotification({ message: 'Town updated successfully', type: 'success' }));
       setEditingTown(null);
       setEditTownName('');
+      setEditTownFee('');
     } catch (error: any) {
       dispatch(showNotification({ message: error.data?.message || 'Failed to update town', type: 'error' }));
     }
@@ -286,6 +302,15 @@ export const DeliveryLocations = () => {
                       onChange={(e) => setEditTownName(e.target.value)}
                       className="w-64"
                     />
+                    <Input
+                      dark
+                      type="number"
+                      min={0}
+                      value={editTownFee}
+                      onChange={(e) => setEditTownFee(e.target.value)}
+                      placeholder="Delivery fee (MWK)"
+                      className="w-40"
+                    />
                     <Button size="sm" onClick={() => handleUpdateTown(location._id)}>
                       <Save className="w-4 h-4" />
                     </Button>
@@ -295,6 +320,7 @@ export const DeliveryLocations = () => {
                       onClick={() => {
                         setEditingTown(null);
                         setEditTownName('');
+                        setEditTownFee('');
                       }}
                     >
                       <X className="w-4 h-4" />
@@ -305,7 +331,9 @@ export const DeliveryLocations = () => {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">{location.landmarks.length} landmarks</span>
+                <span className="text-sm text-gray-400">
+                  MWK {location.deliveryFee.toLocaleString()} delivery &middot; {location.landmarks.length} landmarks
+                </span>
                 {!editingTown && (
                   <>
                     <Button
@@ -314,6 +342,7 @@ export const DeliveryLocations = () => {
                       onClick={() => {
                         setEditingTown(location._id);
                         setEditTownName(location.town);
+                        setEditTownFee(String(location.deliveryFee));
                       }}
                     >
                       <Edit2 className="w-4 h-4" />
@@ -457,6 +486,7 @@ export const DeliveryLocations = () => {
                   setShowAddTownModal(false);
                   setNewTownName('');
                   setNewTownLandmarks(['']);
+                  setNewTownFee('');
                 }}
               >
                 <X className="w-4 h-4" />
@@ -472,6 +502,19 @@ export const DeliveryLocations = () => {
                   value={newTownName}
                   onChange={(e) => setNewTownName(e.target.value)}
                   placeholder="e.g., Lilongwe"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Delivery Fee (MWK)
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={newTownFee}
+                  onChange={(e) => setNewTownFee(e.target.value)}
+                  placeholder="0"
                 />
               </div>
 
@@ -523,6 +566,7 @@ export const DeliveryLocations = () => {
                   setShowAddTownModal(false);
                   setNewTownName('');
                   setNewTownLandmarks(['']);
+                  setNewTownFee('');
                 }}
               >
                 Cancel

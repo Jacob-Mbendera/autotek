@@ -71,7 +71,12 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // If structured address, validate that town and landmark exist
+    // Resolve the delivery fee from the selected town — a structured or a
+    // custom address both always carry a `town` (see DeliveryLocationSelector),
+    // so this lookup covers every real shipping address, not just the
+    // fully-structured case.
+    let deliveryLocation = null;
+
     if (typeof shippingAddress === 'object' && !shippingAddress.customAddress) {
       const { town, landmark } = shippingAddress;
 
@@ -81,7 +86,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       }
 
       // Verify town and landmark exist in database
-      const deliveryLocation = await DeliveryLocation.findOne({ town, active: true });
+      deliveryLocation = await DeliveryLocation.findOne({ town, active: true });
 
       if (!deliveryLocation) {
         res.status(400).json({ message: `Town "${town}" not found in available delivery locations` });
@@ -96,7 +101,14 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         res.status(400).json({ message: `Landmark "${landmark}" not found in ${town}` });
         return;
       }
+    } else if (typeof shippingAddress === 'object' && shippingAddress.customAddress && shippingAddress.town) {
+      // Custom address within a known town — still look up the fee, but
+      // don't block checkout if the town isn't found (defensive, shouldn't
+      // happen given the selector always sources towns from this list).
+      deliveryLocation = await DeliveryLocation.findOne({ town: shippingAddress.town, active: true });
     }
+
+    const deliveryFee = deliveryLocation?.deliveryFee ?? 0;
 
     // Validate products and calculate total
     let totalAmount = 0;
@@ -133,8 +145,8 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
 
     // Apply coupon if provided
     let discount = 0;
-    let finalTotal = totalAmount;
-    
+    let waiveDeliveryFee = false;
+
     if (couponCode) {
       const coupon = await Coupon.findOne({
         code: couponCode.toUpperCase().trim(),
@@ -156,10 +168,9 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
               } else if (coupon.type === 'fixed') {
                 discount = Math.min(coupon.value, totalAmount);
               } else if (coupon.type === 'free-shipping') {
-                discount = 0; // Free shipping (shipping is already 0)
+                waiveDeliveryFee = true;
               }
 
-              finalTotal = Math.max(0, totalAmount - discount);
               // BR-05: do not increment usageCount here — only on payment success
             }
           }
@@ -167,17 +178,21 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       }
     }
 
+    const appliedDeliveryFee = waiveDeliveryFee ? 0 : deliveryFee;
+    const finalTotal = Math.max(0, totalAmount - discount) + appliedDeliveryFee;
+
     const orderData: any = {
       items: orderItems,
       totalAmount: finalTotal,
       discount,
+      deliveryFee: appliedDeliveryFee,
       shippingAddress,
       paymentMethod,
       paymentStatus: 'pending',
     };
 
-    // Add coupon code if applied
-    if (couponCode && discount > 0) {
+    // Add coupon code if it actually did something (discount or waived fee)
+    if (couponCode && (discount > 0 || waiveDeliveryFee)) {
       orderData.couponCode = couponCode.toUpperCase().trim();
     }
 

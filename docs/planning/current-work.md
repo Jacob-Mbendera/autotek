@@ -1,6 +1,26 @@
 # Current Work - AutoTek Development
 
-## Latest Update (August 16, 2026) - Client UI redesign Phase 1 & 2 complete
+## Latest Update (August 16, 2026) - Auth redirect race fixed, dynamic delivery fee shipped
+
+### Auth redirect race on hard navigation
+**Status**: Fixed — see [`CLIENT_UI_REDESIGN_STATUS_2026-08-16.md`](CLIENT_UI_REDESIGN_STATUS_2026-08-16.md#4-pre-existing-issue-found-and-fixed-2026-08-16)
+
+- `ProtectedRoute` was redirecting to `/login` before the app-root auth bootstrap resolved, wrongly bouncing genuinely logged-in users on any hard page load to a protected route (not just Request a Part — every `ProtectedRoute`-gated page had this). Pre-existing, not a redesign regression.
+- Fixed with an `isInitialized` flag on `authSlice` that `ProtectedRoute` now waits on before redirecting.
+- Verified live: logged-in hard nav to several protected routes stays put; guest and non-admin hard nav still redirect correctly as before.
+
+### Dynamic per-town delivery fee (Decision 2)
+**Status**: Implemented — see [`CLIENT_UI_REDESIGN_STATUS_2026-08-16.md`](CLIENT_UI_REDESIGN_STATUS_2026-08-16.md#6-dynamic-per-town-delivery-fee)
+
+- Closes the last open item from the client UI redesign's gap analysis. Delivery fee is now real, per-town, and admin-configurable from Admin → Delivery Locations — no longer the hardcoded `MWK 0` placeholder.
+- Also fixed two related pre-existing gaps found while implementing this: the `free-shipping` coupon type was a silent no-op (now actually waives the fee), and a data migration backfilled `deliveryFee` onto existing town documents that predated the field.
+- Verified live end-to-end: admin sets a fee, a real Checkout order picks it up correctly, a `free-shipping` coupon correctly zeroes it, both `OrderDetail` and `AdminOrderDetail` show the breakdown, all 4 breakpoints clean.
+
+**Next:** No open items remain from the original gap analysis. The client UI redesign project (Phase 1, Phase 2, Decision 2) is complete.
+
+---
+
+## Previous Update (August 16, 2026) - Client UI redesign Phase 1 & 2 complete
 
 ### "The Garage Journal" client-facing redesign
 **Status**: Phase 1 (Home, Services, booking flow) and Phase 2 (Products, Product Detail, Cart, Wishlist, Checkout, Payment Success, Orders, Returns, Profile, Compare Products, Request Part, My Part Requests, Login, Sign Up) both completed — see [`CLIENT_UI_REDESIGN_STATUS_2026-08-16.md`](CLIENT_UI_REDESIGN_STATUS_2026-08-16.md) for the full decision-by-decision verification against code, and [`CLIENT_UI_REDESIGN_GAP_ANALYSIS_2026-08-14.md`](CLIENT_UI_REDESIGN_GAP_ANALYSIS_2026-08-14.md) for the scope decisions behind it.

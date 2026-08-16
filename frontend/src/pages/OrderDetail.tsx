@@ -787,11 +787,19 @@ export const OrderDetail = () => {
             <div className="space-y-3">
               <div className="flex justify-between text-[13px] font-sans">
                 <span className="text-journal-muted">Subtotal:</span>
-                <span className="text-journal-ink">MWK {order.totalAmount.toLocaleString()}</span>
+                <span className="text-journal-ink">
+                  MWK {(order.totalAmount - (order.deliveryFee ?? 0) + (order.discount ?? 0)).toLocaleString()}
+                </span>
               </div>
+              {(order.discount ?? 0) > 0 && (
+                <div className="flex justify-between text-[13px] font-sans">
+                  <span className="text-journal-muted">Discount:</span>
+                  <span className="text-journal-teal">-MWK {order.discount!.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between text-[13px] font-sans">
-                <span className="text-journal-muted">Shipping:</span>
-                <span className="text-journal-ink">MWK 0</span>
+                <span className="text-journal-muted">Delivery fee:</span>
+                <span className="text-journal-ink">MWK {(order.deliveryFee ?? 0).toLocaleString()}</span>
               </div>
               <div className="border-t border-journal-hairline pt-3">
                 <div className="flex justify-between items-baseline">

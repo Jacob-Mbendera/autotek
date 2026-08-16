@@ -9,6 +9,7 @@ export interface ILandmark {
 export interface IDeliveryLocation extends Document {
   town: string;
   landmarks: ILandmark[];
+  deliveryFee: number;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -44,6 +45,12 @@ const DeliveryLocationSchema = new Schema<IDeliveryLocation>(
         validator: (landmarks: ILandmark[]) => landmarks.length > 0,
         message: 'Town must have at least one landmark',
       },
+    },
+    deliveryFee: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
     },
     active: {
       type: Boolean,
