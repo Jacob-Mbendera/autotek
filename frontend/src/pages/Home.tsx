@@ -46,7 +46,7 @@ const featuredQuote = testimonials.find((t) => t.id === 7) ?? testimonials[0];
 
 export const Home = () => {
   const { data: productsData } = useGetProductsQuery({ page: 1, limit: 1 });
-  const { data: featuredData } = useGetProductsQuery({ badge: 'featured', limit: 4 });
+  const { data: featuredData } = useGetProductsQuery({ badge: 'featured', limit: 8 });
   const { data: categoriesData } = useGetCategoriesQuery();
 
   const partsCount = productsData?.pagination.total;
