@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { clearComparison, removeFromComparison } from '../store/slices/comparisonSlice';
 import { addItem } from '../store/slices/cartSlice';
-import { Button } from '../components/ui/Button';
-import { H1, H2, H4, Body } from '../components/ui/Typography';
+import { JournalButton, JournalLinkButton, PageHeading, CardHeading, JournalBody } from '../components/journal';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { X, ShoppingCart, Package, Check, XCircle } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 export const CompareProducts = () => {
   useEffect(() => {
@@ -44,18 +44,16 @@ export const CompareProducts = () => {
   if (products.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center bg-gray-50 rounded-lg border-2 border-gray-200 py-20">
-          <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <H2 className="text-gray-700 text-xl font-semibold mb-2">No products to compare</H2>
-          <Body className="text-gray-600 mb-6">
+        <div className="text-center bg-white rounded-journal border border-journal-hairline py-20">
+          <Package className="h-12 w-12 text-journal-faint mx-auto mb-4" />
+          <CardHeading className="!text-[22px] mb-2">No products to compare</CardHeading>
+          <JournalBody className="!text-journal-muted mb-6">
             Add products to comparison from the products page
-          </Body>
-          <Link to="/products">
-            <Button variant="primary" className="flex items-center gap-2 mx-auto">
-              <Package className="h-4 w-4" />
-              Browse Products
-            </Button>
-          </Link>
+          </JournalBody>
+          <JournalLinkButton to="/products" className="mx-auto">
+            <Package className="h-3.5 w-3.5" />
+            Browse products
+          </JournalLinkButton>
         </div>
       </div>
     );
@@ -74,40 +72,40 @@ export const CompareProducts = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div>
-          <H1 className="text-3xl font-bold text-gray-900 mb-2">Compare Products</H1>
-          <Body className="text-gray-600">
+          <PageHeading className="!text-[28px] sm:!text-[32px] mb-2">Compare products</PageHeading>
+          <JournalBody className="!text-journal-muted">
             Compare {products.length} product{products.length > 1 ? 's' : ''} side by side
-          </Body>
+          </JournalBody>
         </div>
-        <Button variant="secondary" onClick={handleClear}>
-          Clear Comparison
-        </Button>
+        <JournalButton variant="secondary" onClick={handleClear}>
+          Clear comparison
+        </JournalButton>
       </div>
 
       {/* Comparison Table */}
-      <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-lg">
+      <div className="bg-white rounded-journal border border-journal-ink overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
+            <thead className="bg-journal-sand border-b border-journal-hairline">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 sticky left-0 bg-gray-50 z-10 min-w-[200px]">
+                <th className="px-6 py-4 text-left text-[12px] font-sans font-bold text-journal-body uppercase tracking-[0.06em] sticky left-0 bg-journal-sand z-10 min-w-[180px]">
                   Feature
                 </th>
                 {products.map((product) => (
                   <th
                     key={product._id}
-                    className="px-6 py-4 text-center align-top min-w-[250px] relative"
+                    className="px-6 py-5 text-center align-top min-w-[250px] relative"
                   >
                     <button
                       onClick={() => handleRemove(product._id)}
-                      className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                      className="absolute top-3 right-3 p-1 hover:bg-white rounded-full transition-colors"
                       aria-label="Remove from comparison"
                     >
-                      <X className="h-4 w-4 text-gray-600" />
+                      <X className="h-3.5 w-3.5 text-journal-body" />
                     </button>
-                    
+
                     {(() => {
                       const { url, isPlaceholder, placeholderCategory } = resolveProductDisplayImage(
                         product.images,
@@ -115,7 +113,7 @@ export const CompareProducts = () => {
                         128
                       );
                       return (
-                        <div className="mx-auto mb-3 w-32 h-32 rounded-lg overflow-hidden">
+                        <div className="mx-auto mb-3 w-28 h-28 rounded-journal overflow-hidden border border-journal-hairline">
                           {isPlaceholder ? (
                             <ProductPlaceholderImage
                               productName={product.name}
@@ -130,58 +128,58 @@ export const CompareProducts = () => {
                               alt={product.name}
                               width={128}
                               height={128}
-                              className="w-32 h-32 object-cover rounded-lg"
+                              className="w-28 h-28 object-cover"
                               priority={false}
                             />
                           )}
                         </div>
                       );
                     })()}
-                    
-                    <H4 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
+
+                    <h3 className="font-journal text-[16px] text-journal-ink mb-2 line-clamp-2">
                       {product.name}
-                    </H4>
-                    
+                    </h3>
+
                     <div className="mb-3">
-                      <Body className="text-2xl font-bold text-teal-600">
+                      <span className="font-journal text-[22px] text-journal-teal">
                         MWK {product.price.toLocaleString()}
-                      </Body>
+                      </span>
                     </div>
-                    
-                    <Link to={`/products/${product._id}`}>
-                      <Button variant="secondary" size="small" className="mb-2 w-full">
-                        View Details
-                      </Button>
+
+                    <Link to={`/products/${product._id}`} className="block mb-2">
+                      <JournalButton variant="secondary" className="w-full">
+                        View details
+                      </JournalButton>
                     </Link>
-                    
-                    <Button
+
+                    <JournalButton
                       variant="primary"
-                      size="small"
                       className="w-full"
                       onClick={() => handleAddToCart(product)}
                     >
-                      <ShoppingCart className="h-3 w-3 mr-1" />
-                      Add to Cart
-                    </Button>
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                      Add to cart
+                    </JournalButton>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-journal-divider">
               {comparisonFields.map((field) => (
-                <tr key={field.key} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 sticky left-0 bg-white z-10">
+                <tr key={field.key} className="hover:bg-journal-teal-tint/30 transition-colors">
+                  <td className="px-6 py-4 text-[13px] font-sans font-semibold text-journal-ink sticky left-0 bg-white z-10">
                     {field.label}
                   </td>
                   {products.map((product) => (
                     <td key={product._id} className="px-6 py-4 text-center">
                       {field.key === 'status' ? (
                         <span
-                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-sans font-semibold',
                             product.status === 'available'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}
+                              ? 'bg-journal-teal-tint text-journal-teal'
+                              : 'bg-journal-danger-bg text-journal-danger-text'
+                          )}
                         >
                           {product.status === 'available' ? (
                             <Check className="h-3 w-3" />
@@ -191,11 +189,11 @@ export const CompareProducts = () => {
                           {product.status === 'available' ? 'Available' : 'Out of Stock'}
                         </span>
                       ) : field.key === 'description' ? (
-                        <Body className="text-sm text-gray-700 line-clamp-3">
+                        <p className="text-[13px] font-sans text-journal-body line-clamp-3">
                           {product.description || 'N/A'}
-                        </Body>
+                        </p>
                       ) : (
-                        <Body className="text-sm text-gray-900 font-medium">
+                        <p className="text-[13px] font-sans font-medium text-journal-ink">
                           {field.key === 'price'
                             ? `MWK ${product.price.toLocaleString()}`
                             : field.key === 'name'
@@ -207,7 +205,7 @@ export const CompareProducts = () => {
                                   : field.key === 'stock'
                                     ? String(product.stock)
                                     : 'N/A'}
-                        </Body>
+                        </p>
                       )}
                     </td>
                   ))}

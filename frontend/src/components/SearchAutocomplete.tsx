@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Clock, TrendingUp, Package } from 'lucide-react';
 import { useGetProductsQuery } from '../store/api/productApi';
-import { Body } from './ui/Typography';
+import { cn } from '../utils/cn';
 
 interface SearchAutocompleteProps {
   searchTerm: string;
@@ -68,7 +68,7 @@ export const SearchAutocomplete = ({
   const handleSelect = (term: string) => {
     onSelect(term);
     setShowSuggestions(false);
-    
+
     // Save to recent searches
     const updated = [term, ...recentSearches.filter((s) => s !== term)].slice(0, 5);
     setRecentSearches(updated);
@@ -105,7 +105,7 @@ export const SearchAutocomplete = ({
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400" />
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-journal-faint" />
         <input
           type="text"
           value={searchTerm}
@@ -113,17 +113,17 @@ export const SearchAutocomplete = ({
           onFocus={() => setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search for brake pads, oil filters, spark plugs..."
-          className="w-full pl-14 pr-4 py-4 text-base border-2 border-gray-200 focus:border-teal-500 shadow-lg hover:shadow-xl transition-all rounded-lg outline-none"
+          className="w-full pl-11 pr-32 py-3.5 text-[14px] font-sans border border-journal-input-border focus:border-journal-teal rounded-journal outline-none transition-colors placeholder:text-journal-faint"
         />
       </div>
 
       {/* Suggestions Dropdown */}
       {showSuggestions && (displaySuggestions.length > 0 || showRecentSearches) && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-journal-ink rounded-journal z-50 max-h-96 overflow-y-auto">
           {/* Product Suggestions */}
           {displaySuggestions.length > 0 && (
             <div className="p-2">
-              <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-sans font-semibold text-journal-faint uppercase tracking-[0.08em]">
                 <TrendingUp className="h-3 w-3" />
                 Suggestions
               </div>
@@ -132,18 +132,19 @@ export const SearchAutocomplete = ({
                   key={product._id}
                   to={`/products/${product._id}`}
                   onClick={() => handleSelect(product.name)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-teal-50 transition-colors ${
-                    index === selectedIndex ? 'bg-teal-50' : ''
-                  }`}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-journal hover:bg-journal-teal-tint transition-colors',
+                    index === selectedIndex ? 'bg-journal-teal-tint' : ''
+                  )}
                 >
-                  <Package className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <Package className="h-4 w-4 text-journal-faint flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <Body className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-[13px] font-sans font-medium text-journal-ink truncate">
                       {product.name}
-                    </Body>
-                    <Body className="text-xs text-gray-500">
-                      {product.category} • MWK {product.price.toLocaleString()}
-                    </Body>
+                    </p>
+                    <p className="text-[12px] font-sans text-journal-faint">
+                      {product.category} &#183; MWK {product.price.toLocaleString()}
+                    </p>
                   </div>
                 </Link>
               ))}
@@ -152,8 +153,8 @@ export const SearchAutocomplete = ({
 
           {/* Recent Searches */}
           {showRecentSearches && (
-            <div className="p-2 border-t border-gray-200">
-              <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="p-2 border-t border-journal-divider">
+              <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-sans font-semibold text-journal-faint uppercase tracking-[0.08em]">
                 <Clock className="h-3 w-3" />
                 Recent Searches
               </div>
@@ -161,12 +162,13 @@ export const SearchAutocomplete = ({
                 <button
                   key={index}
                   onClick={() => handleSelect(search)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-teal-50 transition-colors text-left ${
-                    index + displaySuggestions.length === selectedIndex ? 'bg-teal-50' : ''
-                  }`}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-3 py-2 rounded-journal hover:bg-journal-teal-tint transition-colors text-left',
+                    index + displaySuggestions.length === selectedIndex ? 'bg-journal-teal-tint' : ''
+                  )}
                 >
-                  <Clock className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                  <Body className="text-sm text-gray-700">{search}</Body>
+                  <Clock className="h-4 w-4 text-journal-faint flex-shrink-0" />
+                  <p className="text-[13px] font-sans text-journal-body">{search}</p>
                 </button>
               ))}
             </div>

@@ -9,23 +9,17 @@ import { DeliveryLocationSelector } from '../components/DeliveryLocationSelector
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { formatServiceAddressLine, validateStructuredServiceLocation } from '../utils/serviceAddress';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { H1, H2, Body } from '../components/ui/Typography';
-import { Breadcrumb } from '../components/Breadcrumb';
 import {
-  Truck,
-  Wrench,
-  MapPin,
-  Calendar,
-  Car,
-  ArrowLeft,
-  Loader2,
-  CheckCircle,
-  AlertCircle,
-  Crosshair,
-} from 'lucide-react';
+  PageHeading,
+  JournalBody,
+  MonoLabel,
+  JournalButton,
+  JournalCard,
+  JournalInput,
+  JournalTextarea,
+} from '../components/journal';
+import { cn } from '../utils/cn';
+import { Loader2, CheckCircle, AlertCircle, Crosshair } from 'lucide-react';
 import { UserRole } from '@shared/types';
 import { ServiceType } from '@shared/types';
 
@@ -38,6 +32,8 @@ function buildPreferredDateISO(dateStr: string, timeStr: string): string | undef
   const parsed = new Date(`${d}T${timePart}`);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
+
+const sectionTitleClasses = 'font-journal text-[22px] text-journal-ink mb-4 pb-2.5 border-b border-journal-ink';
 
 export const BookService = () => {
   const navigate = useNavigate();
@@ -385,436 +381,379 @@ export const BookService = () => {
     );
   };
 
-  const breadcrumbItems = [
-    { label: 'Home', href: '/' },
-    { label: 'Services', href: '/services' },
-    { label: serviceType === 'towing' ? 'Book Towing Service' : 'Book Car Service' },
-  ];
-
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Breadcrumb items={breadcrumbItems} />
+    <div className="max-w-[860px] mx-auto px-4 sm:px-10 py-11 sm:py-14">
+      <MonoLabel className="mb-3.5 block">
+        {serviceType === 'towing' ? 'No. 03 — Book towing service' : 'No. 03 — Book a car service'}
+      </MonoLabel>
+      <PageHeading className="!text-[36px] sm:!text-[46px] mb-2">
+        {serviceType === 'towing' ? 'A driver, sent to you.' : 'A mechanic, sent to you.'}
+      </PageHeading>
+      <JournalBody className="mb-6">
+        One page — tell us the vehicle, what it needs, and where. No payment now; we send a quote to
+        My Services.
+      </JournalBody>
 
-      <div className="mt-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="small" onClick={() => navigate('/services')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Services
-          </Button>
+      {Object.keys(errors).length > 0 && (
+        <div className="border border-journal-error-border bg-journal-error-bg rounded-journal px-4 py-3 mb-6 flex items-start gap-2.5">
+          <AlertCircle className="h-4 w-4 text-journal-danger-text flex-shrink-0 mt-0.5" />
+          <p className="text-[13px] text-journal-danger-text">
+            <strong>Please fix the fields marked below</strong> — {Object.values(errors).join(', ')}.
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+        {/* Vehicle Information */}
+        <div>
+          <div className={sectionTitleClasses}>01 &middot; Vehicle information</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <JournalInput
+              label="Vehicle type *"
+              value={vehicleType}
+              onChange={(e) => setVehicleType(e.target.value)}
+              placeholder="e.g. Toyota Hilux"
+              required
+              error={errors.vehicleType}
+            />
+            <JournalInput
+              label="Vehicle model (optional)"
+              value={vehicleModel}
+              onChange={(e) => setVehicleModel(e.target.value)}
+              placeholder="e.g. 2016 2.4 D-4D"
+            />
+          </div>
         </div>
 
-        <H1 className="text-3xl font-bold text-gray-900 mb-2">
-          {serviceType === 'towing' ? 'Book Towing Service' : 'Book Car Service'}
-        </H1>
-        <Body className="text-gray-600 mb-8">
-          {serviceType === 'towing'
-            ? 'Fill in the details below to request a towing service. We\'ll contact you to confirm.'
-            : 'Fill in the details below to book a car service. Our mechanic will come to your location.'}
-        </Body>
-
-        <Card variant="lg">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Vehicle Information */}
-            <div>
-              <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Car className="h-5 w-5 text-teal-600" />
-                Vehicle Information
-              </H2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Input
-                    label="Vehicle Type"
-                    value={vehicleType}
-                    onChange={(e) => setVehicleType(e.target.value)}
-                    placeholder="e.g., Sedan, SUV, Truck"
-                    required
-                    error={errors.vehicleType}
-                  />
-                </div>
-                <div>
-                  <Input
-                    label="Vehicle Model (Optional)"
-                    value={vehicleModel}
-                    onChange={(e) => setVehicleModel(e.target.value)}
-                    placeholder="e.g., Toyota Corolla 2015"
-                  />
-                </div>
-              </div>
+        {/* Service Type (for car services) */}
+        {serviceType === 'car-service' && (
+          <div>
+            <div className={sectionTitleClasses}>
+              02 &middot; Service type{' '}
+              <span className="font-sans text-xs normal-case text-journal-muted">(select one or more)</span>
             </div>
-
-            {/* Service Type (for car services) */}
-            {serviceType === 'car-service' && (
-              <div>
-                <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Wrench className="h-5 w-5 text-teal-600" />
-                  Service Type
-                </H2>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Service Types <span className="text-red-500">*</span>
-                  </label>
-                  <div
-                    className={`grid grid-cols-1 md:grid-cols-2 gap-2 p-3 border rounded-lg ${
-                      errors.carServiceTypes ? 'border-red-500' : 'border-gray-300'
-                    }`}
+            <div
+              className={cn(
+                'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5',
+                errors.carServiceTypes && 'outline outline-1 outline-journal-error-border-strong rounded-journal p-1'
+              )}
+            >
+              {serviceTypeOptions.map((option) => {
+                const selected = carServiceTypes.includes(option.value);
+                return (
+                  <label
+                    key={option.value}
+                    className={cn(
+                      'flex items-center gap-2.5 border rounded-journal px-3.5 py-3 cursor-pointer transition-colors text-[13px] font-sans',
+                      selected
+                        ? 'border-journal-teal bg-journal-teal-tint border-[1.5px] text-journal-ink'
+                        : 'border-journal-input-border bg-white hover:border-journal-ink text-journal-body'
+                    )}
                   >
-                    {serviceTypeOptions.map((option) => (
-                      <label
-                        key={option.value}
-                        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50 cursor-pointer"
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleCarServiceType(option.value)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={cn(
+                        'h-4 w-4 rounded-sm border flex items-center justify-center flex-shrink-0',
+                        selected ? 'bg-journal-teal border-journal-teal' : 'border-journal-input-border bg-white'
+                      )}
+                      aria-hidden
+                    >
+                      {selected && <CheckCircle className="h-3 w-3 text-white" strokeWidth={3} />}
+                    </span>
+                    {option.label}
+                  </label>
+                );
+              })}
+            </div>
+            {errors.carServiceTypes && (
+              <p className="mt-1.5 text-xs text-journal-danger-text">{errors.carServiceTypes}</p>
+            )}
+          </div>
+        )}
+
+        {/* Location Information */}
+        <div>
+          <div className={sectionTitleClasses}>
+            {serviceType === 'towing' ? '03 · Location' : '03 · Location'}
+          </div>
+          <p className="text-[13px] text-journal-muted mb-4">
+            Select your town and nearest landmark (or Other/Custom with directions), same as when you
+            order parts for delivery. Optionally use your phone's map pin so "Open in Maps" is more
+            accurate.
+          </p>
+          <div className="flex flex-col gap-8">
+            {serviceType === 'towing' ? (
+              <>
+                <div>
+                  <h3 className="font-journal text-[17px] text-journal-ink mb-3">Pickup (where the vehicle is)</h3>
+                  <DeliveryLocationSelector
+                    variant="service_pickup"
+                    value={pickupShipping}
+                    onChange={setPickupShipping}
+                    required
+                    error={errors.pickupLocation}
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={locating}
+                      onClick={() => requestMapPin('pickup')}
+                      className="inline-flex items-center gap-2 border border-journal-ink px-3.5 py-2 text-[11px] font-sans font-medium tracking-[0.1em] uppercase disabled:opacity-50 hover:bg-journal-sand transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal"
+                    >
+                      {gpsBusy === 'pickup' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Crosshair className="h-3.5 w-3.5" />
+                      )}
+                      Use my location (map pin)
+                    </button>
+                    {pickupPin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPickupPin(null);
+                          setPickupPinAddress('');
+                        }}
+                        className="text-[11px] font-sans font-medium tracking-[0.1em] uppercase text-journal-muted hover:text-journal-teal transition-colors"
                       >
-                        <input
-                          type="checkbox"
-                          checked={carServiceTypes.includes(option.value)}
-                          onChange={() => toggleCarServiceType(option.value)}
-                          className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
-                        />
-                        <span className="text-sm text-gray-700">{option.label}</span>
-                      </label>
-                    ))}
+                        Clear pickup pin
+                      </button>
+                    )}
                   </div>
-                  {errors.carServiceTypes && (
-                    <p className="mt-1 text-sm text-red-600">{errors.carServiceTypes}</p>
+                  {pickupPin && (
+                    <div className="mt-3 p-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal">
+                      <p className="text-[13px] font-semibold text-journal-teal">Pickup map pin saved</p>
+                      <p className="text-xs text-journal-teal mt-1">
+                        Lat/Lng: {pickupPin.lat.toFixed(6)}, {pickupPin.lng.toFixed(6)}
+                      </p>
+                      {pickupPinAddress && (
+                        <p className="text-xs text-journal-teal mt-1">Near: {pickupPinAddress}</p>
+                      )}
+                      {pickupPinTownMismatch && (
+                        <p className="text-xs text-journal-warn-text bg-journal-warn-bg border border-journal-warn-text/20 rounded px-2 py-1 mt-2">
+                          Alert: Town and pin do not match. We will save your selected town and landmark for pickup.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs text-journal-faint mt-2">
+                    If town is empty and we can detect it from pin address, it will be auto-filled.
+                  </p>
+                  <div className="mt-4">
+                    <JournalInput
+                      label="Pickup description (optional)"
+                      value={pickupDescription}
+                      onChange={(e) => setPickupDescription(e.target.value)}
+                      placeholder="e.g., near the blue gate, opposite the church"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-journal text-[17px] text-journal-ink mb-3">Destination (drop-off)</h3>
+                  <DeliveryLocationSelector
+                    variant="service_destination"
+                    value={destinationShipping}
+                    onChange={setDestinationShipping}
+                    required
+                    error={errors.destination}
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={locating}
+                      onClick={() => requestMapPin('destination')}
+                      className="inline-flex items-center gap-2 border border-journal-ink px-3.5 py-2 text-[11px] font-sans font-medium tracking-[0.1em] uppercase disabled:opacity-50 hover:bg-journal-sand transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal"
+                    >
+                      {gpsBusy === 'destination' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Crosshair className="h-3.5 w-3.5" />
+                      )}
+                      Use my location (map pin)
+                    </button>
+                    {destinationPin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDestinationPin(null);
+                          setDestinationPinAddress('');
+                        }}
+                        className="text-[11px] font-sans font-medium tracking-[0.1em] uppercase text-journal-muted hover:text-journal-teal transition-colors"
+                      >
+                        Clear destination pin
+                      </button>
+                    )}
+                  </div>
+                  {destinationPin && (
+                    <div className="mt-3 p-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal">
+                      <p className="text-[13px] font-semibold text-journal-teal">Destination map pin saved</p>
+                      <p className="text-xs text-journal-teal mt-1">
+                        Lat/Lng: {destinationPin.lat.toFixed(6)}, {destinationPin.lng.toFixed(6)}
+                      </p>
+                      {destinationPinAddress && (
+                        <p className="text-xs text-journal-teal mt-1">Near: {destinationPinAddress}</p>
+                      )}
+                      {destinationPinTownMismatch && (
+                        <p className="text-xs text-journal-warn-text bg-journal-warn-bg border border-journal-warn-text/20 rounded px-2 py-1 mt-2">
+                          Alert: Town and pin do not match. We will save your selected town and landmark for destination.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs text-journal-faint mt-2">
+                    If town is empty and we can detect it from pin address, it will be auto-filled.
+                  </p>
+                  <div className="mt-4">
+                    <JournalInput
+                      label="Destination description (optional)"
+                      value={destinationDescription}
+                      onChange={(e) => setDestinationDescription(e.target.value)}
+                      placeholder="e.g., next to the market, behind the gas station"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div>
+                <DeliveryLocationSelector
+                  variant="service_car"
+                  value={carServiceShipping}
+                  onChange={setCarServiceShipping}
+                  required
+                  error={errors.location}
+                />
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={locating}
+                    onClick={() => requestMapPin('car')}
+                    className="inline-flex items-center gap-2 border border-journal-ink px-3.5 py-2 text-[11px] font-sans font-medium tracking-[0.1em] uppercase disabled:opacity-50 hover:bg-journal-sand transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal"
+                  >
+                    {gpsBusy === 'car' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Crosshair className="h-3.5 w-3.5" />
+                    )}
+                    Use my location (map pin)
+                  </button>
+                  {carServicePin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCarServicePin(null);
+                        setCarServicePinAddress('');
+                      }}
+                      className="text-[11px] font-sans font-medium tracking-[0.1em] uppercase text-journal-muted hover:text-journal-teal transition-colors"
+                    >
+                      Clear pin
+                    </button>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* Location Information — same town / landmark pattern as checkout shipping */}
-            <div>
-              <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-teal-600" />
-                Location Information
-              </H2>
-              <p className="text-sm text-gray-600 mb-4">
-                Select your town and nearest landmark (or Other/Custom with directions), same as when you order
-                parts for delivery. Optionally use your phone&apos;s map pin so &quot;Open in Maps&quot; is more
-                accurate.
-              </p>
-              <div className="space-y-8">
-                {serviceType === 'towing' ? (
-                  <>
-                    <div>
-                      <H2 className="text-base font-semibold text-gray-800 mb-3">Pickup (where the vehicle is)</H2>
-                      <DeliveryLocationSelector
-                        variant="service_pickup"
-                        value={pickupShipping}
-                        onChange={setPickupShipping}
-                        required
-                        error={errors.pickupLocation}
-                      />
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          disabled={locating}
-                          onClick={() => requestMapPin('pickup')}
-                        >
-                          {gpsBusy === 'pickup' ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Crosshair className="h-4 w-4" />
-                          )}
-                          Use my location (map pin)
-                        </Button>
-                        {pickupPin && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setPickupPin(null);
-                              setPickupPinAddress('');
-                            }}
-                          >
-                            Clear pickup pin
-                          </Button>
-                        )}
-                      </div>
-                      {pickupPin && (
-                        <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
-                          <p className="text-sm font-medium text-teal-900">Pickup map pin saved</p>
-                          <p className="text-xs text-teal-800 mt-1">
-                            Lat/Lng: {pickupPin.lat.toFixed(6)}, {pickupPin.lng.toFixed(6)}
-                          </p>
-                          {pickupPinAddress && (
-                            <p className="text-xs text-teal-800 mt-1">Near: {pickupPinAddress}</p>
-                          )}
-                          {pickupPinTownMismatch && (
-                              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
-                                Alert: Town and pin do not match. We will save your selected town and landmark for pickup.
-                              </p>
-                            )}
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-500 mt-2">
-                        If town is empty and we can detect it from pin address, it will be auto-filled.
-                      </p>
-                      <div className="mt-4">
-                        <Input
-                          label="Pickup description (optional)"
-                          value={pickupDescription}
-                          onChange={(e) => setPickupDescription(e.target.value)}
-                          placeholder="e.g., near the blue gate, opposite the church"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <H2 className="text-base font-semibold text-gray-800 mb-3">Destination (drop-off)</H2>
-                      <DeliveryLocationSelector
-                        variant="service_destination"
-                        value={destinationShipping}
-                        onChange={setDestinationShipping}
-                        required
-                        error={errors.destination}
-                      />
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          disabled={locating}
-                          onClick={() => requestMapPin('destination')}
-                        >
-                          {gpsBusy === 'destination' ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Crosshair className="h-4 w-4" />
-                          )}
-                          Use my location (map pin)
-                        </Button>
-                        {destinationPin && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setDestinationPin(null);
-                              setDestinationPinAddress('');
-                            }}
-                          >
-                            Clear destination pin
-                          </Button>
-                        )}
-                      </div>
-                      {destinationPin && (
-                        <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
-                          <p className="text-sm font-medium text-teal-900">Destination map pin saved</p>
-                          <p className="text-xs text-teal-800 mt-1">
-                            Lat/Lng: {destinationPin.lat.toFixed(6)}, {destinationPin.lng.toFixed(6)}
-                          </p>
-                          {destinationPinAddress && (
-                            <p className="text-xs text-teal-800 mt-1">Near: {destinationPinAddress}</p>
-                          )}
-                          {destinationPinTownMismatch && (
-                              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
-                                Alert: Town and pin do not match. We will save your selected town and landmark for destination.
-                              </p>
-                            )}
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-500 mt-2">
-                        If town is empty and we can detect it from pin address, it will be auto-filled.
-                      </p>
-                      <div className="mt-4">
-                        <Input
-                          label="Destination description (optional)"
-                          value={destinationDescription}
-                          onChange={(e) => setDestinationDescription(e.target.value)}
-                          placeholder="e.g., next to the market, behind the gas station"
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <DeliveryLocationSelector
-                      variant="service_car"
-                      value={carServiceShipping}
-                      onChange={setCarServiceShipping}
-                      required
-                      error={errors.location}
-                    />
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        disabled={locating}
-                        onClick={() => requestMapPin('car')}
-                      >
-                        {gpsBusy === 'car' ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Crosshair className="h-4 w-4" />
-                        )}
-                        Use my location (map pin)
-                      </Button>
-                      {carServicePin && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setCarServicePin(null);
-                            setCarServicePinAddress('');
-                          }}
-                        >
-                          Clear pin
-                        </Button>
-                      )}
-                    </div>
-                    {carServicePin && (
-                      <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
-                        <p className="text-sm font-medium text-teal-900">Service map pin saved</p>
-                        <p className="text-xs text-teal-800 mt-1">
-                          Lat/Lng: {carServicePin.lat.toFixed(6)}, {carServicePin.lng.toFixed(6)}
-                        </p>
-                        {carServicePinAddress && (
-                          <p className="text-xs text-teal-800 mt-1">Near: {carServicePinAddress}</p>
-                        )}
-                        {carPinTownMismatch && (
-                            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
-                              Alert: Town and pin do not match. We will save your selected town and landmark for service location.
-                            </p>
-                          )}
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-500 mt-2">
-                      If town is empty and we can detect it from pin address, it will be auto-filled.
+                {carServicePin && (
+                  <div className="mt-3 p-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal">
+                    <p className="text-[13px] font-semibold text-journal-teal">Service map pin saved</p>
+                    <p className="text-xs text-journal-teal mt-1">
+                      Lat/Lng: {carServicePin.lat.toFixed(6)}, {carServicePin.lng.toFixed(6)}
                     </p>
-                    <div className="mt-4">
-                      <Input
-                        label="Location description (optional)"
-                        value={addressDescription}
-                        onChange={(e) => setAddressDescription(e.target.value)}
-                        placeholder="e.g., car park behind the building"
-                      />
-                    </div>
+                    {carServicePinAddress && (
+                      <p className="text-xs text-journal-teal mt-1">Near: {carServicePinAddress}</p>
+                    )}
+                    {carPinTownMismatch && (
+                      <p className="text-xs text-journal-warn-text bg-journal-warn-bg border border-journal-warn-text/20 rounded px-2 py-1 mt-2">
+                        Alert: Town and pin do not match. We will save your selected town and landmark for service location.
+                      </p>
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Preferred Date/Time (for car services) */}
-            {serviceType === 'car-service' && (
-              <div>
-                <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-teal-600" />
-                  Preferred Schedule
-                </H2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Input
-                      label="Preferred Date (Optional)"
-                      type="date"
-                      value={preferredDate}
-                      onChange={(e) => setPreferredDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      label="Preferred Time (Optional)"
-                      type="time"
-                      value={preferredTime}
-                      onChange={(e) => setPreferredTime(e.target.value)}
-                    />
-                  </div>
+                <p className="text-xs text-journal-faint mt-2">
+                  If town is empty and we can detect it from pin address, it will be auto-filled.
+                </p>
+                <div className="mt-4">
+                  <JournalInput
+                    label="Location description (optional)"
+                    value={addressDescription}
+                    onChange={(e) => setAddressDescription(e.target.value)}
+                    placeholder="e.g., car park behind the building"
+                  />
                 </div>
               </div>
             )}
+          </div>
+        </div>
 
-            {/* Additional Notes */}
+        {/* Preferred Date/Time + Notes (grouped like the design's 04/05 split) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {serviceType === 'car-service' && (
             <div>
-              <H2 className="text-xl font-semibold text-gray-900 mb-4">Additional Information</H2>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any additional information about your vehicle or service request..."
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
+              <div className={sectionTitleClasses}>04 &middot; Preferred schedule</div>
+              <div className="flex gap-2.5">
+                <JournalInput
+                  type="date"
+                  value={preferredDate}
+                  onChange={(e) => setPreferredDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  aria-label="Preferred date"
+                />
+                <JournalInput
+                  type="time"
+                  value={preferredTime}
+                  onChange={(e) => setPreferredTime(e.target.value)}
+                  aria-label="Preferred time"
                 />
               </div>
             </div>
-
-            {/* Error Display */}
-            {Object.keys(errors).length > 0 && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <Body className="font-semibold text-red-900 mb-1">Please fix the following errors:</Body>
-                  <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
-                    {Object.values(errors).map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="submit"
-                variant="primary"
-                size="default"
-                className="flex-1 gap-2"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-5 w-5" />
-                    Submit Service Request
-                  </>
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => navigate('/services')}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </Card>
-
-        {/* Info Card */}
-        <Card variant="md" className="mt-6 bg-teal-50 border-teal-200">
-          <div className="flex items-start gap-3">
-            <div className="h-10 w-10 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              {serviceType === 'towing' ? (
-                <Truck className="h-5 w-5 text-teal-600" />
-              ) : (
-                <Wrench className="h-5 w-5 text-teal-600" />
-              )}
-            </div>
-            <div>
-              <Body className="font-semibold text-gray-900 mb-1">What happens next?</Body>
-              <Body className="text-sm text-gray-700">
-                {serviceType === 'towing'
-                  ? 'After you submit your request, our team will contact you to confirm details and provide a quote. We aim to respond within 30 minutes.'
-                  : 'After you submit your request, our certified mechanic will contact you to confirm the appointment and provide an estimated cost. We\'ll come to your location at the scheduled time.'}
-              </Body>
-            </div>
+          )}
+          <div>
+            <div className={sectionTitleClasses}>05 &middot; Notes</div>
+            <JournalTextarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Anything the mechanic should know…"
+              rows={4}
+            />
           </div>
-        </Card>
-      </div>
+        </div>
+
+        {/* What's next */}
+        <div className="bg-journal-sand rounded-journal px-5 py-4 flex flex-col sm:flex-row gap-2 sm:gap-5">
+          <div className="text-[11px] font-sans font-bold tracking-[0.12em] uppercase text-journal-teal whitespace-nowrap sm:pt-0.5">
+            What's next
+          </div>
+          <p className="text-[13px] leading-[1.6] text-journal-body">
+            We review your request, send a quote in MWK to{' '}
+            <strong className="text-journal-ink">My Services</strong>, and assign a{' '}
+            {serviceType === 'towing' ? 'driver' : 'mechanic'} once you pay.{' '}
+            <strong className="text-journal-ink">No payment is taken now.</strong>
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-5">
+          <button
+            type="button"
+            onClick={() => navigate('/services')}
+            disabled={isLoading}
+            className="text-[13px] font-sans tracking-[0.1em] uppercase text-journal-muted hover:text-journal-ink transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <JournalButton type="submit" variant="primary" size="large" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              'Submit request'
+            )}
+          </JournalButton>
+        </div>
+      </form>
     </div>
   );
 };

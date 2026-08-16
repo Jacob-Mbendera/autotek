@@ -4,11 +4,10 @@ import { useCreateReviewMutation, useUpdateReviewMutation, useDeleteReviewMutati
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { useAppDispatch } from '../store/types';
-import { Card } from './ui/Card';
-import { Button } from './ui/Button';
-import { H2, Body } from './ui/Typography';
+import { JournalCard, JournalButton, CardHeading, JournalBody } from './journal';
 import { ConfirmationModal } from './ui/ConfirmationModal';
 import { Star, Loader2, Edit2, X, Trash2 } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 interface ReviewFormProps {
   productId: string;
@@ -57,16 +56,16 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
 
   if (!isAuthenticated) {
     return (
-      <Card variant="md" className="text-center py-8">
-        <Body className="text-gray-600">Please log in to write a review.</Body>
-      </Card>
+      <JournalCard className="text-center py-8">
+        <JournalBody className="!text-journal-muted">Please log in to write a review.</JournalBody>
+      </JournalCard>
     );
   }
 
   if (isLoadingReview) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
+        <Loader2 className="h-5 w-5 animate-spin text-journal-teal" />
       </div>
     );
   }
@@ -170,21 +169,31 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
   const maxCharacters = 1000;
 
   return (
-    <Card variant="md">
-      <div className="flex items-center justify-between mb-6">
-        <H2 className="text-xl font-semibold text-gray-900">
-          {isEditing ? 'Edit Your Review' : 'Write a Review'}
-        </H2>
+    <JournalCard>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+        <CardHeading>
+          {isEditing ? 'Edit your review' : 'Write a review'}
+        </CardHeading>
         {isEditing && (
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="small" onClick={handleDeleteClick} disabled={isLoading} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-              <Trash2 className="h-4 w-4 mr-1" />
+            <button
+              type="button"
+              onClick={handleDeleteClick}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-danger-text hover:underline disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
               Delete
-            </Button>
-            <Button variant="ghost" size="small" onClick={handleCancel} disabled={isLoading}>
-              <X className="h-4 w-4 mr-1" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-muted hover:underline disabled:opacity-50"
+            >
+              <X className="h-3.5 w-3.5" />
               Cancel
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -192,7 +201,7 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Rating Selection */}
         <div>
-          <Body className="text-sm font-medium text-gray-700 mb-3">Your Rating *</Body>
+          <p className="text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-3">Your rating *</p>
           <div className="flex items-center gap-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -205,30 +214,31 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
                 disabled={isLoading}
               >
                 <Star
-                  className={`h-8 w-8 transition-colors ${
+                  className={cn(
+                    'h-7 w-7 transition-colors',
                     star <= (hoveredRating || rating)
-                      ? 'text-yellow-400 fill-yellow-400'
-                      : 'text-gray-300'
-                  }`}
+                      ? 'text-journal-teal fill-journal-teal'
+                      : 'text-journal-star-empty fill-journal-star-empty'
+                  )}
                 />
               </button>
             ))}
             {rating > 0 && (
-              <Body className="text-sm text-gray-600 ml-2">
+              <span className="text-[13px] font-sans text-journal-muted ml-2">
                 {rating === 1 && 'Poor'}
                 {rating === 2 && 'Fair'}
                 {rating === 3 && 'Good'}
                 {rating === 4 && 'Very Good'}
                 {rating === 5 && 'Excellent'}
-              </Body>
+              </span>
             )}
           </div>
         </div>
 
         {/* Comment */}
         <div>
-          <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
-            Your Review *
+          <label htmlFor="comment" className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">
+            Your review *
           </label>
           <textarea
             id="comment"
@@ -236,52 +246,54 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Share your experience with this product..."
             rows={6}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
+            className="w-full px-3.5 py-3 border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal transition-colors resize-none text-[14px] font-sans"
             disabled={isLoading}
             maxLength={maxCharacters}
           />
           <div className="flex items-center justify-between mt-2">
-            <Body className="text-xs text-gray-500">
+            <span className="text-[11px] font-sans text-journal-faint">
               Minimum 10 characters required
-            </Body>
-            <Body className={`text-xs ${
-              characterCount > maxCharacters - 50
-                ? 'text-amber-600'
-                : characterCount > maxCharacters
-                ? 'text-red-600'
-                : 'text-gray-500'
-            }`}>
+            </span>
+            <span
+              className={cn(
+                'text-[11px] font-sans',
+                characterCount > maxCharacters - 50
+                  ? 'text-journal-warn-text'
+                  : characterCount > maxCharacters
+                  ? 'text-journal-danger-text'
+                  : 'text-journal-faint'
+              )}
+            >
               {characterCount} / {maxCharacters} characters
-            </Body>
+            </span>
           </div>
         </div>
 
         {/* Submit Button */}
-        <Button
+        <JournalButton
           type="submit"
           variant="primary"
-          size="default"
           className="w-full"
           disabled={isLoading || rating === 0 || comment.trim().length < 10}
         >
           {isCreating || isUpdating ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {isEditing ? 'Updating...' : 'Submitting...'}
             </>
           ) : (
             <>
               {isEditing ? (
                 <>
-                  <Edit2 className="h-4 w-4 mr-2" />
-                  Update Review
+                  <Edit2 className="h-3.5 w-3.5" />
+                  Update review
                 </>
               ) : (
-                'Submit Review'
+                'Submit review'
               )}
             </>
           )}
-        </Button>
+        </JournalButton>
       </form>
 
       {/* Delete Confirmation Modal */}
@@ -295,6 +307,6 @@ export const ReviewForm = ({ productId, onSuccess }: ReviewFormProps) => {
         variant="danger"
         isLoading={isDeleting}
       />
-    </Card>
+    </JournalCard>
   );
 };

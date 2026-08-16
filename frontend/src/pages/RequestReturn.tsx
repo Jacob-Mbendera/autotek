@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useGetOrderQuery } from '../store/api/orderApi';
 import { useCreateReturnMutation, useGetReturnsQuery } from '../store/api/returnApi';
@@ -8,15 +8,11 @@ import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { JournalCard, JournalButton, JournalLinkButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { cn } from '../utils/cn';
 import {
   ArrowLeft,
-  Package,
-  Image as ImageIcon,
   X,
   CheckCircle,
   AlertCircle,
@@ -52,7 +48,7 @@ export const RequestReturn = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   const { data: orderData, isLoading: isLoadingOrder, error: orderError } = useGetOrderQuery(
     orderId ? { id: orderId } : { id: '' },
@@ -277,24 +273,22 @@ export const RequestReturn = () => {
 
   if (!orderId) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="p-8 text-center">
-          <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-          <H2>Order ID Required</H2>
-          <Body className="mt-2 text-gray-600">Please provide an order ID to request a return.</Body>
-          <Link to="/orders">
-            <Button className="mt-4">View Orders</Button>
-          </Link>
-        </Card>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <JournalCard className="p-8 text-center">
+          <AlertCircle className="h-10 w-10 text-journal-warn-text mx-auto mb-4" />
+          <CardHeading className="!text-[20px]">Order ID required</CardHeading>
+          <JournalBody className="mt-2 !text-journal-muted">Please provide an order ID to request a return.</JournalBody>
+          <JournalLinkButton to="/orders" className="mt-4 mx-auto">View orders</JournalLinkButton>
+        </JournalCard>
       </div>
     );
   }
 
   if (isLoadingOrder) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-center min-h-[300px]">
+          <Loader2 className="h-8 w-8 animate-spin text-journal-teal" />
         </div>
       </div>
     );
@@ -302,15 +296,13 @@ export const RequestReturn = () => {
 
   if (orderError || !order) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="p-8 text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <H2>Order Not Found</H2>
-          <Body className="mt-2 text-gray-600">The order you're looking for doesn't exist or you don't have access to it.</Body>
-          <Link to="/orders">
-            <Button className="mt-4">View Orders</Button>
-          </Link>
-        </Card>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <JournalCard className="p-8 text-center">
+          <AlertCircle className="h-10 w-10 text-journal-danger-text mx-auto mb-4" />
+          <CardHeading className="!text-[20px]">Order not found</CardHeading>
+          <JournalBody className="mt-2 !text-journal-muted">The order you're looking for doesn't exist or you don't have access to it.</JournalBody>
+          <JournalLinkButton to="/orders" className="mt-4 mx-auto">View orders</JournalLinkButton>
+        </JournalCard>
       </div>
     );
   }
@@ -326,66 +318,62 @@ export const RequestReturn = () => {
         items={[
           { label: 'Home', href: '/' },
           { label: 'Orders', href: '/orders' },
-          { label: 'Request Return', href: '#' },
+          { label: 'Request Return' },
         ]}
       />
 
       <div className="mt-6">
-        <Link to={`/orders/${orderId}`} className="inline-flex items-center text-teal-600 hover:text-teal-700 mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Order
+        <Link to={`/orders/${orderId}`} className="inline-flex items-center text-[12px] font-sans font-semibold tracking-[0.08em] uppercase text-journal-teal hover:underline mb-4">
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+          Back to order
         </Link>
 
-        <H1 className="mt-4">Request Return</H1>
-        <Body className="text-gray-600 mt-2">Select items you'd like to return and provide details about your return request.</Body>
+        <PageHeading className="!text-[28px] sm:!text-[32px] mt-4">Request return</PageHeading>
+        <JournalBody className="!text-journal-muted mt-2">Select items you'd like to return and provide details about your return request.</JournalBody>
       </div>
 
       {!eligible && (
-        <Card className="mt-6 p-4 bg-amber-50 border-amber-200">
-          <div className="flex items-start">
-            <AlertCircle className="h-5 w-5 text-amber-600 mr-3 mt-0.5" />
+        <JournalCard className="mt-6 p-4 bg-journal-warn-bg border-journal-warn-bg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-journal-warn-text mt-0.5 flex-shrink-0" />
             <div>
-              <Body className="font-medium text-amber-900">
-                {order.status !== 'completed' ? 'Order Not Collected Yet' : 'Return Window Expired'}
-              </Body>
-              <Body className="text-amber-700 text-sm mt-1">
+              <p className="font-sans font-medium text-[14px] text-journal-warn-text">
+                {order.status !== 'completed' ? 'Order not collected yet' : 'Return window expired'}
+              </p>
+              <p className="text-journal-warn-text text-[13px] font-sans mt-1">
                 {order.status !== 'completed'
                   ? 'Returns are only available after the order has been collected.'
                   : `This order was collected ${daysSinceCompletion} days ago. Returns must be requested within 30 days of collection.`}
-              </Body>
+              </p>
             </div>
           </div>
-        </Card>
+        </JournalCard>
       )}
 
       {existingReturn && (
-        <Card className="mt-6 p-4 bg-teal-50 border-teal-200">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start">
-              <CheckCircle className="h-5 w-5 text-teal-600 mr-3 mt-0.5" />
+        <JournalCard className="mt-6 p-4 bg-journal-teal-tint border-journal-teal-tint-border">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-4 w-4 text-journal-teal mt-0.5 flex-shrink-0" />
               <div>
-                <Body className="font-medium text-teal-900">Return Already Requested</Body>
-                <Body className="text-teal-700 text-sm mt-1">
+                <p className="font-sans font-medium text-[14px] text-journal-teal">Return already requested</p>
+                <p className="text-journal-teal text-[13px] font-sans mt-1">
                   A return request already exists for this order. You can view its status instead of submitting again.
-                </Body>
+                </p>
               </div>
             </div>
-            <Link to={`/returns/${existingReturn._id}`}>
-              <Button variant="primary" size="sm">
-                View Return
-              </Button>
-            </Link>
+            <JournalLinkButton to={`/returns/${existingReturn._id}`}>View return</JournalLinkButton>
           </div>
-        </Card>
+        </JournalCard>
       )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
         {/* Order Items */}
-        <Card className="p-6">
-          <H2 className="mb-4">Select Items to Return</H2>
+        <JournalCard className="p-6">
+          <CardHeading className="!text-[19px] mb-4">Select items to return</CardHeading>
           {errors.items && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <Body className="text-red-700 text-sm">{errors.items}</Body>
+            <div className="mb-4 p-3 bg-journal-danger-bg border border-journal-error-border rounded-journal">
+              <p className="text-journal-danger-text text-[13px] font-sans">{errors.items}</p>
             </div>
           )}
 
@@ -397,16 +385,17 @@ export const RequestReturn = () => {
               return (
                 <div
                   key={item.product._id}
-                  className={`border rounded-lg p-4 ${
-                    isSelected ? 'border-teal-500 bg-teal-50' : 'border-gray-200'
-                  }`}
+                  className={cn(
+                    'border rounded-journal p-4',
+                    isSelected ? 'border-journal-teal bg-journal-teal-tint' : 'border-journal-hairline'
+                  )}
                 >
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start gap-4">
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleItemToggle(item)}
-                      className="mt-1 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                      className="mt-1 h-4 w-4 text-journal-teal focus:ring-journal-teal border-journal-input-border rounded"
                       disabled={!eligible}
                     />
                     {(() => {
@@ -420,67 +409,65 @@ export const RequestReturn = () => {
                           productName={item.product.name}
                           category={placeholderCategory ?? item.product.category}
                           size="sm"
-                          className="w-16 h-16 rounded flex-shrink-0"
+                          className="w-16 h-16 rounded-journal flex-shrink-0"
                         />
                       ) : (
                         <img
                           src={getProductImageUrl(item.product.images?.[0])}
                           alt={item.product.name}
-                          className="w-16 h-16 object-cover rounded"
+                          className="w-16 h-16 object-cover rounded-journal flex-shrink-0"
                         />
                       );
                     })()}
                     <div className="flex-1">
-                      <Body className="font-medium">{item.product.name}</Body>
-                      <Body className="text-sm text-gray-600 mt-1">
+                      <p className="font-sans font-medium text-[14px] text-journal-ink">{item.product.name}</p>
+                      <p className="text-[13px] font-sans text-journal-muted mt-1">
                         Quantity: {item.quantity} × MWK {item.price.toLocaleString()}
-                      </Body>
+                      </p>
                       {isSelected && (
                         <div className="mt-3 space-y-3">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Return Quantity
+                            <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">
+                              Return quantity
                             </label>
-                            <div className="flex items-center space-x-2">
-                              <Button
+                            <div className="flex items-center gap-2">
+                              <button
                                 type="button"
-                                variant="outline"
-                                size="sm"
                                 onClick={() => handleQuantityChange(item.product._id, (selectedItem?.quantity || 1) - 1)}
                                 disabled={!selectedItem || selectedItem.quantity <= 1}
+                                className="w-9 h-9 flex items-center justify-center border border-journal-input-border rounded-journal text-journal-body hover:border-journal-ink transition-colors disabled:opacity-40"
                               >
-                                -
-                              </Button>
-                              <Input
+                                −
+                              </button>
+                              <input
                                 type="number"
                                 min={1}
                                 max={selectedItem?.maxQuantity}
                                 value={selectedItem?.quantity || 1}
                                 onChange={(e) => handleQuantityChange(item.product._id, parseInt(e.target.value) || 1)}
-                                className="w-20 text-center"
+                                className="w-16 text-center px-2 py-2 border border-journal-input-border rounded-journal text-[13px] font-sans"
                               />
-                              <Button
+                              <button
                                 type="button"
-                                variant="outline"
-                                size="sm"
                                 onClick={() => handleQuantityChange(item.product._id, (selectedItem?.quantity || 1) + 1)}
                                 disabled={!selectedItem || selectedItem.quantity >= selectedItem.maxQuantity}
+                                className="w-9 h-9 flex items-center justify-center border border-journal-input-border rounded-journal text-journal-body hover:border-journal-ink transition-colors disabled:opacity-40"
                               >
                                 +
-                              </Button>
-                              <Body className="text-sm text-gray-600">
+                              </button>
+                              <span className="text-[12px] font-sans text-journal-faint">
                                 (max: {selectedItem?.maxQuantity})
-                              </Body>
+                              </span>
                             </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">
                               Reason for this item
                             </label>
                             <select
                               value={selectedItem?.reason || 'defective'}
                               onChange={(e) => handleItemReasonChange(item.product._id, e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                              className="w-full px-3 py-2.5 text-[13px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal bg-white"
                             >
                               {RETURN_REASONS.map((reason) => (
                                 <option key={reason.value} value={reason.value}>
@@ -497,20 +484,20 @@ export const RequestReturn = () => {
               );
             })}
           </div>
-        </Card>
+        </JournalCard>
 
         {/* Overall Return Reason */}
-        <Card className="p-6">
-          <H2 className="mb-4">Return Reason</H2>
+        <JournalCard className="p-6">
+          <CardHeading className="!text-[19px] mb-4">Return reason</CardHeading>
           {errors.reason && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <Body className="text-red-700 text-sm">{errors.reason}</Body>
+            <div className="mb-4 p-3 bg-journal-danger-bg border border-journal-error-border rounded-journal">
+              <p className="text-journal-danger-text text-[13px] font-sans">{errors.reason}</p>
             </div>
           )}
           <select
             value={overallReason}
             onChange={(e) => setOverallReason(e.target.value as ReturnReason)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full px-3 py-2.5 text-[13px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal bg-white"
             disabled={!eligible}
           >
             {RETURN_REASONS.map((reason) => (
@@ -519,27 +506,27 @@ export const RequestReturn = () => {
               </option>
             ))}
           </select>
-        </Card>
+        </JournalCard>
 
         {/* Comments */}
-        <Card className="p-6">
-          <H2 className="mb-4">Additional Comments</H2>
+        <JournalCard className="p-6">
+          <CardHeading className="!text-[19px] mb-4">Additional comments</CardHeading>
           <textarea
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full px-3.5 py-3 text-[14px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal resize-none"
             placeholder="Please provide any additional details about your return..."
             disabled={!eligible}
           />
-        </Card>
+        </JournalCard>
 
         {/* Image Upload */}
-        <Card className="p-6">
-          <H2 className="mb-4">Upload Photos (Optional)</H2>
-          <Body className="text-sm text-gray-600 mb-4">
+        <JournalCard className="p-6">
+          <CardHeading className="!text-[19px] mb-4">Upload photos (optional)</CardHeading>
+          <JournalBody className="!text-journal-muted mb-4">
             Upload photos of the items you're returning. This helps us process your return faster.
-          </Body>
+          </JournalBody>
           <div className="space-y-4">
             <label className="block">
               <input
@@ -550,11 +537,11 @@ export const RequestReturn = () => {
                 className="hidden"
                 disabled={!eligible || images.length >= 10}
               />
-              <div className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-teal-500 transition-colors cursor-pointer">
-                <Upload className="h-5 w-5 text-gray-400 mr-2" />
-                <Body className="text-gray-600">
+              <div className="flex items-center justify-center px-4 py-3 border border-dashed border-journal-input-border rounded-journal hover:border-journal-teal transition-colors cursor-pointer">
+                <Upload className="h-4 w-4 text-journal-faint mr-2" />
+                <span className="text-[13px] font-sans text-journal-body">
                   {images.length > 0 ? `${images.length} file(s) selected` : 'Choose images (max 10)'}
-                </Body>
+                </span>
               </div>
             </label>
             {imagePreviews.length > 0 && (
@@ -564,61 +551,61 @@ export const RequestReturn = () => {
                     <img
                       src={preview}
                       alt={`Preview ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
+                      className="w-full h-32 object-cover rounded-journal border border-journal-hairline"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      className="absolute top-2 right-2 bg-journal-danger-text text-white rounded-full p-1 hover:opacity-90"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </Card>
+        </JournalCard>
 
         {/* Refund Method */}
-        <Card className="p-6">
-          <H2 className="mb-4">Refund Method</H2>
+        <JournalCard className="p-6">
+          <CardHeading className="!text-[19px] mb-4">Refund method</CardHeading>
           <div className="space-y-2">
             {REFUND_METHODS.map((method) => (
-              <label key={method.value} className="flex items-center space-x-3 cursor-pointer">
+              <label key={method.value} className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="radio"
                   name="refundMethod"
                   value={method.value}
                   checked={refundMethod === method.value}
                   onChange={(e) => setRefundMethod(e.target.value as RefundMethod)}
-                  className="h-4 w-4 text-teal-600 focus:ring-teal-500"
+                  className="h-4 w-4 text-journal-teal focus:ring-journal-teal"
                   disabled={!eligible}
                 />
-                <Body>{method.label}</Body>
+                <span className="text-[14px] font-sans text-journal-body">{method.label}</span>
               </label>
             ))}
           </div>
-        </Card>
+        </JournalCard>
 
         {/* Submit Button */}
-        <div className="flex items-center justify-end space-x-4">
+        <div className="flex items-center justify-end gap-3 flex-wrap">
           <Link to={`/orders/${orderId}`}>
-            <Button type="button" variant="outline">Cancel</Button>
+            <JournalButton type="button" variant="secondary">Cancel</JournalButton>
           </Link>
-          <Button type="submit" disabled={!eligible || !!existingReturn || isSubmitting || selectedItems.size === 0}>
+          <JournalButton type="submit" variant="primary" disabled={!eligible || !!existingReturn || isSubmitting || selectedItems.size === 0}>
             {isSubmitting ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Submitting...
               </>
             ) : (
               <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Submit Return Request
+                <CheckCircle className="h-3.5 w-3.5" />
+                Submit return request
               </>
             )}
-          </Button>
+          </JournalButton>
         </div>
       </form>
     </div>

@@ -1,8 +1,7 @@
 import { Car } from 'lucide-react';
 import { VEHICLE_MAKES, getModelsForMake } from '../constants/vehicleOptions';
 import type { SelectedVehicle } from '../utils/vehicleFitmentFilter';
-import { Input } from './ui/Input';
-import { Body } from './ui/Typography';
+import { JournalInput, JournalBody } from './journal';
 
 interface VehicleFitmentFilterProps {
   value: SelectedVehicle;
@@ -11,7 +10,7 @@ interface VehicleFitmentFilterProps {
 }
 
 const selectClassName =
-  'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition-all';
+  'w-full px-3.5 py-2.5 border border-journal-input-border rounded-journal text-[13px] font-sans text-journal-ink bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal transition-colors';
 
 export const VehicleFitmentFilter = ({
   value,
@@ -22,30 +21,30 @@ export const VehicleFitmentFilter = ({
   const hasVehicle = Boolean(value.make && value.model);
 
   return (
-    <div className="mb-6 pb-6 border-b-2 border-gray-100">
+    <div className="mb-6 pb-6 border-b border-journal-hairline">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-          <Car className="h-4 w-4 text-teal-600" />
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">My vehicle</h3>
+          <Car className="h-4 w-4 text-journal-teal" />
+          <h3 className="text-[12px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">My vehicle</h3>
         </div>
         {hasVehicle && (
           <button
             type="button"
             onClick={onClear}
-            className="text-xs text-teal-600 hover:text-teal-700 font-medium hover:underline"
+            className="text-[12px] text-journal-teal hover:underline font-sans font-medium"
           >
             Clear vehicle
           </button>
         )}
       </div>
 
-      <Body className="text-xs text-gray-600 mb-3">
+      <JournalBody className="!text-[12px] !text-journal-muted mb-3">
         Show only parts listed for your car. Products without fitment data are hidden.
-      </Body>
+      </JournalBody>
 
       <div className="space-y-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Make</label>
+          <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">Make</label>
           <select
             value={value.make}
             onChange={(e) =>
@@ -67,12 +66,12 @@ export const VehicleFitmentFilter = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Model</label>
+          <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">Model</label>
           <select
             value={value.model}
             onChange={(e) => onChange({ ...value, model: e.target.value })}
             disabled={!value.make}
-            className={`${selectClassName} disabled:bg-gray-50 disabled:text-gray-400`}
+            className={`${selectClassName} disabled:bg-journal-sand disabled:text-journal-faint`}
           >
             <option value="">{value.make ? 'Select model' : 'Select make first'}</option>
             {models.map((model) => (
@@ -84,7 +83,7 @@ export const VehicleFitmentFilter = ({
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Input
+          <JournalInput
             label="Year (optional)"
             type="number"
             min="1900"
@@ -93,7 +92,7 @@ export const VehicleFitmentFilter = ({
             onChange={(e) => onChange({ ...value, year: e.target.value })}
             placeholder="e.g. 2012"
           />
-          <Input
+          <JournalInput
             label="Engine (optional)"
             value={value.engine}
             onChange={(e) => onChange({ ...value, engine: e.target.value })}
@@ -106,25 +105,25 @@ export const VehicleFitmentFilter = ({
             type="checkbox"
             checked={value.includeUniversal}
             onChange={(e) => onChange({ ...value, includeUniversal: e.target.checked })}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            className="mt-0.5 h-4 w-4 rounded border-journal-input-border text-journal-teal focus:ring-journal-teal"
           />
-          <span className="text-xs text-gray-700">
+          <span className="text-[12px] font-sans text-journal-body">
             Include universal parts (not vehicle-specific)
           </span>
         </label>
 
         {hasVehicle && (
-          <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2">
-            <Body className="text-xs text-teal-800">
+          <div className="rounded-journal border border-journal-teal-tint-border bg-journal-teal-tint px-3 py-2">
+            <JournalBody className="!text-[12px] !text-journal-teal">
               Filtering for {value.year ? `${value.year} ` : ''}
               {value.make} {value.model}
               {value.engine ? ` · ${value.engine}` : ''}
-            </Body>
+            </JournalBody>
           </div>
         )}
 
         {!hasVehicle && value.make && (
-          <Body className="text-xs text-amber-700">Select a model to apply vehicle filtering.</Body>
+          <JournalBody className="!text-[12px] !text-journal-warn-text">Select a model to apply vehicle filtering.</JournalBody>
         )}
       </div>
     </div>

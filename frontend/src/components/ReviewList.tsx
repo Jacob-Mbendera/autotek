@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { useAppSelector } from '../store/types';
 import { useGetProductReviewsQuery, useMarkHelpfulMutation } from '../store/api/reviewApi';
 import type { Review } from '../store/api/reviewApi';
-import { Card } from './ui/Card';
-import { Button } from './ui/Button';
-import { H2, Body } from './ui/Typography';
+import { JournalCard, CardHeading, JournalBody } from './journal';
 import { Star, ThumbsUp, CheckCircle, Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '../utils/cn';
 
 interface ReviewListProps {
   productId: string;
@@ -37,26 +36,26 @@ export const ReviewList = ({ productId }: ReviewListProps) => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <Loader2 className="h-7 w-7 animate-spin text-journal-teal" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <Card variant="md" className="text-center py-8">
-        <Body className="text-red-600">Failed to load reviews. Please try again later.</Body>
-      </Card>
+      <JournalCard className="text-center py-8">
+        <JournalBody className="!text-journal-danger-text">Failed to load reviews. Please try again later.</JournalBody>
+      </JournalCard>
     );
   }
 
   if (!data || data.reviews.length === 0) {
     return (
-      <Card variant="md" className="text-center py-12">
-        <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <H2 className="text-xl font-semibold text-gray-900 mb-2">No Reviews Yet</H2>
-        <Body className="text-gray-600">Be the first to review this product!</Body>
-      </Card>
+      <JournalCard className="text-center py-12">
+        <MessageSquare className="h-10 w-10 text-journal-faint mx-auto mb-4" />
+        <CardHeading className="!text-[19px] mb-2">No reviews yet</CardHeading>
+        <JournalBody className="!text-journal-muted">Be the first to review this product!</JournalBody>
+      </JournalCard>
     );
   }
 
@@ -66,7 +65,7 @@ export const ReviewList = ({ productId }: ReviewListProps) => {
     <div className="space-y-6">
       {/* Review Stats */}
       {stats && (
-        <Card variant="md" className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
+        <JournalCard className="bg-journal-teal-tint border-journal-teal-tint-border">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -74,21 +73,22 @@ export const ReviewList = ({ productId }: ReviewListProps) => {
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`h-5 w-5 ${
+                      className={cn(
+                        'h-4 w-4',
                         star <= Math.round(stats.averageRating)
-                          ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-300'
-                      }`}
+                          ? 'text-journal-teal fill-journal-teal'
+                          : 'text-journal-star-empty fill-journal-star-empty'
+                      )}
                     />
                   ))}
                 </div>
-                <H2 className="text-2xl font-bold text-gray-900">
+                <span className="font-journal text-[24px] text-journal-ink">
                   {stats.averageRating.toFixed(1)}
-                </H2>
+                </span>
               </div>
-              <Body className="text-gray-600">
+              <JournalBody className="!text-journal-muted">
                 Based on {stats.totalReviews} review{stats.totalReviews !== 1 ? 's' : ''}
-              </Body>
+              </JournalBody>
             </div>
             <div className="flex flex-col gap-1">
               {[5, 4, 3, 2, 1].map((rating) => {
@@ -97,40 +97,43 @@ export const ReviewList = ({ productId }: ReviewListProps) => {
                 return (
                   <div key={rating} className="flex items-center gap-2 min-w-[200px]">
                     <div className="flex items-center gap-1 w-12">
-                      <span className="text-sm font-medium text-gray-700">{rating}</span>
-                      <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      <span className="text-[13px] font-sans font-medium text-journal-body">{rating}</span>
+                      <Star className="h-3.5 w-3.5 text-journal-teal fill-journal-teal" />
                     </div>
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-teal-500 rounded-full transition-all"
+                        className="h-full bg-journal-teal rounded-full transition-all"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <span className="text-sm text-gray-600 w-8 text-right">{count}</span>
+                    <span className="text-[12px] font-sans text-journal-muted w-8 text-right">{count}</span>
                   </div>
                 );
               })}
             </div>
           </div>
-        </Card>
+        </JournalCard>
       )}
 
       {/* Sort Options */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Body className="text-sm font-medium text-gray-700">Sort by:</Body>
+        <span className="text-[12px] font-sans font-medium text-journal-body">Sort by:</span>
         {(['newest', 'oldest', 'highest', 'lowest', 'helpful'] as const).map((sort) => (
-          <Button
+          <button
             key={sort}
-            variant={sortBy === sort ? 'primary' : 'ghost'}
-            size="small"
             onClick={() => {
               setSortBy(sort);
               setPage(1);
             }}
-            className="capitalize"
+            className={cn(
+              'capitalize px-3 py-1.5 rounded-full text-[12px] font-sans font-medium transition-colors border',
+              sortBy === sort
+                ? 'bg-journal-ink text-journal-bone border-journal-ink'
+                : 'text-journal-body border-journal-hairline hover:border-journal-ink'
+            )}
           >
             {sort}
-          </Button>
+          </button>
         ))}
       </div>
 
@@ -150,25 +153,23 @@ export const ReviewList = ({ productId }: ReviewListProps) => {
       {/* Pagination */}
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-center gap-4">
-          <Button
-            variant="secondary"
-            size="small"
+          <button
             onClick={() => setPage(page - 1)}
             disabled={page === 1}
+            className="px-4 py-2 border border-journal-ink text-journal-ink font-sans font-medium text-[11px] tracking-[0.1em] uppercase hover:bg-journal-ink hover:text-journal-bone transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-journal-ink"
           >
             Previous
-          </Button>
-          <Body className="text-gray-600">
+          </button>
+          <span className="text-[13px] font-sans text-journal-muted">
             Page {pagination.page} of {pagination.totalPages}
-          </Body>
-          <Button
-            variant="secondary"
-            size="small"
+          </span>
+          <button
             onClick={() => setPage(page + 1)}
             disabled={page >= pagination.totalPages}
+            className="px-4 py-2 border border-journal-ink text-journal-ink font-sans font-medium text-[11px] tracking-[0.1em] uppercase hover:bg-journal-ink hover:text-journal-bone transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-journal-ink"
           >
             Next
-          </Button>
+          </button>
         </div>
       )}
     </div>
@@ -184,15 +185,15 @@ interface ReviewCardProps {
 
 const ReviewCard = ({ review, onMarkHelpful, isMarkingHelpful, isAuthenticated }: ReviewCardProps) => {
   return (
-    <Card variant="md" className="hover:shadow-lg transition-shadow">
+    <JournalCard>
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <Body className="font-semibold text-gray-900">{review.user.name}</Body>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="font-sans font-semibold text-[14px] text-journal-ink">{review.user.name}</span>
             {review.verifiedPurchase && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-journal-teal-tint text-journal-teal rounded-full text-[11px] font-sans font-medium">
                 <CheckCircle className="h-3 w-3" />
-                Verified Purchase
+                Verified purchase
               </span>
             )}
           </div>
@@ -201,35 +202,34 @@ const ReviewCard = ({ review, onMarkHelpful, isMarkingHelpful, isAuthenticated }
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`h-4 w-4 ${
+                  className={cn(
+                    'h-3.5 w-3.5',
                     star <= review.rating
-                      ? 'text-yellow-400 fill-yellow-400'
-                      : 'text-gray-300'
-                  }`}
+                      ? 'text-journal-teal fill-journal-teal'
+                      : 'text-journal-star-empty fill-journal-star-empty'
+                  )}
                 />
               ))}
             </div>
-            <Body className="text-sm text-gray-500">
+            <span className="text-[12px] font-sans text-journal-faint">
               {format(new Date(review.createdAt), 'MMM dd, yyyy')}
-            </Body>
+            </span>
           </div>
         </div>
       </div>
-      <Body className="text-gray-700 mb-4 whitespace-pre-wrap">{review.comment}</Body>
+      <JournalBody className="mb-4 whitespace-pre-wrap">{review.comment}</JournalBody>
       {isAuthenticated && (
-        <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
-          <Button
-            variant="ghost"
-            size="small"
+        <div className="flex items-center gap-2 pt-3 border-t border-journal-hairline">
+          <button
             onClick={() => onMarkHelpful(review._id)}
             disabled={isMarkingHelpful}
-            className="text-gray-600 hover:text-teal-600"
+            className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-muted hover:text-journal-teal transition-colors disabled:opacity-50"
           >
-            <ThumbsUp className="h-4 w-4 mr-1" />
+            <ThumbsUp className="h-3.5 w-3.5" />
             Helpful ({review.helpful || 0})
-          </Button>
+          </button>
         </div>
       )}
-    </Card>
+    </JournalCard>
   );
 };

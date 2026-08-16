@@ -17,11 +17,11 @@ import {
   emptySelectedVehicle,
   type SelectedVehicle,
 } from '../utils/vehicleFitmentFilter';
-import { Button } from '../components/ui/Button';
-import { H1, Body } from '../components/ui/Typography';
+import { PageHeading, JournalBody, JournalButton, JournalLinkButton, MonoLabel } from '../components/journal';
 import { Filter, X, Settings, ChevronRight, Cog, CircleStop, Zap, Wrench, Package, Grid3x3, List, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Car } from 'lucide-react';
 import { getVehicleFitmentMatchStrength } from '@shared/utils/productFitmentMatch';
 import type { Product } from '../store/api/productApi';
+import { cn } from '../utils/cn';
 
 const VEHICLE_STORAGE_KEY = 'autotek.selectedVehicle';
 
@@ -43,7 +43,7 @@ const readStoredVehicle = (): SelectedVehicle => {
 
 export const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   useEffect(() => {
     // Add page transition class on mount
     document.body.classList.add('page-transition');
@@ -51,7 +51,7 @@ export const Products = () => {
       document.body.classList.remove('page-transition');
     };
   }, []);
-  
+
   const dispatch = useAppDispatch();
   const { filters, pagination, viewMode } = useAppSelector((state) => state.product);
 
@@ -267,7 +267,7 @@ export const Products = () => {
   };
 
   const handleApplyFilters = () => {
-    dispatch(setFilters({ 
+    dispatch(setFilters({
       minPrice: priceRange.min,
       maxPrice: priceRange.max,
     }));
@@ -325,8 +325,8 @@ export const Products = () => {
       }
     : null;
   const startItem = data?.pagination ? (pagination.page - 1) * pagination.limit + 1 : 0;
-  const endItem = data?.pagination 
-    ? Math.min(pagination.page * pagination.limit, data.pagination.total) 
+  const endItem = data?.pagination
+    ? Math.min(pagination.page * pagination.limit, data.pagination.total)
     : 0;
   const totalItems = data?.pagination?.total || 0;
 
@@ -339,97 +339,82 @@ export const Products = () => {
       'Suspension': Wrench,
     };
     const IconComponent = iconMap[category] || Package;
-    return <IconComponent className="h-4 w-4" />;
+    return <IconComponent className="h-3.5 w-3.5" />;
   };
 
   return (
-    <div className="w-full">
-      {/* Hero/Banner Section */}
-      <section className="relative bg-gradient-to-br from-teal-50 via-white to-teal-50 overflow-hidden mb-12">
-        {/* Background decoration */}
-        <div className="absolute inset-0 geometric-pattern opacity-20"></div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-2000"></div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+    <div className="w-full bg-journal-bone">
+      {/* Hero Section */}
+      <section className="border-b border-journal-hairline">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
           {/* Breadcrumbs */}
           <nav className="mb-6" aria-label="Breadcrumb">
-            <ol className="flex items-center space-x-2 text-sm text-gray-600">
+            <ol className="flex items-center gap-2 text-[12px] font-sans text-journal-muted">
               <li>
-                <Link to="/" className="hover:text-teal-600 transition-colors">
+                <Link to="/" className="hover:text-journal-teal transition-colors">
                   Home
                 </Link>
               </li>
               <li>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </li>
-              <li className="text-gray-900 font-medium">Spare Parts</li>
+              <li className="text-journal-ink font-medium">Spare Parts</li>
             </ol>
           </nav>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center mb-8">
-            {/* Left side - Title and description */}
-            <div>
-              <H1 className="text-4xl lg:text-5xl font-bold mb-4 animate-fade-in">
-                Find Your <span className="text-teal-600">Auto Parts</span>
-              </H1>
-              <Body className="text-lg text-gray-700 mb-6 max-w-xl">
-                Browse quality spare parts for Malawi and Southern Africa. Filter by your vehicle to
-                see parts listed for your make and model.
-              </Body>
 
-              <div className="mb-6 rounded-2xl border border-teal-200 bg-white/90 p-4 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <Body className="font-semibold text-gray-900">Can&apos;t find the part you need?</Body>
-                    <Body className="text-sm text-gray-600">
-                      Send a part request and we&apos;ll help source it for you.
-                    </Body>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Link to="/request-part">
-                      <Button size="small" className="gap-2">
-                        <Package className="h-4 w-4" />
-                        Request a Part
-                      </Button>
-                    </Link>
-                    <Link to="/my-part-requests">
-                      <Button variant="secondary" size="small">
-                        My Part Requests
-                      </Button>
-                    </Link>
-                  </div>
+          <div className="mb-8">
+            <MonoLabel className="block mb-3">Catalogue</MonoLabel>
+            <PageHeading className="mb-4">Find your auto parts</PageHeading>
+            <JournalBody className="max-w-xl mb-6">
+              Browse quality spare parts for Malawi and Southern Africa. Filter by your vehicle to
+              see parts listed for your make and model.
+            </JournalBody>
+
+            <div className="mb-6 border border-journal-hairline bg-white p-4 rounded-journal">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-sans font-semibold text-[14px] text-journal-ink">Can&apos;t find the part you need?</p>
+                  <p className="font-sans text-[13px] text-journal-muted">
+                    Send a part request and we&apos;ll help source it for you.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <JournalLinkButton to="/request-part">
+                    <Package className="h-3.5 w-3.5" />
+                    Request a part
+                  </JournalLinkButton>
+                  <JournalLinkButton to="/my-part-requests" variant="secondary">
+                    My part requests
+                  </JournalLinkButton>
                 </div>
               </div>
-              
-              {/* Enhanced Search Bar with Autocomplete */}
-              <form onSubmit={handleSearch} className="relative max-w-2xl">
-                <SearchAutocomplete
-                  searchTerm={searchTerm}
-                  onSearchTermChange={setSearchTerm}
-                  onSelect={(term) => {
-                    setSearchTerm(term);
-                    dispatch(setFilters({ search: term || undefined }));
-                  }}
-                  className="mb-2"
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                >
-                  Search
-                </Button>
-              </form>
             </div>
-            
-            {/* Right side - Category showcase - Removed as it's redundant with quick filters below */}
+
+            {/* Enhanced Search Bar with Autocomplete */}
+            <form onSubmit={handleSearch} className="relative max-w-2xl">
+              <SearchAutocomplete
+                searchTerm={searchTerm}
+                onSearchTermChange={setSearchTerm}
+                onSelect={(term) => {
+                  setSearchTerm(term);
+                  dispatch(setFilters({ search: term || undefined }));
+                }}
+                className="mb-2"
+              />
+              <JournalButton
+                type="submit"
+                variant="primary"
+                className="absolute right-1.5 top-1/2 transform -translate-y-1/2"
+              >
+                Search
+              </JournalButton>
+            </form>
           </div>
-          
+
           {/* Quick filter chips */}
           {categoriesData?.categories && categoriesData.categories.length > 0 ? (
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-medium text-gray-700">Quick filters:</span>
+              <span className="text-[12px] font-sans font-medium text-journal-muted">Quick filters:</span>
               {categoriesData.categories.slice(0, 4).map((cat: { name: string; count: number }) => {
                 const categoryName = typeof cat === 'string' ? cat : cat.name;
                 if (!categoryName) return null;
@@ -440,11 +425,12 @@ export const Products = () => {
                     onClick={() =>
                       handleCategoryChange(filters.category === categoryName ? '' : categoryName)
                     }
-                    className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
+                    className={cn(
+                      'inline-flex items-center px-4 py-2 rounded-full text-[12px] font-sans font-semibold transition-colors whitespace-nowrap border',
                       filters.category === categoryName
-                        ? 'bg-teal-600 text-white shadow-lg'
-                        : 'bg-white text-gray-900 hover:bg-teal-50 hover:text-teal-600 border-2 border-gray-200 hover:border-teal-300'
-                    }`}
+                        ? 'bg-journal-ink text-journal-bone border-journal-ink'
+                        : 'bg-white text-journal-ink border-journal-hairline hover:border-journal-ink'
+                    )}
                   >
                     <span>{categoryName}</span>
                   </button>
@@ -453,572 +439,552 @@ export const Products = () => {
             </div>
           ) : (
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-medium text-gray-700">Quick filters:</span>
-              <span className="text-sm text-gray-500">Loading categories...</span>
+              <span className="text-[12px] font-sans font-medium text-journal-muted">Quick filters:</span>
+              <span className="text-[12px] font-sans text-journal-faint">Loading categories...</span>
             </div>
           )}
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-        {/* Enhanced Sidebar Filters */}
-        <aside className="lg:w-64 flex-shrink-0">
-          <div className="bg-white border-2 border-gray-200 rounded-xl p-6 sticky top-24 shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-100">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-teal-600" />
-                <h2 className="text-lg font-bold text-gray-900">Filters</h2>
-                {hasActiveFilters && (
-                  <span className="h-5 w-5 bg-teal-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                    {Object.keys(filters).filter(key => filters[key as keyof typeof filters] !== undefined).length}
+          {/* Sidebar Filters */}
+          <aside className="lg:w-64 flex-shrink-0">
+            <div className="bg-white border border-journal-hairline rounded-journal p-5 sticky top-24">
+              <div className="flex items-center justify-between mb-5 pb-4 border-b border-journal-hairline">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-journal-teal" />
+                  <h2 className="text-[14px] font-sans font-bold text-journal-ink">Filters</h2>
+                  {hasActiveFilters && (
+                    <span className="h-5 w-5 bg-journal-ink text-journal-bone text-[11px] rounded-full flex items-center justify-center font-bold">
+                      {Object.keys(filters).filter(key => filters[key as keyof typeof filters] !== undefined).length}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasActiveFilters && (
+                    <button
+                      onClick={handleResetFilters}
+                      className="text-[12px] text-journal-teal hover:underline font-sans font-medium"
+                    >
+                      Reset
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+                    className="lg:hidden p-1 hover:bg-journal-sand rounded-journal transition-colors"
+                    aria-label={filtersCollapsed ? 'Expand filters' : 'Collapse filters'}
+                  >
+                    {filtersCollapsed ? (
+                      <ChevronDown className="h-4 w-4 text-journal-body" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4 text-journal-body" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className={filtersCollapsed ? 'hidden lg:block' : ''}>
+
+                <VehicleFitmentFilter
+                  value={selectedVehicle}
+                  onChange={handleVehicleChange}
+                  onClear={handleClearVehicle}
+                />
+
+                {/* Category Section */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className="h-3.5 w-3.5 text-journal-teal" />
+                    <h3 className="text-[11px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">Category</h3>
+                  </div>
+                  <div className="space-y-1">
+                    {categoriesData?.categories && Array.isArray(categoriesData.categories) && categoriesData.categories.length > 0 ? (
+                      categoriesData.categories.map((cat: { name: string; count: number } | string) => {
+                        const categoryName = typeof cat === 'string' ? cat : cat.name;
+                        const isSelected = filters.category === categoryName;
+                        return (
+                          <button
+                            key={categoryName}
+                            onClick={() => handleCategoryChange(categoryName)}
+                            className={cn(
+                              'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-journal text-[13px] font-sans font-medium transition-colors border',
+                              isSelected
+                                ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                                : 'text-journal-body hover:bg-journal-sand border-transparent'
+                            )}
+                          >
+                            {getCategoryIcon(categoryName)}
+                            <span className="flex-1 text-left">{categoryName}</span>
+                            {typeof cat !== 'string' && cat.count > 0 && (
+                              <span className="text-[11px] text-journal-faint">
+                                ({cat.count})
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="text-[12px] font-sans text-journal-faint py-2">Loading categories...</div>
+                    )}
+                    <button
+                      onClick={() => handleCategoryChange('')}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-journal text-[13px] font-sans font-medium transition-colors border',
+                        !filters.category
+                          ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                          : 'text-journal-body hover:bg-journal-sand border-transparent'
+                      )}
+                    >
+                      <Package className="h-3.5 w-3.5" />
+                      <span className="flex-1 text-left">All categories</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stock Status Filter */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className="h-3.5 w-3.5 text-journal-teal" />
+                    <h3 className="text-[11px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">Stock status</h3>
+                  </div>
+                  <div className="space-y-1">
+                    {[
+                      { value: 'all', label: 'All', icon: Package },
+                      { value: 'in-stock', label: 'In stock', icon: CheckCircle },
+                      { value: 'low-stock', label: 'Low stock', icon: AlertCircle },
+                      { value: 'out-of-stock', label: 'Out of stock', icon: X },
+                    ].map((option) => {
+                      const Icon = option.icon;
+                      const isSelected = (filters.stockStatus || 'all') === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => dispatch(setFilters({ stockStatus: option.value as any }))}
+                          className={cn(
+                            'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-journal text-[13px] font-sans font-medium transition-colors border',
+                            isSelected
+                              ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                              : 'text-journal-body hover:bg-journal-sand border-transparent'
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span className="flex-1 text-left">{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Price Range Section */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Settings className="h-3.5 w-3.5 text-journal-teal" />
+                    <h3 className="text-[11px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">Price range (MWK)</h3>
+                  </div>
+                  <div className="space-y-4 bg-journal-sand rounded-journal p-4">
+                    <div>
+                      {/* Price Input Fields */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                          <label className="block text-[11px] font-sans font-medium text-journal-muted mb-1">Min price</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="50000000"
+                            step="1000"
+                            value={priceRange.min}
+                            onChange={(e) => {
+                              const value = Math.max(0, Math.min(50000000, Number(e.target.value) || 0));
+                              handlePriceRangeChange(value, priceRange.max);
+                            }}
+                            className="w-full px-3 py-2 text-[13px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal bg-white"
+                            placeholder="Min"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-sans font-medium text-journal-muted mb-1">Max price</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="50000000"
+                            step="1000"
+                            value={priceRange.max}
+                            onChange={(e) => {
+                              const value = Math.max(0, Math.min(50000000, Number(e.target.value) || 0));
+                              handlePriceRangeChange(priceRange.min, value);
+                            }}
+                            className="w-full px-3 py-2 text-[13px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal bg-white"
+                            placeholder="Max"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Price Display */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[12px] font-sans font-semibold text-journal-body bg-white px-2.5 py-1 rounded-journal border border-journal-hairline">
+                          Min: {priceRange.min.toLocaleString()}
+                        </span>
+                        <span className="text-[12px] font-sans font-semibold text-journal-body bg-white px-2.5 py-1 rounded-journal border border-journal-hairline">
+                          Max: {priceRange.max.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Sliders */}
+                      <div className="relative space-y-3">
+                        <div className="relative">
+                          <input
+                            type="range"
+                            min="0"
+                            max="50000000"
+                            step="1000"
+                            value={priceRange.min}
+                            onChange={(e) => handlePriceRangeChange(Number(e.target.value), priceRange.max)}
+                            className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-journal-teal"
+                            style={{
+                              background: `linear-gradient(to right, rgb(17, 94, 89) 0%, rgb(17, 94, 89) ${(priceRange.min / 50000000) * 100}%, rgb(216, 210, 196) ${(priceRange.min / 50000000) * 100}%, rgb(216, 210, 196) 100%)`
+                            }}
+                          />
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="range"
+                            min="0"
+                            max="50000000"
+                            step="1000"
+                            value={priceRange.max}
+                            onChange={(e) => handlePriceRangeChange(priceRange.min, Number(e.target.value))}
+                            className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-journal-teal"
+                            style={{
+                              background: `linear-gradient(to right, rgb(216, 210, 196) 0%, rgb(216, 210, 196) ${(priceRange.max / 50000000) * 100}%, rgb(17, 94, 89) ${(priceRange.max / 50000000) * 100}%, rgb(17, 94, 89) 100%)`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Filter Presets */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Settings className="h-3.5 w-3.5 text-journal-teal" />
+                    <h3 className="text-[11px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">Quick filters</h3>
+                  </div>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => {
+                        setPriceRange({ min: 0, max: 50000 });
+                        dispatch(setFilters({ minPrice: 0, maxPrice: 50000 }));
+                      }}
+                      className="w-full text-left px-3 py-2 text-[13px] font-sans font-medium text-journal-body bg-journal-sand hover:bg-journal-teal-tint hover:text-journal-teal rounded-journal transition-colors"
+                    >
+                      Under MWK 50,000
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPriceRange({ min: 50000, max: 200000 });
+                        dispatch(setFilters({ minPrice: 50000, maxPrice: 200000 }));
+                      }}
+                      className="w-full text-left px-3 py-2 text-[13px] font-sans font-medium text-journal-body bg-journal-sand hover:bg-journal-teal-tint hover:text-journal-teal rounded-journal transition-colors"
+                    >
+                      MWK 50,000 - 200,000
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPriceRange({ min: 200000, max: 50000000 });
+                        dispatch(setFilters({ minPrice: 200000, maxPrice: 50000000 }));
+                      }}
+                      className="w-full text-left px-3 py-2 text-[13px] font-sans font-medium text-journal-body bg-journal-sand hover:bg-journal-teal-tint hover:text-journal-teal rounded-journal transition-colors"
+                    >
+                      Above MWK 200,000
+                    </button>
+                  </div>
+                </div>
+
+                {/* Apply Filters Button */}
+                <JournalButton
+                  variant="primary"
+                  className="w-full"
+                  onClick={handleApplyFilters}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Apply filters
+                </JournalButton>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {/* Header with Title and Count */}
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+              <h1 className="font-journal text-[24px] text-journal-ink">
+                {filters.category || 'All Products'}
+              </h1>
+              {data?.pagination && (
+                <JournalBody className="!text-journal-muted">
+                  Showing {startItem}-{endItem} of {totalItems} products
+                </JournalBody>
+              )}
+            </div>
+
+            {/* Active Filters */}
+            {hasActiveFilters && (
+              <div className="flex items-center gap-2 flex-wrap mb-6 p-4 bg-white rounded-journal border border-journal-hairline">
+                <span className="text-[12px] font-sans font-semibold text-journal-body">Active filters:</span>
+                {filters.category && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-journal-teal-tint text-journal-teal rounded-full text-[12px] font-sans font-medium border border-journal-teal-tint-border">
+                    {filters.category}
+                    <button
+                      onClick={() => handleCategoryChange('')}
+                      className="hover:opacity-70 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </span>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                {hasActiveFilters && (
-                  <button
-                    onClick={handleResetFilters}
-                    className="text-sm text-teal-600 hover:text-teal-700 font-medium hover:underline transition-all"
-                  >
-                    Reset
-                  </button>
-                )}
-                <button
-                  onClick={() => setFiltersCollapsed(!filtersCollapsed)}
-                  className="lg:hidden p-1 hover:bg-gray-100 rounded transition-colors"
-                  aria-label={filtersCollapsed ? 'Expand filters' : 'Collapse filters'}
-                >
-                  {filtersCollapsed ? (
-                    <ChevronDown className="h-5 w-5 text-gray-600" />
-                  ) : (
-                    <ChevronUp className="h-5 w-5 text-gray-600" />
-                  )}
-                </button>
-              </div>
-            </div>
-            
-            <div className={filtersCollapsed ? 'hidden lg:block' : ''}>
-
-            <VehicleFitmentFilter
-              value={selectedVehicle}
-              onChange={handleVehicleChange}
-              onClear={handleClearVehicle}
-            />
-
-            {/* Enhanced Category Section */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="h-4 w-4 text-teal-600" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Category</h3>
-              </div>
-              <div className="space-y-2">
-                {categoriesData?.categories && Array.isArray(categoriesData.categories) && categoriesData.categories.length > 0 ? (
-                  categoriesData.categories.map((cat: { name: string; count: number } | string) => {
-                    const categoryName = typeof cat === 'string' ? cat : cat.name;
-                    const isSelected = filters.category === categoryName;
-                    return (
-                      <button
-                        key={categoryName}
-                        onClick={() => handleCategoryChange(categoryName)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
-                          isSelected
-                            ? 'bg-gradient-to-r from-teal-50 to-teal-100 text-teal-700 border-2 border-teal-300 shadow-md transform scale-105'
-                            : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent hover:border-gray-200 hover:shadow-sm'
-                        }`}
-                      >
-                        <div className={`p-1.5 rounded-md ${isSelected ? 'bg-teal-200' : 'bg-gray-100'}`}>
-                          {getCategoryIcon(categoryName)}
-                        </div>
-                        <span className="flex-1 text-left">{categoryName}</span>
-                        {typeof cat !== 'string' && cat.count > 0 && (
-                          <span className={`text-xs ${isSelected ? 'text-teal-600' : 'text-gray-500'}`}>
-                            ({cat.count})
-                          </span>
-                        )}
-                        {isSelected && (
-                          <div className="h-2 w-2 bg-teal-600 rounded-full animate-pulse"></div>
-                        )}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="text-sm text-gray-500 py-2">Loading categories...</div>
-                )}
-                <button
-                  onClick={() => handleCategoryChange('')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
-                    !filters.category
-                      ? 'bg-gradient-to-r from-teal-50 to-teal-100 text-teal-700 border-2 border-teal-300 shadow-md'
-                      : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent hover:border-gray-200'
-                  }`}
-                >
-                  <Package className="h-4 w-4" />
-                  <span className="flex-1 text-left">All Categories</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Stock Status Filter */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="h-4 w-4 text-teal-600" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Stock Status</h3>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { value: 'all', label: 'All', icon: Package },
-                  { value: 'in-stock', label: 'In Stock', icon: CheckCircle },
-                  { value: 'low-stock', label: 'Low Stock', icon: AlertCircle },
-                  { value: 'out-of-stock', label: 'Out of Stock', icon: X },
-                ].map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = (filters.stockStatus || 'all') === option.value;
-                  return (
+                {filters.minPrice !== undefined && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-journal-teal-tint text-journal-teal rounded-full text-[12px] font-sans font-medium border border-journal-teal-tint-border">
+                    Min: MWK {filters.minPrice.toLocaleString()}
                     <button
-                      key={option.value}
-                      onClick={() => dispatch(setFilters({ stockStatus: option.value as any }))}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-teal-50 to-teal-100 text-teal-700 border-2 border-teal-300 shadow-md'
-                          : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent hover:border-gray-200'
-                      }`}
+                      onClick={() => dispatch(setFilters({ minPrice: undefined }))}
+                      className="hover:opacity-70 transition-opacity"
                     >
-                      <Icon className={`h-4 w-4 ${isSelected ? 'text-teal-600' : 'text-gray-500'}`} />
-                      <span className="flex-1 text-left">{option.label}</span>
-                      {isSelected && (
-                        <div className="h-2 w-2 bg-teal-600 rounded-full animate-pulse"></div>
-                      )}
+                      <X className="h-3 w-3" />
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Enhanced Price Range Section */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Settings className="h-4 w-4 text-teal-600" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Price Range (MWK)</h3>
-              </div>
-              <div className="space-y-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div>
-                  {/* Price Input Fields */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Min Price</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="50000000"
-                        step="1000"
-                        value={priceRange.min}
-                        onChange={(e) => {
-                          const value = Math.max(0, Math.min(50000000, Number(e.target.value) || 0));
-                          handlePriceRangeChange(value, priceRange.max);
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
-                        placeholder="Min"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Max Price</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="50000000"
-                        step="1000"
-                        value={priceRange.max}
-                        onChange={(e) => {
-                          const value = Math.max(0, Math.min(50000000, Number(e.target.value) || 0));
-                          handlePriceRangeChange(priceRange.min, value);
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
-                        placeholder="Max"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Price Display */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-gray-700 bg-white px-3 py-1 rounded-md border border-gray-200">
-                      Min: {priceRange.min.toLocaleString()}
-                    </span>
-                    <span className="text-sm font-semibold text-gray-700 bg-white px-3 py-1 rounded-md border border-gray-200">
-                      Max: {priceRange.max.toLocaleString()}
-                    </span>
-                  </div>
-                  
-                  {/* Sliders */}
-                  <div className="relative space-y-3">
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="0"
-                        max="50000000"
-                        step="1000"
-                        value={priceRange.min}
-                        onChange={(e) => handlePriceRangeChange(Number(e.target.value), priceRange.max)}
-                        className="w-full h-3 bg-gradient-to-r from-teal-200 to-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-600 hover:accent-teal-700 transition-all"
-                        style={{
-                          background: `linear-gradient(to right, rgb(20, 184, 166) 0%, rgb(20, 184, 166) ${(priceRange.min / 50000000) * 100}%, rgb(229, 231, 235) ${(priceRange.min / 50000000) * 100}%, rgb(229, 231, 235) 100%)`
-                        }}
-                      />
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="0"
-                        max="50000000"
-                        step="1000"
-                        value={priceRange.max}
-                        onChange={(e) => handlePriceRangeChange(priceRange.min, Number(e.target.value))}
-                        className="w-full h-3 bg-gradient-to-r from-gray-200 to-teal-200 rounded-lg appearance-none cursor-pointer accent-teal-600 hover:accent-teal-700 transition-all"
-                        style={{
-                          background: `linear-gradient(to right, rgb(229, 231, 235) 0%, rgb(229, 231, 235) ${(priceRange.max / 50000000) * 100}%, rgb(20, 184, 166) ${(priceRange.max / 50000000) * 100}%, rgb(20, 184, 166) 100%)`
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Filter Presets */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Settings className="h-4 w-4 text-teal-600" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Quick Filters</h3>
-              </div>
-              <div className="space-y-2">
+                  </span>
+                )}
+                {filters.maxPrice !== undefined && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-journal-teal-tint text-journal-teal rounded-full text-[12px] font-sans font-medium border border-journal-teal-tint-border">
+                    Max: MWK {filters.maxPrice.toLocaleString()}
+                    <button
+                      onClick={() => dispatch(setFilters({ maxPrice: undefined }))}
+                      className="hover:opacity-70 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {filters.stockStatus && filters.stockStatus !== 'all' && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-journal-teal-tint text-journal-teal rounded-full text-[12px] font-sans font-medium border border-journal-teal-tint-border">
+                    Stock: {filters.stockStatus.replace('-', ' ')}
+                    <button
+                      onClick={() => dispatch(setFilters({ stockStatus: undefined }))}
+                      className="hover:opacity-70 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
                 <button
-                  onClick={() => {
-                    setPriceRange({ min: 0, max: 50000 });
-                    dispatch(setFilters({ minPrice: 0, maxPrice: 50000 }));
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-teal-50 hover:text-teal-700 rounded-lg border border-gray-200 hover:border-teal-300 transition-all"
+                  onClick={handleResetFilters}
+                  className="ml-auto px-3 py-1.5 text-[12px] font-sans font-medium text-journal-body hover:text-journal-teal border border-journal-hairline hover:border-journal-teal-tint-border rounded-full transition-colors"
                 >
-                  Under MWK 50,000
-                </button>
-                <button
-                  onClick={() => {
-                    setPriceRange({ min: 50000, max: 200000 });
-                    dispatch(setFilters({ minPrice: 50000, maxPrice: 200000 }));
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-teal-50 hover:text-teal-700 rounded-lg border border-gray-200 hover:border-teal-300 transition-all"
-                >
-                  MWK 50,000 - 200,000
-                </button>
-                <button
-                  onClick={() => {
-                    setPriceRange({ min: 200000, max: 50000000 });
-                    dispatch(setFilters({ minPrice: 200000, maxPrice: 50000000 }));
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-teal-50 hover:text-teal-700 rounded-lg border border-gray-200 hover:border-teal-300 transition-all"
-                >
-                  Above MWK 200,000
+                  Clear all
                 </button>
               </div>
-            </div>
-
-            {/* Enhanced Apply Filters Button */}
-            <Button
-              variant="primary"
-              size="default"
-              className="w-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-              onClick={handleApplyFilters}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Apply Filters
-            </Button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* Header with Title and Count */}
-          <div className="flex items-center justify-between mb-6">
-            <H1 className="text-2xl font-bold text-gray-900">
-              {filters.category || 'All Products'}
-            </H1>
-            {data?.pagination && (
-              <Body className="text-gray-600">
-                Showing {startItem}-{endItem} of {totalItems} products
-              </Body>
             )}
-          </div>
 
-          {/* Enhanced Active Filters */}
-          {hasActiveFilters && (
-            <div className="flex items-center gap-2 flex-wrap mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <span className="text-sm font-semibold text-gray-700">Active filters:</span>
-              {filters.category && (
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-teal-50 text-teal-700 rounded-full text-sm font-medium shadow-sm border border-teal-200">
-                  <Package className="h-3 w-3" />
-                  {filters.category}
-                  <button
-                    onClick={() => handleCategoryChange('')}
-                    className="hover:text-teal-900 hover:bg-teal-200 rounded-full p-0.5 transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
-              {filters.minPrice !== undefined && (
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-teal-50 text-teal-700 rounded-full text-sm font-medium shadow-sm border border-teal-200">
-                  <Settings className="h-3 w-3" />
-                  Min: MWK {filters.minPrice.toLocaleString()}
-                  <button
-                    onClick={() => dispatch(setFilters({ minPrice: undefined }))}
-                    className="hover:text-teal-900 hover:bg-teal-200 rounded-full p-0.5 transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
-              {filters.maxPrice !== undefined && (
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-teal-50 text-teal-700 rounded-full text-sm font-medium shadow-sm border border-teal-200">
-                  <Settings className="h-3 w-3" />
-                  Max: MWK {filters.maxPrice.toLocaleString()}
-                  <button
-                    onClick={() => dispatch(setFilters({ maxPrice: undefined }))}
-                    className="hover:text-teal-900 hover:bg-teal-200 rounded-full p-0.5 transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
-              {filters.stockStatus && filters.stockStatus !== 'all' && (
-                <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-teal-50 text-teal-700 rounded-full text-sm font-medium shadow-sm border border-teal-200">
-                  <Package className="h-3 w-3" />
-                  Stock: {filters.stockStatus.replace('-', ' ')}
-                  <button
-                    onClick={() => dispatch(setFilters({ stockStatus: undefined }))}
-                    className="hover:text-teal-900 hover:bg-teal-200 rounded-full p-0.5 transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
-              <button
-                onClick={handleResetFilters}
-                className="ml-auto px-4 py-2 text-sm font-medium text-gray-600 hover:text-teal-600 hover:bg-white rounded-full border border-gray-300 hover:border-teal-300 transition-all"
-              >
-                Clear All
-              </button>
-            </div>
-          )}
-
-          {/* Enhanced Products Grid Header with Sort and View Toggle */}
-          {!isLoading && !error && data?.products && data.products.length > 0 && (
-            <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-gray-700">Sort by:</span>
-                <select
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:border-teal-500 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all cursor-pointer"
-                  value={
-                    filters.sortBy === 'price' && filters.sortOrder === 'asc'
-                      ? 'price-asc'
-                      : filters.sortBy === 'price' && filters.sortOrder === 'desc'
-                      ? 'price-desc'
-                      : filters.sortBy === 'name' && filters.sortOrder === 'asc'
-                      ? 'name-asc'
-                      : filters.sortBy === 'name' && filters.sortOrder === 'desc'
-                      ? 'name-desc'
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const sortValue = e.target.value;
-                    if (sortValue === 'price-asc') {
-                      dispatch(setFilters({ sortBy: 'price', sortOrder: 'asc' }));
-                    } else if (sortValue === 'price-desc') {
-                      dispatch(setFilters({ sortBy: 'price', sortOrder: 'desc' }));
-                    } else if (sortValue === 'name-asc') {
-                      dispatch(setFilters({ sortBy: 'name', sortOrder: 'asc' }));
-                    } else if (sortValue === 'name-desc') {
-                      dispatch(setFilters({ sortBy: 'name', sortOrder: 'desc' }));
-                    } else {
-                      dispatch(setFilters({ sortBy: undefined, sortOrder: undefined }));
-                    }
-                  }}
-                >
-                  <option value="">Default</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="name-asc">Name: A to Z</option>
-                  <option value="name-desc">Name: Z to A</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                {/* Results Per Page */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">Show:</span>
+            {/* Products Grid Header with Sort and View Toggle */}
+            {!isLoading && !error && data?.products && data.products.length > 0 && (
+              <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-journal border border-journal-hairline flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-[12px] font-sans font-medium text-journal-body">Sort by:</span>
                   <select
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:border-teal-500 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 transition-all cursor-pointer"
-                    value={pagination.limit}
+                    className="px-3 py-2 border border-journal-input-border rounded-journal text-[13px] font-sans font-medium text-journal-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal transition-colors cursor-pointer"
+                    value={
+                      filters.sortBy === 'price' && filters.sortOrder === 'asc'
+                        ? 'price-asc'
+                        : filters.sortBy === 'price' && filters.sortOrder === 'desc'
+                        ? 'price-desc'
+                        : filters.sortBy === 'name' && filters.sortOrder === 'asc'
+                        ? 'name-asc'
+                        : filters.sortBy === 'name' && filters.sortOrder === 'desc'
+                        ? 'name-desc'
+                        : ''
+                    }
                     onChange={(e) => {
-                      const newLimit = parseInt(e.target.value, 10);
-                      dispatch(setPagination({ limit: newLimit, page: 1 }));
+                      const sortValue = e.target.value;
+                      if (sortValue === 'price-asc') {
+                        dispatch(setFilters({ sortBy: 'price', sortOrder: 'asc' }));
+                      } else if (sortValue === 'price-desc') {
+                        dispatch(setFilters({ sortBy: 'price', sortOrder: 'desc' }));
+                      } else if (sortValue === 'name-asc') {
+                        dispatch(setFilters({ sortBy: 'name', sortOrder: 'asc' }));
+                      } else if (sortValue === 'name-desc') {
+                        dispatch(setFilters({ sortBy: 'name', sortOrder: 'desc' }));
+                      } else {
+                        dispatch(setFilters({ sortBy: undefined, sortOrder: undefined }));
+                      }
                     }}
                   >
-                    <option value="12">12</option>
-                    <option value="24">24</option>
-                    <option value="48">48</option>
-                    <option value="96">96</option>
+                    <option value="">Default</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="name-asc">Name: A to Z</option>
+                    <option value="name-desc">Name: Z to A</option>
                   </select>
-                  <span className="text-sm text-gray-600">per page</span>
                 </div>
-                
-                {/* View Toggle */}
-                <div className="flex items-center gap-2 border border-gray-300 rounded-lg p-1">
-                  <button
-                    onClick={() => dispatch(setViewMode('grid'))}
-                    className={`p-2 rounded-md transition-all duration-200 ${
-                      viewMode === 'grid'
-                        ? 'bg-teal-600 text-white shadow-md'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                    aria-label="Grid view"
-                  >
-                    <Grid3x3 className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => dispatch(setViewMode('list'))}
-                    className={`p-2 rounded-md transition-all duration-200 ${
-                      viewMode === 'list'
-                        ? 'bg-teal-600 text-white shadow-md'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                    aria-label="List view"
-                  >
-                    <List className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Products Grid */}
-          {isLoading ? (
-            viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {Array.from({ length: pagination.limit }).map((_, index) => (
-                  <ProductCardSkeleton key={index} />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4 mb-8">
-                {Array.from({ length: pagination.limit }).map((_, index) => (
-                  <ProductCardListSkeleton key={index} />
-                ))}
-              </div>
-            )
-          ) : error ? (
-            <div className="text-center py-20 bg-red-50 rounded-lg border-2 border-red-200">
-              <X className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <Body className="text-red-600 text-lg font-semibold mb-2">Error loading products</Body>
-              <Body className="text-red-500">Please try again later</Body>
-            </div>
-          ) : !data?.products || data.products.length === 0 ? (
-            <div className="text-center py-20 bg-gray-50 rounded-lg border-2 border-gray-200">
-              <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <Body className="text-gray-700 text-lg font-semibold mb-2">
-                {vehicleFilterActive ? 'No parts listed for this vehicle' : 'No products found'}
-              </Body>
-              <Body className="text-gray-600 mb-3">
-                {vehicleFilterActive
-                  ? 'We could not find catalog parts matching your vehicle filter. Request the part and we will help source it.'
-                  : 'Try adjusting your filters or search terms.'}
-              </Body>
-              {vehicleFilterActive && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 border border-teal-200 px-4 py-2 mb-6">
-                  <Car className="h-4 w-4 text-teal-600" />
-                  <Body className="text-sm text-teal-800">
-                    {[filters.year, filters.make, filters.model, filters.engine]
-                      .filter(Boolean)
-                      .join(' ')}
-                  </Body>
-                </div>
-              )}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Button variant="secondary" onClick={handleResetFilters}>
-                  Clear Filters
-                </Button>
-                <Link to={requestPartPath}>
-                  <Button className="gap-2">
-                    <Package className="h-4 w-4" />
-                    Request a Part
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <>
-              {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {data.products.map((product, index) => (
-                    <div
-                      key={product._id}
-                      className="animate-fade-in"
-                      style={{ animationDelay: `${index * 50}ms` }}
+                <div className="flex items-center gap-4">
+                  {/* Results Per Page */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-sans font-medium text-journal-body">Show:</span>
+                    <select
+                      className="px-2.5 py-2 border border-journal-input-border rounded-journal text-[13px] font-sans font-medium text-journal-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal transition-colors cursor-pointer"
+                      value={pagination.limit}
+                      onChange={(e) => {
+                        const newLimit = parseInt(e.target.value, 10);
+                        dispatch(setPagination({ limit: newLimit, page: 1 }));
+                      }}
                     >
-                      <ProductCard
-                        product={product}
-                        fitmentMatch={getVehicleFitmentMatchStrength(product, vehicleQueryForMatch)}
-                        onQuickView={(product) => setQuickViewProduct(product)}
-                      />
-                    </div>
+                      <option value="12">12</option>
+                      <option value="24">24</option>
+                      <option value="48">48</option>
+                      <option value="96">96</option>
+                    </select>
+                    <span className="text-[12px] font-sans text-journal-muted">per page</span>
+                  </div>
+
+                  {/* View Toggle */}
+                  <div className="flex items-center border border-journal-input-border rounded-journal p-0.5">
+                    <button
+                      onClick={() => dispatch(setViewMode('grid'))}
+                      className={cn(
+                        'p-1.5 rounded-journal transition-colors',
+                        viewMode === 'grid'
+                          ? 'bg-journal-ink text-journal-bone'
+                          : 'text-journal-body hover:bg-journal-sand'
+                      )}
+                      aria-label="Grid view"
+                    >
+                      <Grid3x3 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => dispatch(setViewMode('list'))}
+                      className={cn(
+                        'p-1.5 rounded-journal transition-colors',
+                        viewMode === 'list'
+                          ? 'bg-journal-ink text-journal-bone'
+                          : 'text-journal-body hover:bg-journal-sand'
+                      )}
+                      aria-label="List view"
+                    >
+                      <List className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Products Grid */}
+            {isLoading ? (
+              viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  {Array.from({ length: pagination.limit }).map((_, index) => (
+                    <ProductCardSkeleton key={index} />
                   ))}
                 </div>
               ) : (
                 <div className="space-y-4 mb-8">
-                  {data.products.map((product, index) => (
-                    <div
-                      key={product._id}
-                      className="animate-fade-in"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
+                  {Array.from({ length: pagination.limit }).map((_, index) => (
+                    <ProductCardListSkeleton key={index} />
+                  ))}
+                </div>
+              )
+            ) : error ? (
+              <div className="text-center py-20 bg-journal-danger-bg rounded-journal border border-journal-error-border">
+                <X className="h-10 w-10 text-journal-danger-text mx-auto mb-4" />
+                <p className="text-journal-danger-text text-[16px] font-sans font-semibold mb-1">Error loading products</p>
+                <p className="text-journal-danger-text text-[14px] font-sans">Please try again later</p>
+              </div>
+            ) : !data?.products || data.products.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-journal border border-journal-hairline">
+                <Package className="h-12 w-12 text-journal-faint mx-auto mb-4" />
+                <p className="text-journal-ink text-[16px] font-sans font-semibold mb-1">
+                  {vehicleFilterActive ? 'No parts listed for this vehicle' : 'No products found'}
+                </p>
+                <p className="text-journal-muted text-[14px] font-sans mb-3">
+                  {vehicleFilterActive
+                    ? 'We could not find catalog parts matching your vehicle filter. Request the part and we will help source it.'
+                    : 'Try adjusting your filters or search terms.'}
+                </p>
+                {vehicleFilterActive && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-journal-teal-tint border border-journal-teal-tint-border px-4 py-2 mb-6">
+                    <Car className="h-3.5 w-3.5 text-journal-teal" />
+                    <span className="text-[13px] font-sans text-journal-teal">
+                      {[filters.year, filters.make, filters.model, filters.engine]
+                        .filter(Boolean)
+                        .join(' ')}
+                    </span>
+                  </div>
+                )}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <JournalButton variant="secondary" onClick={handleResetFilters}>
+                    Clear filters
+                  </JournalButton>
+                  <JournalLinkButton to={requestPartPath}>
+                    <Package className="h-3.5 w-3.5" />
+                    Request a part
+                  </JournalLinkButton>
+                </div>
+              </div>
+            ) : (
+              <>
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    {data.products.map((product) => (
+                      <ProductCard
+                        key={product._id}
+                        product={product}
+                        fitmentMatch={getVehicleFitmentMatchStrength(product, vehicleQueryForMatch)}
+                        onQuickView={(product) => setQuickViewProduct(product)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4 mb-8">
+                    {data.products.map((product) => (
                       <ProductCardList
+                        key={product._id}
                         product={product}
                         fitmentMatch={getVehicleFitmentMatchStrength(product, vehicleQueryForMatch)}
                       />
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
 
-              {/* Advanced Pagination */}
-              {data.pagination.totalPages > 1 && (
-                <div className="flex flex-col items-center gap-4">
-                  <Pagination
-                    currentPage={pagination.page}
-                    totalPages={data.pagination.totalPages}
-                    onPageChange={handlePageChange}
-                    maxVisiblePages={7}
-                  />
-                  <span className="text-sm text-gray-600">
-                    Showing {startItem}-{endItem} of {totalItems} products
-                  </span>
-                </div>
-              )}
-            </>
-          )}
+                {/* Pagination */}
+                {data.pagination.totalPages > 1 && (
+                  <div className="flex flex-col items-center gap-4">
+                    <Pagination
+                      currentPage={pagination.page}
+                      totalPages={data.pagination.totalPages}
+                      onPageChange={handlePageChange}
+                      maxVisiblePages={7}
+                    />
+                    <span className="text-[13px] font-sans text-journal-muted">
+                      Showing {startItem}-{endItem} of {totalItems} products
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-      </div>
-      
+
       {/* Mobile Filter Drawer */}
       <FilterDrawer isOpen={mobileFilterOpen} onClose={() => setMobileFilterOpen(false)}>
-          <div className="space-y-6">
+        <div className="space-y-6">
           {/* Category Section */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Package className="h-4 w-4 text-teal-600" />
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Category</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <Package className="h-3.5 w-3.5 text-journal-teal" />
+              <h3 className="text-[11px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">Category</h3>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {categoriesData?.categories && Array.isArray(categoriesData.categories) && categoriesData.categories.length > 0 ? (
                 categoriesData.categories.map((cat: { name: string; count: number } | string) => {
                   const categoryName = typeof cat === 'string' ? cat : cat.name;
@@ -1030,18 +996,17 @@ export const Products = () => {
                         handleCategoryChange(categoryName);
                         setMobileFilterOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                      className={cn(
+                        'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-journal text-[13px] font-sans font-medium transition-colors border',
                         isSelected
-                          ? 'bg-gradient-to-r from-teal-50 to-teal-100 text-teal-700 border-2 border-teal-300 shadow-md'
-                          : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent hover:border-gray-200'
-                      }`}
+                          ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                          : 'text-journal-body hover:bg-journal-sand border-transparent'
+                      )}
                     >
-                      <div className={`p-1.5 rounded-md ${isSelected ? 'bg-teal-200' : 'bg-gray-100'}`}>
-                        {getCategoryIcon(categoryName)}
-                      </div>
+                      {getCategoryIcon(categoryName)}
                       <span className="flex-1 text-left">{categoryName}</span>
                       {typeof cat !== 'string' && cat.count > 0 && (
-                        <span className={`text-xs ${isSelected ? 'text-teal-600' : 'text-gray-500'}`}>
+                        <span className="text-[11px] text-journal-faint">
                           ({cat.count})
                         </span>
                       )}
@@ -1049,23 +1014,23 @@ export const Products = () => {
                   );
                 })
               ) : (
-                <div className="text-sm text-gray-500 py-2">Loading categories...</div>
+                <div className="text-[12px] font-sans text-journal-faint py-2">Loading categories...</div>
               )}
             </div>
           </div>
 
           {/* Stock Status */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Package className="h-4 w-4 text-teal-600" />
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Stock Status</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <Package className="h-3.5 w-3.5 text-journal-teal" />
+              <h3 className="text-[11px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">Stock status</h3>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {[
                 { value: 'all', label: 'All', icon: Package },
-                { value: 'in-stock', label: 'In Stock', icon: CheckCircle },
-                { value: 'low-stock', label: 'Low Stock', icon: AlertCircle },
-                { value: 'out-of-stock', label: 'Out of Stock', icon: X },
+                { value: 'in-stock', label: 'In stock', icon: CheckCircle },
+                { value: 'low-stock', label: 'Low stock', icon: AlertCircle },
+                { value: 'out-of-stock', label: 'Out of stock', icon: X },
               ].map((option) => {
                 const Icon = option.icon;
                 const isSelected = (filters.stockStatus || 'all') === option.value;
@@ -1076,13 +1041,14 @@ export const Products = () => {
                       dispatch(setFilters({ stockStatus: option.value as any }));
                       setMobileFilterOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-journal text-[13px] font-sans font-medium transition-colors border',
                       isSelected
-                        ? 'bg-gradient-to-r from-teal-50 to-teal-100 text-teal-700 border-2 border-teal-300 shadow-md'
-                        : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent hover:border-gray-200'
-                    }`}
+                        ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                        : 'text-journal-body hover:bg-journal-sand border-transparent'
+                    )}
                   >
-                    <Icon className={`h-4 w-4 ${isSelected ? 'text-teal-600' : 'text-gray-500'}`} />
+                    <Icon className="h-3.5 w-3.5" />
                     <span className="flex-1 text-left">{option.label}</span>
                   </button>
                 );
@@ -1092,13 +1058,13 @@ export const Products = () => {
 
           {/* Price Range */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="h-4 w-4 text-teal-600" />
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Price Range</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="h-3.5 w-3.5 text-journal-teal" />
+              <h3 className="text-[11px] font-sans font-bold text-journal-ink uppercase tracking-[0.08em]">Price range</h3>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Min</label>
+                <label className="block text-[11px] font-sans font-medium text-journal-muted mb-1">Min</label>
                 <input
                   type="number"
                   min="0"
@@ -1108,11 +1074,11 @@ export const Products = () => {
                     const value = Math.max(0, Math.min(50000000, Number(e.target.value) || 0));
                     handlePriceRangeChange(value, priceRange.max);
                   }}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 text-[13px] font-sans border border-journal-input-border rounded-journal"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Max</label>
+                <label className="block text-[11px] font-sans font-medium text-journal-muted mb-1">Max</label>
                 <input
                   type="number"
                   min="0"
@@ -1122,21 +1088,20 @@ export const Products = () => {
                     const value = Math.max(0, Math.min(50000000, Number(e.target.value) || 0));
                     handlePriceRangeChange(priceRange.min, value);
                   }}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 text-[13px] font-sans border border-journal-input-border rounded-journal"
                 />
               </div>
             </div>
-            <Button
+            <JournalButton
               variant="primary"
-              size="default"
               className="w-full"
               onClick={() => {
                 handleApplyFilters();
                 setMobileFilterOpen(false);
               }}
             >
-              Apply Filters
-            </Button>
+              Apply filters
+            </JournalButton>
           </div>
         </div>
       </FilterDrawer>
@@ -1147,7 +1112,7 @@ export const Products = () => {
         isOpen={!!quickViewProduct}
         onClose={() => setQuickViewProduct(null)}
       />
-      
+
       {/* Product Comparison Bar */}
       <ProductComparison />
     </div>

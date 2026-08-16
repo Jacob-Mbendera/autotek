@@ -12,10 +12,8 @@ import { getErrorInfo } from '../utils/errorHandler';
 import { getResolvedFrontendBaseUrl } from '../utils/frontendBaseUrl';
 import { setPendingPaychanguService } from '../utils/pendingPaychanguService';
 import { useReconcilePendingPaychanguService } from '../hooks/useReconcilePendingPaychanguService';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { H1, H2, Body } from '../components/ui/Typography';
-import { Loader2, CreditCard, Shield, ArrowLeft } from 'lucide-react';
+import { PageHeading, JournalBody, JournalButton, JournalCard } from '../components/journal';
+import { Loader2, CreditCard, Shield } from 'lucide-react';
 import { PaymentMethod, UserRole } from '@shared/types';
 
 export const ServicePayment = () => {
@@ -150,139 +148,135 @@ export const ServicePayment = () => {
     ? 'Loading your service…'
     : !canPay
       ? 'Your quote in Malawi Kwacha (MWK) is not ready yet. Please check My Services later or contact support.'
-      : 'Complete your payment in MWK to confirm your service request.';
+      : 'Your quote is ready. Pay securely to confirm and have a provider assigned.';
 
   if (isConfirmingServicePayment && pendingMatchesThisPage) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
-          <Button variant="ghost" onClick={() => navigate('/my-services')} className="mb-6">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to My Services
-          </Button>
-          <Card className="p-8 text-center">
-            <Loader2 className="w-12 h-12 text-teal-600 animate-spin mx-auto mb-6" aria-hidden />
-            <H1 className="text-xl font-bold text-gray-900 mb-2">Confirming your payment</H1>
-            <Body className="text-gray-600">
-              Checking your booking with PayChangu. This usually takes a few seconds.
-            </Body>
-          </Card>
+      <div className="max-w-[640px] mx-auto px-4 sm:px-10 py-14 sm:py-16">
+        <button
+          type="button"
+          onClick={() => navigate('/my-services')}
+          className="text-[12px] font-sans font-semibold tracking-[0.1em] uppercase text-journal-teal hover:underline mb-6 inline-block"
+        >
+          &larr; Back to My Services
+        </button>
+        <div className="text-center py-20">
+          <div className="w-11 h-11 border-[3px] border-journal-hairline border-t-journal-teal rounded-full mx-auto mb-6 animate-spin" />
+          <h1 className="font-journal font-normal text-[28px] text-journal-ink mb-2">
+            Confirming your payment
+          </h1>
+          <JournalBody>
+            Checking your booking with PayChangu. This usually takes a few seconds.
+          </JournalBody>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
-        <Button variant="ghost" onClick={() => navigate('/my-services')} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to My Services
-        </Button>
+    <div className="max-w-[640px] mx-auto px-4 sm:px-10 py-11 sm:py-14">
+      <button
+        type="button"
+        onClick={() => navigate('/my-services')}
+        className="text-[12px] font-sans font-semibold tracking-[0.1em] uppercase text-journal-teal hover:underline mb-5 inline-block"
+      >
+        &larr; Back to My Services
+      </button>
 
-        <Card className="p-8">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
+      {loadingService ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-9 h-9 animate-spin text-journal-teal" />
+        </div>
+      ) : (
+        <div>
+          <div className="border border-journal-ink mb-6">
+            <img
+              src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771506/autotek/payment%20methods/tag2-C4qnl2U7_znxdld.png"
+              alt="Accepted payment methods"
+              className="w-full block"
+              width={320}
+              height={120}
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+
+          <PageHeading className="!text-[36px] mb-1.5">Complete your payment</PageHeading>
+          <JournalBody className="mb-6">{pageSubtitle}</JournalBody>
+
+          {canPay ? (
+            <JournalCard className="!p-6 mb-5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-sans font-semibold tracking-[0.12em] uppercase text-journal-ink">
+                  Amount due
+                </span>
+                <span className="font-journal text-[36px] text-journal-teal tabular-nums">
+                  MWK {amountMwk.toLocaleString()}
+                </span>
+              </div>
+            </JournalCard>
+          ) : (
+            <div className="bg-journal-sand rounded-journal p-6 mb-5 text-center">
+              <JournalBody>
+                Online payment is only available after AutoTek sets your price in{' '}
+                <span className="font-semibold text-journal-ink">Malawi Kwacha (MWK)</span>.
+              </JournalBody>
+            </div>
+          )}
+
+          <div className="flex gap-3 items-start bg-journal-sand rounded-journal px-[18px] py-4 mb-6">
+            <span className="w-[30px] h-[30px] rounded-full bg-journal-teal text-white flex items-center justify-center flex-shrink-0">
+              <Shield className="w-4 h-4" aria-hidden />
+            </span>
+            <p className="text-[13px] leading-[1.6] text-journal-body">
+              Payments are processed securely by <strong className="text-journal-ink">PayChangu</strong>.
+              AutoTek never sees or stores your card or mobile-money PIN.
+            </p>
+          </div>
+
+          <JournalButton
+            variant="primary"
+            size="large"
+            onClick={handlePayment}
+            disabled={isLoading || loadingService || !canPay}
+            className="w-full !py-4"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <CreditCard className="w-4 h-4" />
+                Proceed to payment
+              </>
+            )}
+          </JournalButton>
+
+          <div className="flex items-center justify-center gap-3.5 mt-5">
+            <a
+              href="https://paychangu.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal focus-visible:ring-offset-2 rounded-sm"
+            >
               <img
-                src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771506/autotek/payment%20methods/tag2-C4qnl2U7_znxdld.png"
-                alt="Accepted payment methods"
-                className="max-w-full h-auto max-h-28 sm:max-h-32 object-contain mx-auto"
-                width={320}
-                height={120}
-                loading="eager"
+                src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771506/autotek/payment%20methods/tag1-i7EnK4XQ_qpo7qy.png"
+                alt="PayChangu — secure payments"
+                className="h-8 w-auto object-contain"
+                width={280}
+                height={64}
+                loading="lazy"
                 decoding="async"
               />
-            </div>
-            <H1 className="text-3xl font-bold text-gray-900 mb-2">Pay for Service</H1>
-            <Body className="text-gray-600">{pageSubtitle}</Body>
+            </a>
+            <span className="text-[12px] text-journal-faint">
+              By continuing you agree to our terms of service.
+            </span>
           </div>
-
-          {loadingService && (
-            <div className="flex justify-center py-8 mb-6">
-              <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
-            </div>
-          )}
-
-          {!loadingService && canPay && (
-            <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg p-6 mb-6">
-              <div className="text-center">
-                <Body className="text-sm text-gray-600 mb-1">Total (MWK)</Body>
-                <H2 className="text-4xl font-bold text-teal-700">
-                  MWK {amountMwk.toLocaleString()}
-                </H2>
-              </div>
-            </div>
-          )}
-
-          {!loadingService && !canPay && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6 text-center">
-              <Body className="text-gray-700">
-                Online payment is only available after AutoTek sets your price in{' '}
-                <span className="font-semibold">Malawi Kwacha (MWK)</span>.
-              </Body>
-            </div>
-          )}
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-blue-900 mb-1">Secure Payment</p>
-                <p className="text-sm text-blue-700">
-                  Your payment is processed securely through PayChangu. We never store your card
-                  details. All amounts are in MWK.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Button
-              onClick={handlePayment}
-              disabled={isLoading || loadingService || !canPay}
-              className="w-full"
-              size="large"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-5 h-5 mr-2" />
-                  Proceed to Payment
-                </>
-              )}
-            </Button>
-
-            <div className="flex justify-center pt-1">
-              <a
-                href="https://paychangu.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 rounded"
-              >
-                <img
-                  src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771506/autotek/payment%20methods/tag1-i7EnK4XQ_qpo7qy.png"
-                  alt="PayChangu — secure payments"
-                  className="max-w-full h-auto max-h-14 sm:max-h-16 object-contain"
-                  width={280}
-                  height={64}
-                  loading="lazy"
-                  decoding="async"
-                />
-              </a>
-            </div>
-          </div>
-        </Card>
-
-        <div className="mt-6 text-center">
-          <Body className="text-sm text-gray-500">
-            By proceeding, you agree to our terms and conditions
-          </Body>
         </div>
-      </div>
+      )}
     </div>
   );
 };

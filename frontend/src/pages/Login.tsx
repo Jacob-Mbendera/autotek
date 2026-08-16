@@ -6,10 +6,7 @@ import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { broadcastClientSync } from '../utils/crossTabSync';
 import { getErrorInfo } from '../utils/errorHandler';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card } from '../components/ui/Card';
-import { H1, Body } from '../components/ui/Typography';
+import { PageHeading, MonoLabel, JournalBody, JournalButton, JournalInput } from '../components/journal';
 import { ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 import { getSafeRedirectPath } from '../utils/safeRedirectPath';
@@ -19,9 +16,9 @@ export const Login = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const [login, { isLoading }] = useLoginMutation();
-  
+
   const returnUrl = searchParams.get('returnUrl');
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -50,87 +47,79 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card variant="md" className="w-full max-w-md">
-        {/* Back to Home Link */}
-        <div className="mb-4">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-teal-600 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Home</span>
-          </Link>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-journal-bone px-4 py-14">
+      <div className="w-full max-w-[440px]">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-[13px] text-journal-muted hover:text-journal-teal transition-colors mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Home</span>
+        </Link>
 
         <div className="flex justify-center mb-6">
           <BrandLogo variant="auth" to="/" imgClassName="h-10 w-auto max-w-[240px]" />
         </div>
 
-        <H1 className="text-2xl text-center mb-6">Login</H1>
+        <MonoLabel className="block text-center mb-3">Welcome back</MonoLabel>
+        <PageHeading className="!text-[40px] text-center mb-6">Log in</PageHeading>
 
         {returnUrl && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-600">Please login to continue checkout</p>
+          <div className="mb-4 border border-journal-teal-tint-border bg-journal-teal-tint rounded-journal px-4 py-3">
+            <p className="text-[13px] text-journal-teal">Please login to continue checkout</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mb-4 border border-journal-error-border bg-journal-error-bg rounded-journal px-4 py-3">
+            <p className="text-[13px] text-journal-danger-text">{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          <JournalInput
             label="Email"
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
-            placeholder="Enter your email"
+            placeholder="you@example.com"
           />
 
-          <Input
+          <JournalInput
             label="Password"
             type="password"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             required
-            placeholder="Enter your password"
+            placeholder="••••••••"
           />
 
-          <Button
-            type="submit"
-            variant="primary"
-            size="default"
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Logging in...' : 'Login'}
-          </Button>
+          <JournalButton type="submit" variant="primary" className="w-full mt-1.5" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Log in'}
+          </JournalButton>
         </form>
 
-        <div className="mt-6 text-center space-y-2">
+        <div className="mt-6 text-center space-y-3">
           <div>
             <Link
               to="/forgot-password"
-              className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+              className="text-[13px] font-semibold text-journal-teal hover:underline"
             >
               Forgot your password?
             </Link>
           </div>
-          <Body className="text-gray-600">
+          <JournalBody className="!text-journal-muted">
             Don't have an account?{' '}
-            <Link 
-              to={returnUrl ? `/register?returnUrl=${returnUrl}` : '/register'} 
-              className="text-teal-600 hover:text-teal-700 font-medium"
+            <Link
+              to={returnUrl ? `/register?returnUrl=${returnUrl}` : '/register'}
+              className="font-semibold text-journal-teal hover:underline"
             >
               Register here
             </Link>
-          </Body>
+          </JournalBody>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

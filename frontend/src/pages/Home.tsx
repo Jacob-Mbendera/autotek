@@ -1,349 +1,200 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Wrench, ShoppingCart, ArrowRight, ChevronDown, Sparkles } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { H1, H2, H4, Body } from '../components/ui/Typography';
-import { TrustIndicators } from '../components/TrustIndicators';
-import { FeaturedCategories } from '../components/FeaturedCategories';
-import { HowItWorks } from '../components/HowItWorks';
-import { Testimonials } from '../components/Testimonials';
+import { useGetProductsQuery, useGetCategoriesQuery } from '../store/api/productApi';
+import { HeroHeading, SectionHeading, PullQuote, JournalBody, MonoLabel, Eyebrow } from '../components/journal';
+import { JournalButton, JournalLinkButton, JournalButtonGroup } from '../components/journal';
 import { marketingImageUrl } from '../constants/cloudinaryAssets';
+import { testimonials } from '../data/testimonials';
 
-const HERO_HOME_BG = marketingImageUrl('heroHome');
-const HERO_HOME_FEATURE = marketingImageUrl('heroHomeFeature', 1200);
+const HERO_HOME_FEATURE = marketingImageUrl('heroHomeFeature', 1400);
 const OFFER_SPARE_PARTS = marketingImageUrl('offerSpareParts', 800);
 const OFFER_CAR_SERVICES = marketingImageUrl('offerCarServices', 800);
 const OFFER_EASY_SHOPPING = marketingImageUrl('offerEasyShopping', 800);
 
+// Curated subset of the live category list — the real backend has ~11 categories
+// with duplicates/seed data (e.g. "Braking System" vs "Brake Parts", a "Test"
+// category); this keeps the homepage index clean while still pulling real counts.
+const SHOP_BY_SYSTEM = [
+  { no: '01', name: 'Engine', desc: 'Belts, pistons, gaskets, cooling', category: 'Engine Parts' },
+  { no: '02', name: 'Brakes', desc: 'Pads, discs, calipers, fluid', category: 'Brake Parts' },
+  { no: '03', name: 'Filters', desc: 'Oil, air, cabin, fuel', category: 'Filters' },
+  { no: '04', name: 'Electrical', desc: 'Batteries, plugs, wiring, sensors', category: 'Electrical' },
+];
+
+const OFFERS = [
+  {
+    no: '01 / SPARE PARTS',
+    image: OFFER_SPARE_PARTS,
+    title: 'Stocked & custom-sourced',
+    body: "Buy from our warehouse or request a part we don't stock — we source and quote it for you.",
+  },
+  {
+    no: '02 / CAR SERVICES',
+    image: OFFER_CAR_SERVICES,
+    title: 'A mechanic comes to you',
+    body: 'Oil changes, brakes, batteries and more — serviced at your home or roadside.',
+  },
+  {
+    no: '03 / SHOPPING',
+    image: OFFER_EASY_SHOPPING,
+    title: 'Order, pay, delivered',
+    body: 'Simple checkout in MWK with mobile money, tracked to your door.',
+  },
+];
+
+const featuredQuote = testimonials.find((t) => t.id === 7) ?? testimonials[0];
+
 export const Home = () => {
-  const [scrollY, setScrollY] = useState(0);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const { data: productsData } = useGetProductsQuery({ page: 1, limit: 1 });
+  const { data: categoriesData } = useGetCategoriesQuery();
 
-  useEffect(() => {
-    // Add page transition class on mount
-    document.body.classList.add('page-transition');
-
-    // Check for reduced motion preference
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-
-    const handleChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-
-    return () => {
-      document.body.classList.remove('page-transition');
-      mediaQuery.removeEventListener('change', handleChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Parallax scroll effect (only if motion is allowed)
-    if (prefersReducedMotion) return;
-
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [prefersReducedMotion]);
+  const partsCount = productsData?.pagination.total;
+  const categoryCountFor = (name: string) =>
+    categoriesData?.categories.find((c) => c.name === name)?.count;
 
   return (
-    <div className="w-full page-transition">
-      {/* Hero Section - Enhanced with animated backgrounds and improved design */}
-      <section className="relative bg-gradient-to-br from-teal-50 via-white to-teal-50 overflow-hidden mb-16 animate-fade-in min-h-[90vh] flex items-center">
-        {/* Enhanced decorative background pattern */}
-        <div className="absolute inset-0 geometric-pattern opacity-10"></div>
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-25"
-          style={{
-            backgroundImage: `url('${HERO_HOME_BG}')`,
-            ...(!prefersReducedMotion
-              ? {
-                  transform: `translateY(${scrollY * 0.3}px)`,
-                  transition: 'transform 0.1s ease-out',
-                }
-              : {}),
-          }}
-        ></div>
+    <div className="w-full">
+      {/* Hero */}
+      <section className="max-w-[1280px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2">
+          <div className="px-4 sm:px-10 py-14 lg:py-16 flex flex-col justify-between gap-10 lg:border-r lg:border-journal-ink">
+            <div className="flex items-center justify-between">
+              <MonoLabel>No. 01</MonoLabel>
+              <MonoLabel>The Marketplace</MonoLabel>
+            </div>
 
-        {/* Animated blob backgrounds with parallax */}
-        <div
-          className="absolute top-0 right-0 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"
-          style={!prefersReducedMotion ? {
-            transform: `translate(${scrollY * 0.15}px, ${scrollY * 0.2}px)`,
-            transition: 'transform 0.1s ease-out'
-          } : undefined}
-        ></div>
-        <div
-          className="absolute bottom-0 left-0 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"
-          style={!prefersReducedMotion ? {
-            transform: `translate(${-scrollY * 0.1}px, ${-scrollY * 0.25}px)`,
-            transition: 'transform 0.1s ease-out'
-          } : undefined}
-        ></div>
-        <div
-          className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-[0.08] animate-blob animation-delay-4000 transform -translate-x-1/2 -translate-y-1/2"
-          style={!prefersReducedMotion ? {
-            transform: `translate(calc(-50% + ${scrollY * 0.05}px), calc(-50% + ${scrollY * 0.1}px))`,
-            transition: 'transform 0.1s ease-out'
-          } : undefined}
-        ></div>
+            <HeroHeading>
+              The right part,
+              <br />
+              and the <span className="italic font-normal">mechanic</span>
+              <br />
+              to fit it.
+            </HeroHeading>
 
-        {/* Floating particles/elements with parallax */}
-        <div
-          className="absolute top-20 left-10 w-2 h-2 bg-teal-400 rounded-full opacity-60 animate-float"
-          style={!prefersReducedMotion ? {
-            transform: `translateY(${scrollY * 0.4}px)`,
-            transition: 'transform 0.1s ease-out'
-          } : undefined}
-        ></div>
-        <div
-          className="absolute top-40 right-20 w-3 h-3 bg-teal-500 rounded-full opacity-50 animate-float animation-delay-2000"
-          style={!prefersReducedMotion ? {
-            transform: `translateY(${scrollY * 0.5}px)`,
-            transition: 'transform 0.1s ease-out'
-          } : undefined}
-        ></div>
-        <div
-          className="absolute bottom-32 left-1/4 w-2 h-2 bg-teal-300 rounded-full opacity-70 animate-float animation-delay-4000"
-          style={!prefersReducedMotion ? {
-            transform: `translateY(${-scrollY * 0.3}px)`,
-            transition: 'transform 0.1s ease-out'
-          } : undefined}
-        ></div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left side - Text content */}
-            <div className="text-center lg:text-left animate-slide-in-left space-y-6">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-100 text-teal-700 rounded-full text-sm font-medium mb-4 animate-scale-in">
-                <Sparkles className="h-4 w-4" />
-                <span>Malawi's #1 Auto Parts Marketplace</span>
-              </div>
-              
-              <H1 className="mb-6 text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight">
-                Your Trusted Auto Parts{' '}
-                <span className="text-teal-600 relative">
-                  Partner
-                  <span className="absolute -bottom-2 left-0 right-0 h-3 bg-teal-200/50 -z-10 transform -skew-x-12"></span>
-                </span>
-              </H1>
-              
-              <Body className="text-xl lg:text-2xl text-gray-700 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Your one-stop shop for automotive spare parts and services in Malawi.
-                Find quality parts, request custom orders, and book car services all in one place.
-              </Body>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link to="/products">
-                  <Button 
-                    size="large" 
-                    className="group relative overflow-hidden transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
-                  >
-                    <span className="relative z-10 flex items-center">
-                      Browse Products
-                      <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+            <div>
+              <JournalBody className="max-w-[420px] mb-7">
+                Genuine spare parts, custom sourcing, and mobile car service across Malawi —
+                bought and booked in one place, delivered to your door.
+              </JournalBody>
+              <JournalButtonGroup>
+                <JournalLinkButton to="/products" variant="primary" className="border-0">
+                  Browse parts
+                </JournalLinkButton>
+                <JournalLinkButton to="/services" variant="secondary" className="border-0">
+                  Book a service
+                </JournalLinkButton>
+              </JournalButtonGroup>
+            </div>
+          </div>
+
+          <div className="relative min-h-[320px] lg:min-h-[560px] overflow-hidden">
+            <img
+              src={HERO_HOME_FEATURE}
+              alt="AutoTek mobile mechanic servicing a car"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute left-0 bottom-0 w-full px-5 py-4 bg-gradient-to-t from-journal-ink/85 to-transparent">
+              <span className="font-journal-mono text-[11px] tracking-[0.1em] text-journal-bone/90">
+                FIG. 01 — MOBILE SERVICE, BLANTYRE
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Stat ledger */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 border-b border-journal-ink">
+          <div className="px-6 sm:px-10 py-6 border-r border-journal-hairline">
+            <div className="font-journal text-[32px] tabular-nums text-journal-ink">100%</div>
+            <MonoLabel className="mt-1 block">Authentic parts</MonoLabel>
+          </div>
+          <div className="px-6 sm:px-10 py-6 border-r border-journal-hairline">
+            <div className="font-journal text-[32px] tabular-nums text-journal-ink">24 / 7</div>
+            <MonoLabel className="mt-1 block">Emergency towing</MonoLabel>
+          </div>
+          <div className="px-6 sm:px-10 py-6 border-r-0 sm:border-r border-journal-hairline border-t sm:border-t-0">
+            <div className="font-journal text-[32px] tabular-nums text-journal-ink">
+              {partsCount != null ? `${partsCount.toLocaleString()}+` : '—'}
+            </div>
+            <MonoLabel className="mt-1 block">Parts in catalogue</MonoLabel>
+          </div>
+          <div className="px-6 sm:px-10 py-6 border-t sm:border-t-0">
+            <div className="font-journal text-[32px] tabular-nums text-journal-ink">16</div>
+            <MonoLabel className="mt-1 block">Districts served</MonoLabel>
+          </div>
+        </div>
+      </section>
+
+      {/* Shop by system */}
+      <section className="max-w-[1280px] mx-auto px-4 sm:px-10">
+        <div className="pt-14 pb-2 flex items-baseline justify-between">
+          <Eyebrow>Shop by system</Eyebrow>
+          <MonoLabel>Index / four of {categoriesData?.categories.length ?? '—'}</MonoLabel>
+        </div>
+        <div className="pb-12">
+          {SHOP_BY_SYSTEM.map((item) => {
+            const count = categoryCountFor(item.category);
+            return (
+              <Link
+                key={item.no}
+                to={`/products?category=${encodeURIComponent(item.category)}`}
+                className="grid grid-cols-[44px_1fr_auto_auto] sm:grid-cols-[60px_1.4fr_1fr_auto] items-center gap-4 sm:gap-5 py-5 border-t border-journal-ink first:border-t last:border-b group"
+              >
+                <span className="font-journal-mono text-[13px] text-journal-faint">{item.no}</span>
+                <span className="font-journal text-[22px] sm:text-[30px] text-journal-ink">{item.name}</span>
+                <span className="hidden sm:block text-[13px] text-journal-muted">{item.desc}</span>
+                <span className="flex items-center gap-3">
+                  {count != null && (
+                    <span className="hidden md:inline font-journal-mono text-[11px] text-journal-faint">
+                      {count} parts
                     </span>
-                    <span className="absolute inset-0 bg-gradient-to-r from-teal-600 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                  </Button>
-                </Link>
-                <Link to="/services">
-                  <Button 
-                    variant="secondary" 
-                    size="large" 
-                    className="group transform hover:scale-105 transition-all duration-300 border-2 hover:border-teal-500 hover:bg-teal-50"
-                  >
-                    Book a Service
-                  </Button>
-                </Link>
-              </div>
-              
-              {/* Trust badges */}
-              <div className="flex items-center gap-6 justify-center lg:justify-start pt-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse-slow"></div>
-                  <span>100% Authentic Parts</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse-slow"></div>
-                  <span>Fast Delivery</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Right side - Image with enhanced effects */}
-            <div className="hidden lg:block animate-slide-in-right">
-              <div className="relative group">
-                {/* Glow effect */}
-                <div className="absolute -inset-4 bg-gradient-to-r from-teal-400 to-teal-600 rounded-3xl opacity-20 group-hover:opacity-30 blur-2xl transition-opacity duration-300"></div>
-                
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-all duration-500 border-4 border-white">
-                  <img
-                    src={HERO_HOME_FEATURE}
-                    alt="AutoTek car service and automotive care"
-                    className="w-full h-[550px] object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-teal-900/40 via-transparent to-transparent"></div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-teal-600/10 to-transparent"></div>
-                  
-                  {/* Floating badge on image */}
-                  <div className="absolute top-6 right-6 bg-white/95 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg animate-float">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-semibold text-gray-900">500+ Parts</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  )}
+                  <span className="text-xl text-journal-teal group-hover:translate-x-1 transition-transform">
+                    &rarr;
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Three ways AutoTek keeps you moving */}
+      <section className="bg-journal-ink text-journal-bone px-4 sm:px-10 py-16">
+        <div className="max-w-[1280px] mx-auto">
+          <div className="flex items-baseline justify-between mb-10">
+            <SectionHeading className="!text-journal-bone max-w-[540px]">
+              Three ways AutoTek keeps you moving
+            </SectionHeading>
+            <MonoLabel className="!text-journal-footer-2">No. 02 — Services</MonoLabel>
           </div>
-          
-          {/* Scroll indicator */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 hidden lg:block animate-bounce-slow">
-            <div className="flex flex-col items-center gap-2 text-gray-400">
-              <span className="text-xs font-medium">Scroll to explore</span>
-              <ChevronDown className="h-6 w-6" />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+            {OFFERS.map((offer) => (
+              <div key={offer.no}>
+                <div
+                  className="h-[220px] sm:h-[250px] bg-cover bg-center"
+                  style={{ backgroundImage: `url('${offer.image}')` }}
+                />
+                <MonoLabel className="!text-journal-teal-bright mt-5 mb-2.5 block">{offer.no}</MonoLabel>
+                <h3 className="font-journal font-normal text-[22px] sm:text-2xl mb-2 text-journal-bone">
+                  {offer.title}
+                </h3>
+                <p className="text-sm leading-[1.65] text-journal-footer-1">{offer.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Trust Indicators */}
-      <TrustIndicators />
-
-      {/* Featured Categories */}
-      <FeaturedCategories />
-
-      {/* How It Works */}
-      <HowItWorks />
-
-      {/* Enhanced Features Section */}
-      <section className="py-20 bg-gradient-to-b from-gray-50 via-white to-white relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-0 left-0 w-72 h-72 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute bottom-0 right-0 w-72 h-72 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <H2 className="text-4xl font-bold mb-4 animate-fade-in">What We Offer</H2>
-            <Body className="text-gray-600 max-w-2xl mx-auto text-lg">
-              Everything you need for your vehicle in one convenient platform
-            </Body>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card 
-              variant="lg" 
-              className="group hover:shadow-2xl transition-all duration-500 overflow-hidden border-2 border-transparent hover:border-teal-200 bg-white hover:-translate-y-4 relative"
-            >
-              {/* Gradient overlay on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-50/0 to-teal-50/0 group-hover:from-teal-50/50 group-hover:to-transparent transition-all duration-500 pointer-events-none"></div>
-              
-              <div className="relative h-56 mb-6 overflow-hidden rounded-t-lg">
-                <img
-                  src={OFFER_SPARE_PARTS}
-                  alt="Spare Parts"
-                  className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-teal-900/60 via-teal-600/20 to-transparent group-hover:from-teal-900/70 transition-opacity duration-500"></div>
-                
-                {/* Enhanced icon badge */}
-                <div className="absolute top-6 right-6">
-                  <div className="h-20 w-20 bg-white/95 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 border-2 border-teal-100">
-                    <Package className="h-10 w-10 text-teal-600 group-hover:text-teal-700 transition-colors" />
-                  </div>
-                </div>
-                
-                {/* Decorative corner accent */}
-                <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-teal-500/20 to-transparent rounded-br-full"></div>
-              </div>
-              
-              <div className="text-center p-6 relative z-10">
-                <H4 className="mb-3 text-xl font-bold group-hover:text-teal-600 transition-colors duration-300">Spare Parts</H4>
-                <Body className="text-gray-600 leading-relaxed">
-                  Browse our extensive catalog of automotive spare parts. Can't find what you need?
-                  Request a custom order!
-                </Body>
-              </div>
-            </Card>
-
-            <Card 
-              variant="lg" 
-              className="group hover:shadow-2xl transition-all duration-500 overflow-hidden border-2 border-transparent hover:border-teal-200 bg-white hover:-translate-y-4 relative"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-50/0 to-teal-50/0 group-hover:from-teal-50/50 group-hover:to-transparent transition-all duration-500 pointer-events-none"></div>
-              
-              <div className="relative h-56 mb-6 overflow-hidden rounded-t-lg">
-                <img
-                  src={OFFER_CAR_SERVICES}
-                  alt="Car Services"
-                  className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-teal-900/60 via-teal-600/20 to-transparent group-hover:from-teal-900/70 transition-opacity duration-500"></div>
-                
-                <div className="absolute top-6 right-6">
-                  <div className="h-20 w-20 bg-white/95 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 border-2 border-teal-100">
-                    <Wrench className="h-10 w-10 text-teal-600 group-hover:text-teal-700 transition-colors" />
-                  </div>
-                </div>
-                
-                <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-teal-500/20 to-transparent rounded-br-full"></div>
-              </div>
-              
-              <div className="text-center p-6 relative z-10">
-                <H4 className="mb-3 text-xl font-bold group-hover:text-teal-600 transition-colors duration-300">Car Services</H4>
-                <Body className="text-gray-600 leading-relaxed">
-                  Book home car services including oil changes, brake pad replacement, and more.
-                  Convenient and reliable.
-                </Body>
-              </div>
-            </Card>
-
-            <Card 
-              variant="lg" 
-              className="group hover:shadow-2xl transition-all duration-500 overflow-hidden border-2 border-transparent hover:border-teal-200 bg-white hover:-translate-y-4 relative"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-50/0 to-teal-50/0 group-hover:from-teal-50/50 group-hover:to-transparent transition-all duration-500 pointer-events-none"></div>
-              
-              <div className="relative h-56 mb-6 overflow-hidden rounded-t-lg">
-                <img
-                  src={OFFER_EASY_SHOPPING}
-                  alt="Easy Shopping"
-                  className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-teal-900/60 via-teal-600/20 to-transparent group-hover:from-teal-900/70 transition-opacity duration-500"></div>
-                
-                <div className="absolute top-6 right-6">
-                  <div className="h-20 w-20 bg-white/95 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 border-2 border-teal-100">
-                    <ShoppingCart className="h-10 w-10 text-teal-600 group-hover:text-teal-700 transition-colors" />
-                  </div>
-                </div>
-                
-                <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-teal-500/20 to-transparent rounded-br-full"></div>
-              </div>
-              
-              <div className="text-center p-6 relative z-10">
-                <H4 className="mb-3 text-xl font-bold group-hover:text-teal-600 transition-colors duration-300">Easy Shopping</H4>
-                <Body className="text-gray-600 leading-relaxed">
-                  Simple checkout process with Airtel Money and bank transfer options.
-                  Track your orders in real-time.
-                </Body>
-              </div>
-            </Card>
-          </div>
+      {/* Pull-quote */}
+      <section className="max-w-[1280px] mx-auto px-4 sm:px-10 py-14">
+        <div className="border-t border-b border-journal-ink py-12 text-center">
+          <PullQuote className="max-w-[820px] mx-auto">
+            &ldquo;{featuredQuote.text}&rdquo;
+          </PullQuote>
+          <MonoLabel className="mt-6 block">
+            {featuredQuote.name} &mdash; {featuredQuote.location}
+          </MonoLabel>
         </div>
       </section>
-
-      {/* Testimonials */}
-      <Testimonials />
     </div>
   );
 };

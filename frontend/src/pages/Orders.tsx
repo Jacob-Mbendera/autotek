@@ -1,16 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetOrdersQuery } from '../store/api/orderApi';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { 
-  Package, Loader2, Filter, ChevronRight, Search, Calendar, 
+import { JournalCard, JournalButton, JournalLinkButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { cn } from '../utils/cn';
+import {
+  Package, Loader2, Filter, ChevronRight, Search, Calendar,
   Download, Grid3x3, List, X, ArrowUpDown, CheckSquare, Square,
-  TrendingUp, Banknote, CheckCircle, Clock, XCircle, ShoppingBag,
-  BarChart3, FileText, Sparkles, CreditCard
+  TrendingUp, Banknote, CheckCircle, Clock, ShoppingBag,
+  BarChart3, CreditCard
 } from 'lucide-react';
 import type { OrderStatus } from '@shared/types';
 import { formatOrderItemCount, getOrderTotalQuantity } from '../utils/orderItems';
@@ -20,19 +18,19 @@ import { format } from 'date-fns';
 const getStatusBadgeColor = (status: OrderStatus) => {
   switch (status) {
     case 'pending':
-      return 'bg-amber-100 text-amber-700 border-amber-300';
+      return 'bg-journal-warn-bg text-journal-warn-text';
     case 'processing':
-      return 'bg-blue-100 text-blue-700 border-blue-300';
+      return 'bg-journal-teal-tint text-journal-teal';
     case 'dispatched':
-      return 'bg-indigo-100 text-indigo-700 border-indigo-300';
+      return 'bg-journal-teal-tint text-journal-teal';
     case 'ready_for_collection':
-      return 'bg-purple-100 text-purple-700 border-purple-300';
+      return 'bg-journal-teal-tint text-journal-teal';
     case 'completed':
-      return 'bg-green-100 text-green-700 border-green-300';
+      return 'bg-journal-teal-tint text-journal-teal';
     case 'cancelled':
-      return 'bg-red-100 text-red-700 border-red-300';
+      return 'bg-journal-danger-bg text-journal-danger-text';
     default:
-      return 'bg-gray-100 text-gray-700 border-gray-300';
+      return 'bg-journal-sand text-journal-body';
   }
 };
 
@@ -53,13 +51,13 @@ const getStatusLabel = (status: OrderStatus) => {
 const getPaymentStatusBadgeColor = (status: string) => {
   switch (status) {
     case 'completed':
-      return 'bg-green-100 text-green-700';
+      return 'bg-journal-teal-tint text-journal-teal';
     case 'pending':
-      return 'bg-amber-100 text-amber-700';
+      return 'bg-journal-warn-bg text-journal-warn-text';
     case 'failed':
-      return 'bg-red-100 text-red-700';
+      return 'bg-journal-danger-bg text-journal-danger-text';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-journal-sand text-journal-body';
   }
 };
 
@@ -125,7 +123,6 @@ export const Orders = () => {
   const completedOrders = allOrders.filter((o: any) => o.status === 'completed').length;
   const pendingOrders = allOrders.filter((o: any) => o.status === 'pending').length;
   const processingOrders = allOrders.filter((o: any) => o.status === 'processing').length;
-  const cancelledOrders = allOrders.filter((o: any) => o.status === 'cancelled').length;
   const totalItems = allOrders.reduce((sum: number, order: any) => sum + (order.items?.length || 0), 0);
   const averageOrderValue = allOrders.length > 0 ? totalSpent / allOrders.length : 0;
 
@@ -258,143 +255,139 @@ export const Orders = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-journal-bone">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
 
         {/* Hero Section */}
-        <div className="mt-8 mb-8">
-          <Card variant="lg" className="bg-teal-600 text-white border-0 shadow-sm">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center">
-                  <Package className="h-10 w-10 text-white" />
-                </div>
-                <div>
-                  <H1 className="text-3xl font-bold mb-2 text-white">My Orders</H1>
-                  <Body className="text-white/90">
-                    {allOrders.length} order{allOrders.length !== 1 ? 's' : ''} • {totalItems} item{totalItems !== 1 ? 's' : ''} total
-                  </Body>
-                </div>
+        <div className="mt-8 mb-8 bg-journal-ink text-journal-bone p-6 sm:p-8 rounded-journal">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="h-16 w-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
+                <Package className="h-8 w-8 text-journal-bone" />
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="secondary"
-                  size="default"
-                  onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid3x3 className="h-4 w-4 mr-2" />}
-                  {viewMode === 'grid' ? 'Table View' : 'Grid View'}
-                </Button>
-                {filteredAndSortedOrders.length > 0 && (
-                  <Button
-                    variant="secondary"
-                    size="default"
-                    onClick={handleExport}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                )}
+              <div>
+                <PageHeading className="!text-[28px] sm:!text-[32px] !text-journal-bone mb-1.5">My orders</PageHeading>
+                <p className="text-[14px] font-sans text-journal-bone/80">
+                  {allOrders.length} order{allOrders.length !== 1 ? 's' : ''} &#183; {totalItems} item{totalItems !== 1 ? 's' : ''} total
+                </p>
               </div>
             </div>
-          </Card>
+            <div className="flex flex-wrap gap-3">
+              <JournalButton
+                variant="secondary"
+                onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
+                className="!border-journal-bone/40 !text-journal-bone hover:!bg-journal-bone hover:!text-journal-ink"
+              >
+                {viewMode === 'grid' ? <List className="h-3.5 w-3.5" /> : <Grid3x3 className="h-3.5 w-3.5" />}
+                {viewMode === 'grid' ? 'Table view' : 'Grid view'}
+              </JournalButton>
+              {filteredAndSortedOrders.length > 0 && (
+                <JournalButton
+                  variant="secondary"
+                  onClick={handleExport}
+                  className="!border-journal-bone/40 !text-journal-bone hover:!bg-journal-bone hover:!text-journal-ink"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </JournalButton>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Total Spent */}
-          <Card variant="md" className="bg-teal-50 border-teal-200">
+          <JournalCard className="bg-journal-teal-tint border-journal-teal-tint-border">
             <div className="flex items-center justify-between">
               <div>
-                <Body className="text-gray-600 text-sm mb-1">Total Spent</Body>
-                <H2 className="text-2xl font-bold text-gray-900">MWK {totalSpent.toLocaleString()}</H2>
-                <div className="flex items-center gap-1 mt-2">
-                  <TrendingUp className="h-4 w-4 text-teal-600" />
-                  <Body className="text-sm text-teal-600 font-medium">{allOrders.length} orders</Body>
+                <p className="text-[12px] font-sans text-journal-muted mb-1">Total spent</p>
+                <p className="font-journal text-[22px] text-journal-ink">MWK {totalSpent.toLocaleString()}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <TrendingUp className="h-3.5 w-3.5 text-journal-teal" />
+                  <span className="text-[12px] font-sans font-medium text-journal-teal">{allOrders.length} orders</span>
                 </div>
               </div>
-              <div className="h-16 w-16 bg-teal-500/20 rounded-full flex items-center justify-center">
-                <Banknote className="h-8 w-8 text-teal-600" />
+              <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                <Banknote className="h-6 w-6 text-journal-teal" />
               </div>
             </div>
-          </Card>
+          </JournalCard>
 
           {/* Completed Orders */}
-          <Card variant="md" className="bg-green-50 border-green-200">
+          <JournalCard>
             <div className="flex items-center justify-between">
               <div>
-                <Body className="text-gray-600 text-sm mb-1">Completed</Body>
-                <H2 className="text-2xl font-bold text-gray-900">{completedOrders}</H2>
-                <div className="flex items-center gap-1 mt-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <Body className="text-sm text-green-600 font-medium">
+                <p className="text-[12px] font-sans text-journal-muted mb-1">Completed</p>
+                <p className="font-journal text-[22px] text-journal-ink">{completedOrders}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <CheckCircle className="h-3.5 w-3.5 text-journal-teal" />
+                  <span className="text-[12px] font-sans font-medium text-journal-teal">
                     {allOrders.length > 0 ? Math.round((completedOrders / allOrders.length) * 100) : 0}% success rate
-                  </Body>
+                  </span>
                 </div>
               </div>
-              <div className="h-16 w-16 bg-green-500/20 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="h-12 w-12 bg-journal-sand rounded-full flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="h-6 w-6 text-journal-body" />
               </div>
             </div>
-          </Card>
+          </JournalCard>
 
           {/* Pending Orders */}
-          <Card variant="md" className="bg-amber-50 border-amber-200">
+          <JournalCard className="bg-journal-warn-bg border-journal-warn-bg">
             <div className="flex items-center justify-between">
               <div>
-                <Body className="text-gray-600 text-sm mb-1">Pending</Body>
-                <H2 className="text-2xl font-bold text-gray-900">{pendingOrders + processingOrders}</H2>
-                <div className="flex items-center gap-1 mt-2">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  <Body className="text-sm text-amber-600 font-medium">In progress</Body>
+                <p className="text-[12px] font-sans text-journal-muted mb-1">Pending</p>
+                <p className="font-journal text-[22px] text-journal-ink">{pendingOrders + processingOrders}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Clock className="h-3.5 w-3.5 text-journal-warn-text" />
+                  <span className="text-[12px] font-sans font-medium text-journal-warn-text">In progress</span>
                 </div>
               </div>
-              <div className="h-16 w-16 bg-amber-500/20 rounded-full flex items-center justify-center">
-                <Clock className="h-8 w-8 text-amber-600" />
+              <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                <Clock className="h-6 w-6 text-journal-warn-text" />
               </div>
             </div>
-          </Card>
+          </JournalCard>
 
           {/* Average Order Value */}
-          <Card variant="md" className="bg-blue-50 border-blue-200">
+          <JournalCard>
             <div className="flex items-center justify-between">
               <div>
-                <Body className="text-gray-600 text-sm mb-1">Avg. Order Value</Body>
-                <H2 className="text-2xl font-bold text-gray-900">MWK {Math.round(averageOrderValue).toLocaleString()}</H2>
-                <div className="flex items-center gap-1 mt-2">
-                  <BarChart3 className="h-4 w-4 text-blue-600" />
-                  <Body className="text-sm text-blue-600 font-medium">Per order</Body>
+                <p className="text-[12px] font-sans text-journal-muted mb-1">Avg. order value</p>
+                <p className="font-journal text-[22px] text-journal-ink">MWK {Math.round(averageOrderValue).toLocaleString()}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <BarChart3 className="h-3.5 w-3.5 text-journal-body" />
+                  <span className="text-[12px] font-sans font-medium text-journal-body">Per order</span>
                 </div>
               </div>
-              <div className="h-16 w-16 bg-blue-500/20 rounded-full flex items-center justify-center">
-                <BarChart3 className="h-8 w-8 text-blue-600" />
+              <div className="h-12 w-12 bg-journal-sand rounded-full flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="h-6 w-6 text-journal-body" />
               </div>
             </div>
-          </Card>
+          </JournalCard>
         </div>
 
         {/* Search and Filters */}
-        <Card variant="lg" className="mb-6">
+        <JournalCard className="mb-6">
           {/* Search Bar */}
           <div className="mb-6">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-journal-faint" />
+              <JournalInput
                 type="text"
                 placeholder="Search by order ID or product name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4"
+                className="pl-11 pr-10"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-journal-faint hover:text-journal-body"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
@@ -404,202 +397,203 @@ export const Orders = () => {
           <div className="space-y-4">
             {/* Quick Date Filters */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Calendar className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Quick filters:</span>
-              <Button
-                variant="ghost"
-                size="small"
+              <Calendar className="h-3.5 w-3.5 text-journal-body" />
+              <span className="text-[12px] font-sans font-medium text-journal-body">Quick filters:</span>
+              <button
                 onClick={() => handleQuickFilter(0)}
-                className={startDate && endDate && new Date(endDate).toDateString() === new Date().toDateString() ? 'bg-teal-50 text-teal-700' : ''}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-[12px] font-sans font-medium transition-colors border',
+                  startDate && endDate && new Date(endDate).toDateString() === new Date().toDateString()
+                    ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                    : 'text-journal-body border-journal-hairline hover:border-journal-ink'
+                )}
               >
                 Today
-              </Button>
-              <Button
-                variant="ghost"
-                size="small"
+              </button>
+              <button
                 onClick={() => handleQuickFilter(7)}
-                className={startDate && new Date(endDate).getTime() - new Date(startDate).getTime() === 7 * 24 * 60 * 60 * 1000 ? 'bg-teal-50 text-teal-700' : ''}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-[12px] font-sans font-medium transition-colors border',
+                  startDate && new Date(endDate).getTime() - new Date(startDate).getTime() === 7 * 24 * 60 * 60 * 1000
+                    ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                    : 'text-journal-body border-journal-hairline hover:border-journal-ink'
+                )}
               >
-                This Week
-              </Button>
-              <Button
-                variant="ghost"
-                size="small"
+                This week
+              </button>
+              <button
                 onClick={() => handleQuickFilter(30)}
-                className={startDate && new Date(endDate).getTime() - new Date(startDate).getTime() === 30 * 24 * 60 * 60 * 1000 ? 'bg-teal-50 text-teal-700' : ''}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-[12px] font-sans font-medium transition-colors border',
+                  startDate && new Date(endDate).getTime() - new Date(startDate).getTime() === 30 * 24 * 60 * 60 * 1000
+                    ? 'bg-journal-teal-tint text-journal-teal border-journal-teal-tint-border'
+                    : 'text-journal-body border-journal-hairline hover:border-journal-ink'
+                )}
               >
-                This Month
-              </Button>
+                This month
+              </button>
               {(startDate || endDate) && (
-                <Button
-                  variant="ghost"
-                  size="small"
+                <button
                   onClick={clearDateFilter}
-                  className="text-red-600 hover:text-red-700"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-sans font-medium text-journal-danger-text hover:underline"
                 >
-                  <X className="h-4 w-4 mr-1" />
-                  Clear Date
-                </Button>
+                  <X className="h-3.5 w-3.5" />
+                  Clear date
+                </button>
               )}
             </div>
 
             {/* Date Range Filter */}
             {showDateFilter && (
-              <div className="flex items-center gap-2 flex-wrap p-3 bg-gray-50 rounded-lg">
-                <Calendar className="h-4 w-4 text-gray-600" />
-                <Input
+              <div className="flex items-center gap-2 flex-wrap p-3 bg-journal-sand rounded-journal">
+                <Calendar className="h-3.5 w-3.5 text-journal-body" />
+                <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  placeholder="Start date"
-                  className="text-sm"
+                  className="px-2.5 py-1.5 text-[13px] font-sans border border-journal-input-border rounded-journal bg-white"
                 />
-                <span className="text-gray-600">to</span>
-                <Input
+                <span className="text-journal-muted text-[13px]">to</span>
+                <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  placeholder="End date"
-                  className="text-sm"
+                  className="px-2.5 py-1.5 text-[13px] font-sans border border-journal-input-border rounded-journal bg-white"
                 />
-                <Button
-                  variant="ghost"
-                  size="small"
+                <button
                   onClick={() => setShowDateFilter(false)}
+                  className="p-1.5 hover:bg-white rounded-journal transition-colors"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  <X className="h-3.5 w-3.5 text-journal-body" />
+                </button>
               </div>
             )}
 
             {/* Status Filters */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Filter className="h-5 w-5 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Status:</span>
+              <Filter className="h-3.5 w-3.5 text-journal-body" />
+              <span className="text-[12px] font-sans font-medium text-journal-body">Status:</span>
               {(['pending', 'processing', 'dispatched', 'ready_for_collection', 'completed', 'cancelled'] as OrderStatus[]).map((status) => (
-                <Button
+                <button
                   key={status}
-                  variant={selectedStatuses.has(status) ? 'primary' : 'ghost'}
-                  size="small"
                   onClick={() => handleStatusToggle(status)}
-                  className="capitalize"
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-sans font-medium capitalize transition-colors border',
+                    selectedStatuses.has(status)
+                      ? 'bg-journal-ink text-journal-bone border-journal-ink'
+                      : 'text-journal-body border-journal-hairline hover:border-journal-ink'
+                  )}
                 >
-                  {selectedStatuses.has(status) && <CheckSquare className="h-3 w-3 mr-1" />}
+                  {selectedStatuses.has(status) && <CheckSquare className="h-3 w-3" />}
                   {getStatusLabel(status)}
-                </Button>
+                </button>
               ))}
               {selectedStatuses.size > 0 && (
-                <Button
-                  variant="ghost"
-                  size="small"
+                <button
                   onClick={() => {
                     setSelectedStatuses(new Set());
                     setStatusFilter(undefined);
                   }}
-                  className="text-red-600 hover:text-red-700"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-sans font-medium text-journal-danger-text hover:underline"
                 >
-                  <X className="h-4 w-4 mr-1" />
+                  <X className="h-3.5 w-3.5" />
                   Clear
-                </Button>
+                </button>
               )}
             </div>
 
             {/* Sort Options */}
             <div className="flex items-center gap-2 flex-wrap">
-              <ArrowUpDown className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Sort by:</span>
+              <ArrowUpDown className="h-3.5 w-3.5 text-journal-body" />
+              <span className="text-[12px] font-sans font-medium text-journal-body">Sort by:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="px-3 py-1.5 text-[13px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal"
               >
-                <option value="date-desc">Newest First</option>
-                <option value="date-asc">Oldest First</option>
-                <option value="amount-desc">Highest Amount</option>
-                <option value="amount-asc">Lowest Amount</option>
+                <option value="date-desc">Newest first</option>
+                <option value="date-asc">Oldest first</option>
+                <option value="amount-desc">Highest amount</option>
+                <option value="amount-asc">Lowest amount</option>
                 <option value="status">Status</option>
               </select>
             </div>
           </div>
-        </Card>
+        </JournalCard>
 
         {/* Loading State */}
         {isLoading && (
           <div className="text-center py-12">
-            <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
-            <Body className="text-gray-600">Loading orders...</Body>
+            <Loader2 className="h-10 w-10 text-journal-teal animate-spin mx-auto mb-4" />
+            <JournalBody className="!text-journal-muted">Loading orders...</JournalBody>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <Card variant="md" className="text-center">
-            <Body className="text-red-600">
+          <JournalCard className="text-center">
+            <JournalBody className="!text-journal-danger-text">
               Error loading orders. Please try again later.
-            </Body>
-          </Card>
+            </JournalBody>
+          </JournalCard>
         )}
 
         {/* Bulk Actions */}
         {selectedOrders.size > 0 && (
-          <Card variant="md" className="mb-4 bg-teal-50 border-teal-200">
-            <div className="flex items-center justify-between">
-              <Body className="text-sm font-medium text-gray-900">
+          <JournalCard className="mb-4 bg-journal-teal-tint border-journal-teal-tint-border">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <p className="text-[13px] font-sans font-medium text-journal-ink">
                 {selectedOrders.size} order{selectedOrders.size !== 1 ? 's' : ''} selected
-              </Body>
+              </p>
               <div className="flex items-center gap-2">
-                <Button
+                <JournalButton
                   variant="secondary"
-                  size="small"
                   onClick={() => setSelectedOrders(new Set())}
                 >
-                  Clear Selection
-                </Button>
-                <Button
+                  Clear selection
+                </JournalButton>
+                <JournalButton
                   variant="primary"
-                  size="small"
                   onClick={handleExport}
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Selected
-                </Button>
+                  <Download className="h-3.5 w-3.5" />
+                  Export selected
+                </JournalButton>
               </div>
             </div>
-          </Card>
+          </JournalCard>
         )}
 
         {/* Empty State */}
         {!isLoading && !error && filteredAndSortedOrders.length === 0 && (
-          <Card variant="md" className="text-center py-16">
-            <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Package className="h-12 w-12 text-gray-400" />
+          <JournalCard className="text-center py-16">
+            <div className="h-20 w-20 bg-journal-sand rounded-full flex items-center justify-center mx-auto mb-6">
+              <Package className="h-10 w-10 text-journal-faint" />
             </div>
-            <H1 className="text-2xl font-bold text-gray-900 mb-2">No orders found</H1>
-            <Body className="text-gray-600 mb-6 max-w-md mx-auto">
+            <CardHeading className="!text-[24px] mb-2">No orders found</CardHeading>
+            <JournalBody className="!text-journal-muted mb-6 max-w-md mx-auto">
               {searchQuery || selectedStatuses.size > 0 || startDate || endDate
                 ? 'No orders match your filters. Try adjusting your search criteria.'
                 : "You haven't placed any orders yet. Start shopping to see your orders here!"}
-            </Body>
+            </JournalBody>
             {(searchQuery || selectedStatuses.size > 0 || startDate || endDate) && (
-              <Button
+              <JournalButton
                 variant="secondary"
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedStatuses(new Set());
                   clearDateFilter();
                 }}
-                className="mb-4"
+                className="mb-4 mx-auto"
               >
-                Clear All Filters
-              </Button>
+                Clear all filters
+              </JournalButton>
             )}
-            <Link to="/products">
-              <Button variant="primary">
-                <ShoppingBag className="h-4 w-4 mr-2" />
-                Browse Products
-              </Button>
-            </Link>
-          </Card>
+            <JournalLinkButton to="/products" className="mx-auto">
+              <ShoppingBag className="h-3.5 w-3.5" />
+              Browse products
+            </JournalLinkButton>
+          </JournalCard>
         )}
 
         {/* Orders List - Grid View */}
@@ -610,72 +604,74 @@ export const Orders = () => {
                 {selectedOrders.size > 0 && (
                   <button
                     onClick={() => handleSelectOrder(order._id)}
-                    className="absolute top-3 left-3 z-10 p-1 bg-white rounded-full border-2 border-gray-300 hover:border-teal-500 transition-colors shadow-sm"
+                    className="absolute top-3 left-3 z-10 p-1 bg-white rounded-full border border-journal-hairline hover:border-journal-ink transition-colors"
                   >
                     {selectedOrders.has(order._id) ? (
-                      <CheckSquare className="h-5 w-5 text-teal-600" />
+                      <CheckSquare className="h-4 w-4 text-journal-teal" />
                     ) : (
-                      <Square className="h-5 w-5 text-gray-400" />
+                      <Square className="h-4 w-4 text-journal-faint" />
                     )}
                   </button>
                 )}
                 <Link to={`/orders/${order._id}`}>
-                  <Card
-                    variant="md"
-                    className={`hover:shadow-md transition-all cursor-pointer h-full border-2 ${
-                      selectedOrders.has(order._id) ? 'border-teal-500 ring-2 ring-teal-200' : 'border-gray-200 hover:border-teal-300'
-                    }`}
+                  <JournalCard
+                    className={cn(
+                      'hover:border-journal-ink transition-colors cursor-pointer h-full',
+                      selectedOrders.has(order._id) ? 'border-journal-teal' : ''
+                    )}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <Body className="text-xs text-gray-500 mb-1">Order ID</Body>
-                        <Body className="text-sm font-bold text-gray-900">
+                        <p className="text-[11px] font-sans text-journal-faint mb-1">Order ID</p>
+                        <p className="text-[13px] font-sans font-bold text-journal-ink">
                           #{order._id.slice(-8).toUpperCase()}
-                        </Body>
+                        </p>
                       </div>
                       <span
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 ${getStatusBadgeColor(
-                          order.status
-                        )}`}
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-[11px] font-sans font-bold',
+                          getStatusBadgeColor(order.status)
+                        )}
                       >
                         {getStatusLabel(order.status)}
                       </span>
                     </div>
 
                     <div className="space-y-3 mb-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Calendar className="h-4 w-4" />
+                      <div className="flex items-center justify-between text-[13px] font-sans">
+                        <div className="flex items-center gap-2 text-journal-muted">
+                          <Calendar className="h-3.5 w-3.5" />
                           <span>Date</span>
                         </div>
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-journal-ink font-medium">
                           {formatDate(order.createdAt)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Package className="h-4 w-4" />
+                      <div className="flex items-center justify-between text-[13px] font-sans">
+                        <div className="flex items-center gap-2 text-journal-muted">
+                          <Package className="h-3.5 w-3.5" />
                           <span>Items</span>
                         </div>
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-journal-ink font-medium">
                           {formatOrderItemCount(order)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Banknote className="h-4 w-4" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-journal-muted text-[13px] font-sans">
+                          <Banknote className="h-3.5 w-3.5" />
                           <span>Total</span>
                         </div>
-                        <span className="text-xl font-bold text-teal-600">
+                        <span className="font-journal text-[20px] text-journal-ink">
                           MWK {order.totalAmount.toLocaleString()}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
-                        <span className="text-gray-600">Payment:</span>
+                      <div className="flex items-center justify-between text-[13px] font-sans pt-2 border-t border-journal-hairline">
+                        <span className="text-journal-muted">Payment:</span>
                         <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium ${getPaymentStatusBadgeColor(
-                            order.paymentStatus
-                          )}`}
+                          className={cn(
+                            'px-2.5 py-1 rounded-full text-[11px] font-sans font-medium',
+                            getPaymentStatusBadgeColor(order.paymentStatus)
+                          )}
                         >
                           {order.paymentStatus.charAt(0).toUpperCase() +
                             order.paymentStatus.slice(1)}
@@ -683,24 +679,25 @@ export const Orders = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-end pt-4 border-t border-journal-hairline">
                       <span
-                        className={`text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all ${
-                          orderNeedsPayment(order) ? 'text-amber-700' : 'text-teal-600'
-                        }`}
+                        className={cn(
+                          'text-[13px] font-sans font-semibold flex items-center gap-1',
+                          orderNeedsPayment(order) ? 'text-journal-warn-text' : 'text-journal-teal'
+                        )}
                       >
                         {orderNeedsPayment(order) ? (
                           <>
-                            <CreditCard className="h-4 w-4" />
-                            Complete Payment
+                            <CreditCard className="h-3.5 w-3.5" />
+                            Complete payment
                           </>
                         ) : (
-                          'View Details'
+                          'View details'
                         )}
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-3.5 w-3.5" />
                       </span>
                     </div>
-                  </Card>
+                  </JournalCard>
                 </Link>
               </div>
             ))}
@@ -709,147 +706,144 @@ export const Orders = () => {
 
         {/* Orders List - Table View */}
         {!isLoading && !error && filteredAndSortedOrders.length > 0 && viewMode === 'table' && (
-          <Card variant="md" className="overflow-x-auto">
+          <JournalCard padding="none" className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-gray-200 bg-gray-50">
+                <tr className="border-b border-journal-hairline bg-journal-sand">
                   {selectedOrders.size > 0 && (
-                    <th className="text-left py-4 px-4">
-                      <button onClick={handleSelectAll} className="p-1 hover:bg-gray-100 rounded">
+                    <th className="text-left py-3 px-4">
+                      <button onClick={handleSelectAll} className="p-1 hover:bg-white rounded-journal transition-colors">
                         {selectedOrders.size === filteredAndSortedOrders.length ? (
-                          <CheckSquare className="h-5 w-5 text-teal-600" />
+                          <CheckSquare className="h-4 w-4 text-journal-teal" />
                         ) : (
-                          <Square className="h-5 w-5 text-gray-400" />
+                          <Square className="h-4 w-4 text-journal-faint" />
                         )}
                       </button>
                     </th>
                   )}
-                  <th className="text-left py-4 px-4 text-xs font-bold text-gray-700 uppercase">Order ID</th>
-                  <th className="text-left py-4 px-4 text-xs font-bold text-gray-700 uppercase">Date</th>
-                  <th className="text-left py-4 px-4 text-xs font-bold text-gray-700 uppercase">Items</th>
-                  <th className="text-left py-4 px-4 text-xs font-bold text-gray-700 uppercase">Total</th>
-                  <th className="text-left py-4 px-4 text-xs font-bold text-gray-700 uppercase">Status</th>
-                  <th className="text-left py-4 px-4 text-xs font-bold text-gray-700 uppercase">Payment</th>
-                  <th className="text-right py-4 px-4 text-xs font-bold text-gray-700 uppercase">Action</th>
+                  <th className="text-left py-3 px-4 text-[11px] font-sans font-bold text-journal-body uppercase tracking-[0.06em]">Order ID</th>
+                  <th className="text-left py-3 px-4 text-[11px] font-sans font-bold text-journal-body uppercase tracking-[0.06em]">Date</th>
+                  <th className="text-left py-3 px-4 text-[11px] font-sans font-bold text-journal-body uppercase tracking-[0.06em]">Items</th>
+                  <th className="text-left py-3 px-4 text-[11px] font-sans font-bold text-journal-body uppercase tracking-[0.06em]">Total</th>
+                  <th className="text-left py-3 px-4 text-[11px] font-sans font-bold text-journal-body uppercase tracking-[0.06em]">Status</th>
+                  <th className="text-left py-3 px-4 text-[11px] font-sans font-bold text-journal-body uppercase tracking-[0.06em]">Payment</th>
+                  <th className="text-right py-3 px-4 text-[11px] font-sans font-bold text-journal-body uppercase tracking-[0.06em]">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAndSortedOrders.map((order) => (
                   <tr
                     key={order._id}
-                    className={`border-b border-gray-100 hover:bg-teal-50/50 transition-colors ${
-                      selectedOrders.has(order._id) ? 'bg-teal-50' : ''
-                    }`}
+                    className={cn(
+                      'border-b border-journal-divider hover:bg-journal-teal-tint/40 transition-colors',
+                      selectedOrders.has(order._id) ? 'bg-journal-teal-tint' : ''
+                    )}
                   >
                     {selectedOrders.size > 0 && (
-                      <td className="py-4 px-4">
-                        <button onClick={() => handleSelectOrder(order._id)} className="p-1 hover:bg-gray-100 rounded">
+                      <td className="py-3 px-4">
+                        <button onClick={() => handleSelectOrder(order._id)} className="p-1 hover:bg-white rounded-journal transition-colors">
                           {selectedOrders.has(order._id) ? (
-                            <CheckSquare className="h-5 w-5 text-teal-600" />
+                            <CheckSquare className="h-4 w-4 text-journal-teal" />
                           ) : (
-                            <Square className="h-5 w-5 text-gray-400" />
+                            <Square className="h-4 w-4 text-journal-faint" />
                           )}
                         </button>
                       </td>
                     )}
-                    <td className="py-4 px-4">
-                      <Body className="text-sm font-bold text-gray-900">
+                    <td className="py-3 px-4">
+                      <p className="text-[13px] font-sans font-bold text-journal-ink">
                         #{order._id.slice(-8).toUpperCase()}
-                      </Body>
+                      </p>
                     </td>
-                    <td className="py-4 px-4">
-                      <Body className="text-sm text-gray-600">{formatDate(order.createdAt)}</Body>
+                    <td className="py-3 px-4">
+                      <p className="text-[13px] font-sans text-journal-muted">{formatDate(order.createdAt)}</p>
                     </td>
-                    <td className="py-4 px-4">
-                      <Body className="text-sm text-gray-600">
+                    <td className="py-3 px-4">
+                      <p className="text-[13px] font-sans text-journal-muted">
                         {formatOrderItemCount(order)}
-                      </Body>
+                      </p>
                     </td>
-                    <td className="py-4 px-4">
-                      <Body className="text-sm font-bold text-teal-600">
+                    <td className="py-3 px-4">
+                      <p className="text-[13px] font-sans font-bold text-journal-teal">
                         MWK {order.totalAmount.toLocaleString()}
-                      </Body>
+                      </p>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-3 px-4">
                       <span
-                        className={`inline-block px-3 py-1.5 rounded-full text-xs font-bold border-2 ${getStatusBadgeColor(
-                          order.status
-                        )}`}
+                        className={cn(
+                          'inline-block px-3 py-1.5 rounded-full text-[11px] font-sans font-bold',
+                          getStatusBadgeColor(order.status)
+                        )}
                       >
                         {getStatusLabel(order.status)}
                       </span>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-3 px-4">
                       <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getPaymentStatusBadgeColor(
-                          order.paymentStatus
-                        )}`}
+                        className={cn(
+                          'inline-block px-2.5 py-1 rounded-full text-[11px] font-sans font-medium',
+                          getPaymentStatusBadgeColor(order.paymentStatus)
+                        )}
                       >
                         {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-right">
-                      <Link to={`/orders/${order._id}`}>
-                        <Button
-                          variant={orderNeedsPayment(order) ? 'primary' : 'ghost'}
-                          size="small"
-                          className={
-                            orderNeedsPayment(order)
-                              ? ''
-                              : 'text-teal-600 hover:text-teal-700'
-                          }
-                        >
-                          {orderNeedsPayment(order) ? (
-                            <>
-                              <CreditCard className="h-4 w-4 mr-1" />
-                              Complete Payment
-                            </>
-                          ) : (
-                            <>
-                              View
-                              <ChevronRight className="h-4 w-4 ml-1" />
-                            </>
-                          )}
-                        </Button>
+                    <td className="py-3 px-4 text-right">
+                      <Link
+                        to={`/orders/${order._id}`}
+                        className={cn(
+                          'inline-flex items-center gap-1 text-[12px] font-sans font-semibold',
+                          orderNeedsPayment(order) ? 'text-journal-warn-text' : 'text-journal-teal hover:underline'
+                        )}
+                      >
+                        {orderNeedsPayment(order) ? (
+                          <>
+                            <CreditCard className="h-3.5 w-3.5" />
+                            Complete payment
+                          </>
+                        ) : (
+                          <>
+                            View
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </>
+                        )}
                       </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </Card>
+          </JournalCard>
         )}
 
         {/* Results Count */}
         {!isLoading && !error && filteredAndSortedOrders.length > 0 && (
-          <div className="mt-6 text-sm text-gray-600 flex items-center justify-between">
-            <Body>
+          <div className="mt-6 text-[13px] font-sans text-journal-muted flex items-center justify-between">
+            <p>
               Showing {filteredAndSortedOrders.length} of {allOrders.length} order{allOrders.length !== 1 ? 's' : ''}
               {(searchQuery || selectedStatuses.size > 0 || startDate || endDate) && ' (filtered)'}
-            </Body>
+            </p>
           </div>
         )}
 
         {/* Pagination */}
         {data?.pagination && data.pagination.totalPages > 1 && (
           <div className="mt-8 flex items-center justify-center gap-4">
-            <Button
+            <JournalButton
               variant="secondary"
-              size="small"
               disabled={data.pagination.page === 1}
             >
               Previous
-            </Button>
-            <Body className="text-gray-600">
+            </JournalButton>
+            <p className="text-[13px] font-sans text-journal-muted">
               Page {data.pagination.page} of {data.pagination.totalPages}
-            </Body>
-            <Button
+            </p>
+            <JournalButton
               variant="secondary"
-              size="small"
               disabled={data.pagination.page >= data.pagination.totalPages}
             >
               Next
-            </Button>
+            </JournalButton>
           </div>
         )}
       </div>

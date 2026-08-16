@@ -7,11 +7,9 @@ import { useGetTowingServicesQuery, useGetCarServicesQuery } from '../store/api/
 import { updateUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card } from '../components/ui/Card';
-import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { JournalCard, JournalButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { cn } from '../utils/cn';
 import {
   User,
   Mail,
@@ -35,15 +33,9 @@ import {
   ShoppingBag,
   Award,
   Shield,
-  Star,
   Activity,
   BarChart3,
-  CreditCard,
   Heart,
-  Settings,
-  Bell,
-  HelpCircle,
-  LogOut,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 
@@ -71,16 +63,16 @@ export const Profile = () => {
   const [changePassword, { isLoading: isChangingPasswordMutation }] = useChangePasswordMutation();
 
   // Fetch user orders and services
-  const { data: ordersData, isLoading: isLoadingOrders } = useGetOrdersQuery(undefined, {
+  const { data: ordersData } = useGetOrdersQuery(undefined, {
     skip: !authUser,
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
-  const { data: towingData, isLoading: isLoadingTowing } = useGetTowingServicesQuery(
+  const { data: towingData } = useGetTowingServicesQuery(
     {},
     { skip: !authUser }
   );
-  const { data: carServiceData, isLoading: isLoadingCar } = useGetCarServicesQuery(
+  const { data: carServiceData } = useGetCarServicesQuery(
     {},
     { skip: !authUser }
   );
@@ -228,7 +220,6 @@ export const Profile = () => {
       status: order.status,
       date: order.createdAt,
       icon: Package,
-      color: 'teal',
     })),
     ...towingServices.slice(0, 3).map((service: any) => ({
       type: 'service',
@@ -238,7 +229,6 @@ export const Profile = () => {
       status: service.status,
       date: service.createdAt,
       icon: Truck,
-      color: 'blue',
     })),
     ...carServices.slice(0, 3).map((service: any) => ({
       type: 'service',
@@ -256,17 +246,29 @@ export const Profile = () => {
       status: service.status,
       date: service.createdAt,
       icon: Wrench,
-      color: 'purple',
     })),
   ]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 8);
 
+  const getActivityStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-journal-teal-tint text-journal-teal';
+      case 'pending':
+        return 'bg-journal-warn-bg text-journal-warn-text';
+      case 'processing':
+        return 'bg-journal-teal-tint text-journal-teal';
+      default:
+        return 'bg-journal-sand text-journal-body';
+    }
+  };
+
   if (isLoadingUser) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-center min-h-[300px]">
+          <Loader2 className="h-8 w-8 animate-spin text-journal-teal" />
         </div>
       </div>
     );
@@ -274,185 +276,186 @@ export const Profile = () => {
 
   if (!user) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card variant="md" className="text-center">
-          <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <H1 className="text-2xl mb-2">User not found</H1>
-          <Body className="text-gray-600">Please log in to view your profile.</Body>
-        </Card>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <JournalCard className="text-center py-10">
+          <AlertCircle className="h-12 w-12 text-journal-faint mx-auto mb-4" />
+          <CardHeading className="!text-[22px] mb-2">User not found</CardHeading>
+          <JournalBody className="!text-journal-muted">Please log in to view your profile.</JournalBody>
+        </JournalCard>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-journal-bone">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
 
         {/* Hero Section */}
-        <div className="mt-8 mb-8">
-          <Card variant="lg" className="bg-teal-600 text-white border-0 shadow-sm">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                {/* Avatar */}
-                <div className="relative">
-                  <div className="h-24 w-24 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center text-3xl font-bold">
-                    {getInitials(user.name)}
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 bg-green-500 border-4 border-white rounded-full p-1.5">
-                    <CheckCircle className="h-5 w-5 text-white" />
-                  </div>
+        <div className="mt-8 mb-8 bg-journal-ink text-journal-bone p-6 sm:p-8 rounded-journal">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                <div className="h-20 w-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[22px] font-journal text-journal-bone">
+                  {getInitials(user.name)}
                 </div>
+                <div className="absolute -bottom-1 -right-1 bg-journal-teal-bright border-2 border-journal-ink rounded-full p-1">
+                  <CheckCircle className="h-3 w-3 text-journal-deep-teal" />
+                </div>
+              </div>
 
-                {/* User Info */}
-                <div>
-                  <H1 className="text-3xl font-bold mb-2 text-white">{user.name}</H1>
-                  <div className="flex flex-wrap items-center gap-4 text-white/90">
+              {/* User Info */}
+              <div>
+                <PageHeading className="!text-[26px] sm:!text-[30px] !text-journal-bone mb-1.5">{user.name}</PageHeading>
+                <div className="flex flex-wrap items-center gap-4 text-journal-bone/80">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-3.5 w-3.5" />
+                    <span className="text-[13px] font-sans">{user.email}</span>
+                  </div>
+                  {memberSince && (
                     <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      <Body className="text-white/90">{user.email}</Body>
-                    </div>
-                    {memberSince && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <Body className="text-white/90">Member since {memberSince}</Body>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="flex flex-wrap gap-3">
-                <Link to="/orders">
-                  <Button variant="secondary" size="default" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-                    <Package className="h-4 w-4 mr-2" />
-                    View Orders
-                  </Button>
-                </Link>
-                <Link to="/services">
-                  <Button variant="secondary" size="default" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-                    <Wrench className="h-4 w-4 mr-2" />
-                    Services
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Spent */}
-          <Card variant="md" className="bg-teal-50 border-teal-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <Body className="text-gray-600 text-sm mb-1">Total Spent</Body>
-                <H2 className="text-2xl font-bold text-gray-900">MWK {totalSpent.toLocaleString()}</H2>
-                <div className="flex items-center gap-1 mt-2">
-                  <TrendingUp className="h-4 w-4 text-teal-600" />
-                  <Body className="text-sm text-teal-600 font-medium">{orders.length} orders</Body>
-                </div>
-              </div>
-              <div className="h-16 w-16 bg-teal-500/20 rounded-full flex items-center justify-center">
-                <Banknote className="h-8 w-8 text-teal-600" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Total Orders */}
-          <Card variant="md" className="bg-blue-50 border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <Body className="text-gray-600 text-sm mb-1">Total Orders</Body>
-                <H2 className="text-2xl font-bold text-gray-900">{orders.length}</H2>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3 text-green-600" />
-                    <Body className="text-xs text-gray-600">{completedOrders} completed</Body>
-                  </div>
-                  {pendingOrders > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-orange-600" />
-                      <Body className="text-xs text-gray-600">{pendingOrders} pending</Body>
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span className="text-[13px] font-sans">Member since {memberSince}</span>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="h-16 w-16 bg-blue-500/20 rounded-full flex items-center justify-center">
-                <ShoppingBag className="h-8 w-8 text-blue-600" />
-              </div>
             </div>
-          </Card>
 
-          {/* Services */}
-          <Card variant="md" className="bg-purple-50 border-purple-200">
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-3">
+              <Link to="/orders">
+                <JournalButton variant="secondary" className="!border-journal-bone/40 !text-journal-bone hover:!bg-journal-bone hover:!text-journal-ink">
+                  <Package className="h-3.5 w-3.5" />
+                  View orders
+                </JournalButton>
+              </Link>
+              <Link to="/services">
+                <JournalButton variant="secondary" className="!border-journal-bone/40 !text-journal-bone hover:!bg-journal-bone hover:!text-journal-ink">
+                  <Wrench className="h-3.5 w-3.5" />
+                  Services
+                </JournalButton>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Total Spent */}
+          <JournalCard className="bg-journal-teal-tint border-journal-teal-tint-border">
             <div className="flex items-center justify-between">
               <div>
-                <Body className="text-gray-600 text-sm mb-1">Services</Body>
-                <H2 className="text-2xl font-bold text-gray-900">{totalServices}</H2>
-                <div className="flex items-center gap-2 mt-2">
-                  <Truck className="h-3 w-3 text-purple-600" />
-                  <Body className="text-xs text-gray-600">{towingServices.length} towing</Body>
-                  <Wrench className="h-3 w-3 text-purple-600 ml-2" />
-                  <Body className="text-xs text-gray-600">{carServices.length} car</Body>
+                <p className="text-[12px] font-sans text-journal-muted mb-1">Total spent</p>
+                <p className="font-journal text-[22px] text-journal-ink">MWK {totalSpent.toLocaleString()}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <TrendingUp className="h-3.5 w-3.5 text-journal-teal" />
+                  <span className="text-[12px] font-sans font-medium text-journal-teal">{orders.length} orders</span>
                 </div>
               </div>
-              <div className="h-16 w-16 bg-purple-500/20 rounded-full flex items-center justify-center">
-                <Wrench className="h-8 w-8 text-purple-600" />
+              <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                <Banknote className="h-6 w-6 text-journal-teal" />
               </div>
             </div>
-          </Card>
+          </JournalCard>
 
-          {/* Member Status */}
-          <Card variant="md" className="bg-amber-50 border-amber-200">
+          {/* Total Orders */}
+          <JournalCard>
             <div className="flex items-center justify-between">
               <div>
-                <Body className="text-gray-600 text-sm mb-1">Member For</Body>
-                <H2 className="text-2xl font-bold text-gray-900">{memberDays}</H2>
-                <Body className="text-xs text-gray-600 mt-2">days</Body>
+                <p className="text-[12px] font-sans text-journal-muted mb-1">Total orders</p>
+                <p className="font-journal text-[22px] text-journal-ink">{orders.length}</p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 text-journal-teal" />
+                    <span className="text-[11px] font-sans text-journal-muted">{completedOrders} completed</span>
+                  </div>
+                  {pendingOrders > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-journal-warn-text" />
+                      <span className="text-[11px] font-sans text-journal-muted">{pendingOrders} pending</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="h-16 w-16 bg-amber-500/20 rounded-full flex items-center justify-center">
-                <Award className="h-8 w-8 text-amber-600" />
+              <div className="h-12 w-12 bg-journal-sand rounded-full flex items-center justify-center flex-shrink-0">
+                <ShoppingBag className="h-6 w-6 text-journal-body" />
               </div>
             </div>
-          </Card>
+          </JournalCard>
+
+          {/* Services */}
+          <JournalCard>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[12px] font-sans text-journal-muted mb-1">Services</p>
+                <p className="font-journal text-[22px] text-journal-ink">{totalServices}</p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <Truck className="h-3 w-3 text-journal-body" />
+                  <span className="text-[11px] font-sans text-journal-muted">{towingServices.length} towing</span>
+                  <Wrench className="h-3 w-3 text-journal-body ml-1" />
+                  <span className="text-[11px] font-sans text-journal-muted">{carServices.length} car</span>
+                </div>
+              </div>
+              <div className="h-12 w-12 bg-journal-sand rounded-full flex items-center justify-center flex-shrink-0">
+                <Wrench className="h-6 w-6 text-journal-body" />
+              </div>
+            </div>
+          </JournalCard>
+
+          {/* Member Status */}
+          <JournalCard className="bg-journal-warn-bg border-journal-warn-bg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[12px] font-sans text-journal-warn-text mb-1">Member for</p>
+                <p className="font-journal text-[22px] text-journal-warn-text">{memberDays}</p>
+                <p className="text-[11px] font-sans text-journal-warn-text mt-2">days</p>
+              </div>
+              <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                <Award className="h-6 w-6 text-journal-warn-text" />
+              </div>
+            </div>
+          </JournalCard>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Profile Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Personal Information */}
-            <Card variant="lg">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-                <H2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <User className="h-5 w-5 text-teal-600" />
-                  Personal Information
-                </H2>
+            <JournalCard className="p-6 sm:p-8">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-journal-hairline">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-journal-teal" />
+                  <CardHeading className="!text-[19px]">Personal information</CardHeading>
+                </div>
                 {!isEditingProfile && (
-                  <Button variant="ghost" size="small" onClick={handleEditProfile}>
-                    <Edit2 className="h-4 w-4 mr-2" />
+                  <button
+                    onClick={handleEditProfile}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-teal hover:underline"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
                     Edit
-                  </Button>
+                  </button>
                 )}
               </div>
 
               {isEditingProfile ? (
                 <div className="space-y-4">
-                  <Input
-                    label="Full Name"
+                  <JournalInput
+                    label="Full name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                   />
-                  <Input
-                    label="Phone Number"
+                  <JournalInput
+                    label="Phone number"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     required
                   />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">
                       Address
                     </label>
                     <textarea
@@ -460,204 +463,188 @@ export const Profile = () => {
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="Enter your address"
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
+                      className="w-full px-3.5 py-3 text-[14px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal resize-none"
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <Button
+                    <JournalButton
                       variant="primary"
                       onClick={handleSaveProfile}
                       disabled={isUpdatingProfile}
                     >
                       {isUpdatingProfile ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           Saving...
                         </>
                       ) : (
                         <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Changes
+                          <Save className="h-3.5 w-3.5" />
+                          Save changes
                         </>
                       )}
-                    </Button>
-                    <Button variant="secondary" onClick={handleCancelEdit} disabled={isUpdatingProfile}>
-                      <X className="h-4 w-4 mr-2" />
+                    </JournalButton>
+                    <JournalButton variant="secondary" onClick={handleCancelEdit} disabled={isUpdatingProfile}>
+                      <X className="h-3.5 w-3.5" />
                       Cancel
-                    </Button>
+                    </JournalButton>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="p-2 bg-teal-100 rounded-lg">
-                      <User className="h-5 w-5 text-teal-600" />
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-journal hover:bg-journal-sand transition-colors">
+                    <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                      <User className="h-4 w-4 text-journal-teal" />
                     </div>
                     <div className="flex-1">
-                      <Body className="text-sm text-gray-500 mb-1">Full Name</Body>
-                      <Body className="text-gray-900 font-medium">{user.name}</Body>
+                      <p className="text-[11px] font-sans text-journal-faint mb-1">Full name</p>
+                      <p className="text-journal-ink font-sans font-medium text-[14px]">{user.name}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Mail className="h-5 w-5 text-blue-600" />
+                  <div className="flex items-start gap-3 p-3 rounded-journal hover:bg-journal-sand transition-colors">
+                    <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                      <Mail className="h-4 w-4 text-journal-teal" />
                     </div>
                     <div className="flex-1">
-                      <Body className="text-sm text-gray-500 mb-1">Email</Body>
-                      <Body className="text-gray-900 font-medium">{user.email}</Body>
-                      <Body className="text-xs text-gray-500 mt-1">Used for login</Body>
+                      <p className="text-[11px] font-sans text-journal-faint mb-1">Email</p>
+                      <p className="text-journal-ink font-sans font-medium text-[14px]">{user.email}</p>
+                      <p className="text-[11px] font-sans text-journal-faint mt-1">Used for login</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <Phone className="h-5 w-5 text-green-600" />
+                  <div className="flex items-start gap-3 p-3 rounded-journal hover:bg-journal-sand transition-colors">
+                    <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                      <Phone className="h-4 w-4 text-journal-teal" />
                     </div>
                     <div className="flex-1">
-                      <Body className="text-sm text-gray-500 mb-1">Phone Number</Body>
-                      <Body className="text-gray-900 font-medium">{user.phone}</Body>
+                      <p className="text-[11px] font-sans text-journal-faint mb-1">Phone number</p>
+                      <p className="text-journal-ink font-sans font-medium text-[14px]">{user.phone}</p>
                     </div>
                   </div>
                   {user.address && (
-                    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <MapPin className="h-5 w-5 text-purple-600" />
+                    <div className="flex items-start gap-3 p-3 rounded-journal hover:bg-journal-sand transition-colors">
+                      <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                        <MapPin className="h-4 w-4 text-journal-teal" />
                       </div>
                       <div className="flex-1">
-                        <Body className="text-sm text-gray-500 mb-1">Address</Body>
-                        <Body className="text-gray-900 font-medium">{user.address}</Body>
+                        <p className="text-[11px] font-sans text-journal-faint mb-1">Address</p>
+                        <p className="text-journal-ink font-sans font-medium text-[14px]">{user.address}</p>
                       </div>
                     </div>
                   )}
                 </div>
               )}
-            </Card>
+            </JournalCard>
 
             {/* Change Password */}
-            <Card variant="lg">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-                <H2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Lock className="h-5 w-5 text-teal-600" />
-                  Security & Password
-                </H2>
+            <JournalCard className="p-6 sm:p-8">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-journal-hairline">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-journal-teal" />
+                  <CardHeading className="!text-[19px]">Security & password</CardHeading>
+                </div>
                 {!isChangingPassword && (
-                  <Button variant="ghost" size="small" onClick={() => setIsChangingPassword(true)}>
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Change Password
-                  </Button>
+                  <button
+                    onClick={() => setIsChangingPassword(true)}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-teal hover:underline"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                    Change password
+                  </button>
                 )}
               </div>
 
               {isChangingPassword ? (
                 <div className="space-y-4">
-                  <Input
-                    label="Current Password"
+                  <JournalInput
+                    label="Current password"
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     required
                   />
-                  <Input
-                    label="New Password"
+                  <JournalInput
+                    label="New password"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                   />
-                  <Input
-                    label="Confirm New Password"
+                  <JournalInput
+                    label="Confirm new password"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
                   <div className="flex gap-3 pt-4">
-                    <Button
+                    <JournalButton
                       variant="primary"
                       onClick={handleChangePassword}
                       disabled={isChangingPasswordMutation}
                     >
                       {isChangingPasswordMutation ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           Changing...
                         </>
                       ) : (
                         <>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Change Password
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Change password
                         </>
                       )}
-                    </Button>
-                    <Button
+                    </JournalButton>
+                    <JournalButton
                       variant="secondary"
                       onClick={handleCancelPasswordChange}
                       disabled={isChangingPasswordMutation}
                     >
-                      <X className="h-4 w-4 mr-2" />
+                      <X className="h-3.5 w-3.5" />
                       Cancel
-                    </Button>
+                    </JournalButton>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                    <Shield className="h-5 w-5 text-gray-400" />
-                    <div className="flex-1">
-                      <Body className="text-sm text-gray-600">Your password is securely encrypted</Body>
-                    </div>
+                  <div className="flex items-center gap-3 p-3 rounded-journal bg-journal-sand">
+                    <Shield className="h-4 w-4 text-journal-faint" />
+                    <p className="text-[13px] font-sans text-journal-body">Your password is securely encrypted</p>
                   </div>
-                  <Body className="text-gray-600 text-sm">Click "Change Password" to update your password.</Body>
+                  <p className="text-journal-muted text-[13px] font-sans">Click "Change password" to update your password.</p>
                 </div>
               )}
-            </Card>
+            </JournalCard>
 
             {/* Recent Activity Timeline */}
             {recentActivity.length > 0 && (
-              <Card variant="lg">
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-                  <H2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-teal-600" />
-                    Recent Activity
-                  </H2>
+              <JournalCard className="p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-journal-hairline">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-journal-teal" />
+                    <CardHeading className="!text-[19px]">Recent activity</CardHeading>
+                  </div>
                 </div>
                 <div className="space-y-4">
                   {recentActivity.map((activity, index) => {
                     const Icon = activity.icon;
                     const isLast = index === recentActivity.length - 1;
-                    const getIconBgClass = (color: string) => {
-                      if (color === 'teal') return 'bg-teal-100';
-                      if (color === 'blue') return 'bg-blue-100';
-                      if (color === 'purple') return 'bg-purple-100';
-                      return 'bg-gray-100';
-                    };
-                    const getIconColorClass = (color: string) => {
-                      if (color === 'teal') return 'text-teal-600';
-                      if (color === 'blue') return 'text-blue-600';
-                      if (color === 'purple') return 'text-purple-600';
-                      return 'text-gray-600';
-                    };
                     return (
                       <div key={activity.id} className="flex gap-4 relative">
                         {!isLast && (
-                          <div className="absolute left-6 top-10 w-0.5 h-full bg-gray-200" />
+                          <div className="absolute left-[19px] top-10 w-px h-full bg-journal-hairline" />
                         )}
-                        <div className={`flex-shrink-0 h-12 w-12 rounded-full ${getIconBgClass(activity.color)} flex items-center justify-center z-10`}>
-                          <Icon className={`h-6 w-6 ${getIconColorClass(activity.color)}`} />
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-journal-teal-tint flex items-center justify-center z-10">
+                          <Icon className="h-4 w-4 text-journal-teal" />
                         </div>
                         <div className="flex-1 pb-4">
-                          <div className="flex items-center justify-between mb-1">
-                            <Body className="font-semibold text-gray-900">{activity.title}</Body>
-                            <Body className="text-xs text-gray-500">
+                          <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                            <p className="font-sans font-semibold text-[13px] text-journal-ink">{activity.title}</p>
+                            <p className="text-[11px] font-sans text-journal-faint">
                               {format(new Date(activity.date), 'MMM dd, yyyy')}
-                            </Body>
+                            </p>
                           </div>
-                          <Body className="text-sm text-gray-600 mb-2">{activity.description}</Body>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            activity.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            activity.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                            activity.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <p className="text-[13px] font-sans text-journal-muted mb-2">{activity.description}</p>
+                          <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-sans font-medium', getActivityStatusColor(activity.status))}>
                             {activity.status}
                           </span>
                         </div>
@@ -665,159 +652,143 @@ export const Profile = () => {
                     );
                   })}
                 </div>
-              </Card>
+              </JournalCard>
             )}
           </div>
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
             {/* Quick Stats */}
-            <Card variant="md">
-              <H2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-teal-600" />
-                Quick Stats
-              </H2>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
+            <JournalCard>
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="h-4 w-4 text-journal-teal" />
+                <CardHeading className="!text-[17px]">Quick stats</CardHeading>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 rounded-journal bg-journal-sand">
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-gray-600" />
-                    <Body className="text-gray-600">Orders</Body>
+                    <Package className="h-3.5 w-3.5 text-journal-body" />
+                    <span className="text-[13px] font-sans text-journal-body">Orders</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Body className="font-semibold text-gray-900">{orders.length}</Body>
+                    <span className="font-sans font-semibold text-[13px] text-journal-ink">{orders.length}</span>
                     {orders.length > 0 && (
-                      <Link to="/orders">
-                        <Button variant="ghost" size="small">
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
+                      <Link to="/orders" className="text-journal-teal hover:opacity-70">
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     )}
                   </div>
                 </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
+                <div className="flex justify-between items-center p-3 rounded-journal bg-journal-sand">
                   <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-gray-600" />
-                    <Body className="text-gray-600">Towing</Body>
+                    <Truck className="h-3.5 w-3.5 text-journal-body" />
+                    <span className="text-[13px] font-sans text-journal-body">Towing</span>
                   </div>
-                  <Body className="font-semibold text-gray-900">{towingServices.length}</Body>
+                  <span className="font-sans font-semibold text-[13px] text-journal-ink">{towingServices.length}</span>
                 </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
+                <div className="flex justify-between items-center p-3 rounded-journal bg-journal-sand">
                   <div className="flex items-center gap-2">
-                    <Wrench className="h-4 w-4 text-gray-600" />
-                    <Body className="text-gray-600">Car Services</Body>
+                    <Wrench className="h-3.5 w-3.5 text-journal-body" />
+                    <span className="text-[13px] font-sans text-journal-body">Car services</span>
                   </div>
-                  <Body className="font-semibold text-gray-900">{carServices.length}</Body>
+                  <span className="font-sans font-semibold text-[13px] text-journal-ink">{carServices.length}</span>
                 </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
+                <div className="flex justify-between items-center p-3 rounded-journal bg-journal-sand">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <Body className="text-gray-600">Completed</Body>
+                    <CheckCircle className="h-3.5 w-3.5 text-journal-teal" />
+                    <span className="text-[13px] font-sans text-journal-body">Completed</span>
                   </div>
-                  <Body className="font-semibold text-gray-900">{completedOrders + completedServices}</Body>
+                  <span className="font-sans font-semibold text-[13px] text-journal-ink">{completedOrders + completedServices}</span>
                 </div>
               </div>
-            </Card>
+            </JournalCard>
 
             {/* Account Information */}
-            <Card variant="md">
-              <H2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-teal-600" />
-                Account Details
-              </H2>
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg bg-gray-50">
-                  <Body className="text-xs text-gray-500 mb-1">Email</Body>
-                  <Body className="text-sm font-medium text-gray-900">{user.email}</Body>
+            <JournalCard>
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="h-4 w-4 text-journal-teal" />
+                <CardHeading className="!text-[17px]">Account details</CardHeading>
+              </div>
+              <div className="space-y-2">
+                <div className="p-3 rounded-journal bg-journal-sand">
+                  <p className="text-[11px] font-sans text-journal-faint mb-1">Email</p>
+                  <p className="text-[13px] font-sans font-medium text-journal-ink">{user.email}</p>
                 </div>
                 {memberSince && (
-                  <div className="p-3 rounded-lg bg-gray-50">
-                    <Body className="text-xs text-gray-500 mb-1">Member Since</Body>
-                    <Body className="text-sm font-medium text-gray-900">{memberSince}</Body>
+                  <div className="p-3 rounded-journal bg-journal-sand">
+                    <p className="text-[11px] font-sans text-journal-faint mb-1">Member since</p>
+                    <p className="text-[13px] font-sans font-medium text-journal-ink">{memberSince}</p>
                   </div>
                 )}
-                <div className="p-3 rounded-lg bg-gray-50">
-                  <Body className="text-xs text-gray-500 mb-1">Account Status</Body>
+                <div className="p-3 rounded-journal bg-journal-sand">
+                  <p className="text-[11px] font-sans text-journal-faint mb-1">Account status</p>
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                    <Body className="text-sm font-medium text-gray-900">Active</Body>
+                    <div className="h-1.5 w-1.5 bg-journal-teal rounded-full"></div>
+                    <p className="text-[13px] font-sans font-medium text-journal-ink">Active</p>
                   </div>
                 </div>
               </div>
-            </Card>
+            </JournalCard>
 
             {/* Recent Orders */}
             {orders.length > 0 && (
-              <Card variant="md">
+              <JournalCard>
                 <div className="flex items-center justify-between mb-4">
-                  <H2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Package className="h-5 w-5 text-teal-600" />
-                    Recent Orders
-                  </H2>
-                  <Link to="/orders">
-                    <Button variant="ghost" size="small">
-                      View All
-                      <ArrowRight className="h-4 w-4 ml-1" />
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-journal-teal" />
+                    <CardHeading className="!text-[17px]">Recent orders</CardHeading>
+                  </div>
+                  <Link to="/orders" className="inline-flex items-center gap-1 text-[12px] font-sans font-medium text-journal-teal hover:underline">
+                    View all
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {orders.slice(0, 3).map((order: any) => (
                     <Link
                       key={order._id}
                       to={`/orders/${order._id}`}
-                      className="block p-3 rounded-lg border border-gray-200 hover:border-teal-300 hover:bg-teal-50/50 transition-all group"
+                      className="block p-3 rounded-journal border border-journal-hairline hover:border-journal-ink transition-colors group"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <Body className="font-medium text-gray-900 group-hover:text-teal-600">
+                        <p className="font-sans font-medium text-[13px] text-journal-ink group-hover:text-journal-teal">
                           Order #{order._id.slice(-8)}
-                        </Body>
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          order.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
+                        </p>
+                        <span className={cn('px-2 py-0.5 rounded text-[11px] font-sans font-medium', getActivityStatusColor(order.status))}>
                           {order.status}
                         </span>
                       </div>
-                      <Body className="text-xs text-gray-600">
-                        {format(new Date(order.createdAt), 'MMM dd, yyyy')} • MWK {order.totalAmount?.toLocaleString() || 0}
-                      </Body>
+                      <p className="text-[11px] font-sans text-journal-faint">
+                        {format(new Date(order.createdAt), 'MMM dd, yyyy')} &#183; MWK {order.totalAmount?.toLocaleString() || 0}
+                      </p>
                     </Link>
                   ))}
                 </div>
-              </Card>
+              </JournalCard>
             )}
 
             {/* Quick Links */}
-            <Card variant="md">
-              <H2 className="text-lg font-semibold text-gray-900 mb-4">Quick Links</H2>
-              <div className="space-y-2">
-                <Link to="/orders" className="block">
-                  <Button variant="ghost" size="default" className="w-full justify-start">
-                    <Package className="h-4 w-4 mr-2" />
-                    My Orders
-                  </Button>
+            <JournalCard>
+              <CardHeading className="!text-[17px] mb-4">Quick links</CardHeading>
+              <div className="space-y-1">
+                <Link to="/orders" className="flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-journal-body hover:bg-journal-sand rounded-journal transition-colors">
+                  <Package className="h-3.5 w-3.5" />
+                  My orders
                 </Link>
-                <Link to="/services" className="block">
-                  <Button variant="ghost" size="default" className="w-full justify-start">
-                    <Wrench className="h-4 w-4 mr-2" />
-                    Services
-                  </Button>
+                <Link to="/services" className="flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-journal-body hover:bg-journal-sand rounded-journal transition-colors">
+                  <Wrench className="h-3.5 w-3.5" />
+                  Services
                 </Link>
-                <Link to="/wishlist" className="block">
-                  <Button variant="ghost" size="default" className="w-full justify-start">
-                    <Heart className="h-4 w-4 mr-2" />
-                    Wishlist
-                  </Button>
+                <Link to="/wishlist" className="flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-journal-body hover:bg-journal-sand rounded-journal transition-colors">
+                  <Heart className="h-3.5 w-3.5" />
+                  Wishlist
                 </Link>
-                <Link to="/cart" className="block">
-                  <Button variant="ghost" size="default" className="w-full justify-start">
-                    <ShoppingBag className="h-4 w-4 mr-2" />
-                    Shopping Cart
-                  </Button>
+                <Link to="/cart" className="flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-sans text-journal-body hover:bg-journal-sand rounded-journal transition-colors">
+                  <ShoppingBag className="h-3.5 w-3.5" />
+                  Shopping cart
                 </Link>
               </div>
-            </Card>
+            </JournalCard>
           </div>
         </div>
       </div>

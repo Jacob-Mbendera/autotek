@@ -1,14 +1,25 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, User, LogOut, Package, Wrench, Truck, Settings, Heart, RotateCcw } from 'lucide-react';
+import { ShoppingCart, Menu, X, User, LogOut, Wrench, Truck, Settings, Heart } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
 import { useGetWishlistQuery } from '../store/api/wishlistApi';
 import { useLogoutMutation } from '../store/api/authApi';
 import { broadcastClientSync } from '../utils/crossTabSync';
 import { UserRole } from '@shared/types';
-import { Button } from './ui/Button';
 import { BrandLogo } from './BrandLogo';
+import { cn } from '../utils/cn';
+
+const SUPPORT_PHONE = '+265 887 111 444';
+const SUPPORT_PHONE_HREF = 'tel:+265887111444';
+
+const navigation = [
+  { name: 'Products', href: '/products' },
+  { name: 'Orders', href: '/orders' },
+  { name: 'Returns', href: '/returns' },
+  { name: 'Services', href: '/services' },
+  { name: 'My Services', href: '/my-services' },
+];
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -56,220 +67,200 @@ export const Header = () => {
     setMobileMenuOpen(false);
   };
 
-  const navigation = [
-    { name: 'Products', href: '/products', icon: Package },
-    { name: 'Orders', href: '/orders', icon: Package },
-    { name: 'Returns', href: '/returns', icon: RotateCcw },
-    { name: 'Services', href: '/services', icon: Wrench },
-    { name: 'My Services', href: '/my-services', icon: Truck },
-  ];
+  // "Track an order" has no standalone lookup feature — route to what
+  // already exists: My Services for a signed-in user, login otherwise.
+  const trackOrderHref = isAuthenticated ? '/my-services' : '/login?returnUrl=/my-services';
+
+  const navLinkClasses =
+    'text-[12px] font-sans font-medium tracking-[0.12em] uppercase text-journal-ink-nav hover:text-journal-teal transition-colors';
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center">
-            <BrandLogo
-              variant="header"
-              to="/"
-              imgClassName="h-10 sm:h-11 max-h-11 max-w-[min(240px,calc(100vw-170px))] sm:max-w-[300px]"
-            />
+    <header className="sticky top-0 z-50 bg-journal-bone">
+      {/* Utility bar */}
+      <div className="bg-journal-ink text-journal-footer-1">
+        <div className="max-w-[1280px] mx-auto flex items-center justify-between gap-4 px-4 sm:px-10 py-2.5 text-[11px] font-sans tracking-[0.13em] uppercase overflow-x-auto whitespace-nowrap">
+          <div className="flex items-center gap-6">
+            <span>Malawi &middot; MWK</span>
+            <span className="hidden sm:inline text-journal-footer-2">Nationwide delivery &amp; 24/7 towing</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to={trackOrderHref} className="hover:text-white transition-colors">
+              Track an order
+            </Link>
+            <a href={SUPPORT_PHONE_HREF} className="hover:text-white transition-colors">
+              Support &middot; {SUPPORT_PHONE}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Masthead */}
+      <div className="border-b border-journal-ink">
+        <nav className="max-w-[1280px] mx-auto grid grid-cols-[minmax(0,1fr)_auto_minmax(max-content,auto)] items-center gap-3 px-4 sm:px-10 py-4 sm:py-5">
+          {/* Desktop nav — left */}
+          <div className="hidden lg:flex items-center gap-4 xl:gap-6">
+            {navigation.map((item) => (
+              <Link key={item.name} to={item.href} className={cn(navLinkClasses, 'whitespace-nowrap')}>
+                {item.name}
+              </Link>
+            ))}
+          </div>
+          {/* Mobile: menu button occupies the left slot */}
+          <div className="lg:hidden flex items-center">
+            <button
+              className="p-2 -ml-2 text-journal-ink"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-8">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className="flex items-center space-x-1 text-gray-700 hover:text-teal-600 transition-colors"
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{item.name}</span>
-                </Link>
-              );
-            })}
+          {/* Logo — center */}
+          <div className="flex items-center justify-center">
+            <BrandLogo variant="header" to="/" imgClassName="h-9 sm:h-10 max-w-[220px] sm:max-w-[260px]" />
           </div>
 
-          {/* Right side - Cart and User Menu */}
-          <div className="flex items-center space-x-4">
-            {/* Wishlist - Only show if authenticated */}
+          {/* Right cluster */}
+          <div className="flex items-center justify-end gap-4 sm:gap-6">
             {isAuthenticated && (
-              <Link
-                to="/wishlist"
-                className="relative p-2 text-gray-700 hover:text-red-600 transition-colors"
-                aria-label="Wishlist"
-              >
-                <Heart className={`h-6 w-6 transition-all duration-200 ${wishlistCount > 0 ? 'fill-red-500 text-red-500' : ''}`} />
+              <Link to="/wishlist" className="relative p-1 text-journal-ink hover:text-journal-teal transition-colors" aria-label="Wishlist">
+                <Heart className={`h-5 w-5 ${wishlistCount > 0 ? 'fill-journal-danger-text text-journal-danger-text' : ''}`} />
                 {wishlistCount > 0 && (
                   <span
-                    className={`absolute top-0 right-0 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
-                      isCountAnimating ? 'scale-125 animate-pulse' : 'scale-100'
-                    }`}
-                    style={{
-                      animation: isCountAnimating ? 'bounce 0.3s ease-in-out' : 'none',
-                    }}
                     key={wishlistCount}
+                    className={`absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-journal-danger-text text-white text-[10px] font-sans font-semibold flex items-center justify-center transition-transform duration-300 ${
+                      isCountAnimating ? 'scale-125' : 'scale-100'
+                    }`}
                   >
                     {wishlistCount}
                   </span>
                 )}
               </Link>
             )}
-            
-            {/* Shopping Cart */}
-            <Link
-              to="/cart"
-              className="relative p-2 text-gray-700 hover:text-teal-600 transition-colors"
-              aria-label="Shopping cart"
-            >
-              <ShoppingCart className="h-6 w-6" />
+
+            <Link to="/cart" className="relative p-1 text-journal-ink hover:text-journal-teal transition-colors" aria-label="Shopping cart">
+              <ShoppingCart className="h-5 w-5" />
               {cart.totalItems > 0 && (
-                <span className="absolute top-0 right-0 h-5 w-5 bg-teal-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-journal-ink text-journal-bone text-[10px] font-sans font-semibold flex items-center justify-center">
                   {cart.totalItems}
                 </span>
               )}
             </Link>
 
-            {/* User Menu - Desktop */}
             {isAuthenticated && user ? (
-              <div className="hidden md:flex md:items-center md:space-x-4">
+              <div className="hidden lg:flex items-center gap-4 xl:gap-5 text-[12px] font-sans font-medium tracking-[0.1em] uppercase">
                 {user.role === UserRole.ADMIN && (
-                  <Link to="/admin/dashboard">
-                    <Button variant="ghost" size="small">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Admin
-                    </Button>
+                  <Link to="/admin/dashboard" className="flex items-center gap-1.5 whitespace-nowrap text-journal-ink-nav hover:text-journal-teal transition-colors">
+                    <Settings className="h-4 w-4 shrink-0" />
+                    Admin
                   </Link>
                 )}
                 {user.role === UserRole.MECHANIC && (
-                  <Link to="/mechanic/jobs">
-                    <Button variant="ghost" size="small">
-                      <Wrench className="h-4 w-4 mr-2" />
-                      My Jobs
-                    </Button>
+                  <Link to="/mechanic/jobs" className="flex items-center gap-1.5 whitespace-nowrap text-journal-ink-nav hover:text-journal-teal transition-colors">
+                    <Wrench className="h-4 w-4 shrink-0" />
+                    My Jobs
                   </Link>
                 )}
-                <Link to="/profile">
-                  <div className="flex items-center space-x-2 text-gray-700 hover:text-teal-600 transition-colors cursor-pointer">
-                    <User className="h-5 w-5" />
-                    <span className="font-medium">{user.name}</span>
-                  </div>
+                <Link to="/profile" className="flex items-center gap-1.5 whitespace-nowrap text-journal-ink-nav hover:text-journal-teal transition-colors normal-case tracking-normal max-w-[140px]">
+                  <User className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{user.name}</span>
                 </Link>
-                <Button variant="ghost" size="small" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
+                <button onClick={handleLogout} className="flex items-center gap-1.5 whitespace-nowrap text-journal-ink-nav hover:text-journal-teal transition-colors">
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  Log out
+                </button>
               </div>
             ) : (
-              <div className="hidden md:flex md:items-center md:space-x-2">
-                <Link to="/login">
-                  <Button variant="ghost" size="small">
-                    Login
-                  </Button>
+              <div className="hidden lg:flex items-center gap-3 xl:gap-4 text-[12px] font-sans font-medium tracking-[0.12em] uppercase">
+                <Link to="/login" className="whitespace-nowrap text-journal-ink-nav hover:text-journal-teal transition-colors">
+                  Log in
                 </Link>
-                <Link to="/register">
-                  <Button size="small">Sign Up</Button>
+                <Link to="/register" className="whitespace-nowrap border border-journal-ink text-journal-ink px-3 lg:px-4 py-2.5 hover:bg-journal-ink hover:text-journal-bone transition-colors">
+                  Sign up
                 </Link>
               </div>
             )}
-
-            {/* Mobile menu button */}
-            <button
-              className="md:hidden p-2 text-gray-700 hover:text-teal-600 transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
-            </button>
           </div>
-        </div>
+        </nav>
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-4">
-            <div className="space-y-2">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="font-medium">{item.name}</span>
-                  </Link>
-                );
-              })}
+          <div className="lg:hidden border-t border-journal-hairline">
+            <div className="max-w-[1280px] mx-auto px-4 sm:px-10 py-4 flex flex-col gap-1">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className="px-2 py-2.5 text-[13px] font-sans font-medium tracking-[0.1em] uppercase text-journal-ink-nav hover:text-journal-teal transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.name}
+                </Link>
+              ))}
               {isAuthenticated && user ? (
                 <>
                   {user.role === UserRole.ADMIN && (
                     <Link
                       to="/admin/dashboard"
-                      className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors"
+                      className="flex items-center gap-2 px-2 py-2.5 text-[13px] font-sans font-medium tracking-[0.1em] uppercase text-journal-ink-nav hover:text-journal-teal transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <Settings className="h-5 w-5" />
-                      <span className="font-medium">Admin</span>
+                      <Settings className="h-4 w-4" />
+                      Admin
                     </Link>
                   )}
                   {user.role === UserRole.MECHANIC && (
                     <Link
                       to="/mechanic/jobs"
-                      className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors"
+                      className="flex items-center gap-2 px-2 py-2.5 text-[13px] font-sans font-medium tracking-[0.1em] uppercase text-journal-ink-nav hover:text-journal-teal transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <Wrench className="h-5 w-5" />
-                      <span className="font-medium">My Jobs</span>
+                      <Wrench className="h-4 w-4" />
+                      My Jobs
                     </Link>
                   )}
-                  <div className="px-4 py-2 border-t border-gray-200 mt-2">
+                  <div className="border-t border-journal-hairline mt-2 pt-2">
                     <Link
                       to="/profile"
-                      className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors mb-2"
+                      className="flex items-center gap-2 px-2 py-2.5 text-[13px] font-sans font-medium text-journal-ink-nav hover:text-journal-teal transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <User className="h-5 w-5" />
-                      <span className="font-medium">{user.name}</span>
+                      <User className="h-4 w-4" />
+                      {user.name}
                     </Link>
-                    <Button
-                      variant="ghost"
-                      size="small"
+                    <button
                       onClick={handleLogout}
-                      className="w-full justify-start"
+                      className="flex items-center gap-2 px-2 py-2.5 text-[13px] font-sans font-medium tracking-[0.1em] uppercase text-journal-ink-nav hover:text-journal-teal transition-colors w-full text-left"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
-                    </Button>
+                      <LogOut className="h-4 w-4" />
+                      Log out
+                    </button>
                   </div>
                 </>
               ) : (
-                <div className="px-4 py-2 border-t border-gray-200 mt-2 space-y-2">
-                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" size="small" className="w-full">
-                      Login
-                    </Button>
+                <div className="border-t border-journal-hairline mt-2 pt-3 flex flex-col gap-2">
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-2 py-2.5 text-[13px] font-sans font-medium tracking-[0.1em] uppercase text-journal-ink-nav hover:text-journal-teal transition-colors"
+                  >
+                    Log in
                   </Link>
-                  <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                    <Button size="small" className="w-full">
-                      Sign Up
-                    </Button>
+                  <Link
+                    to="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="border border-journal-ink text-journal-ink text-center px-4 py-2.5 text-[12px] font-sans font-medium tracking-[0.12em] uppercase hover:bg-journal-ink hover:text-journal-bone transition-colors"
+                  >
+                    Sign up
                   </Link>
                 </div>
               )}
             </div>
           </div>
         )}
-      </nav>
+      </div>
     </header>
   );
 };

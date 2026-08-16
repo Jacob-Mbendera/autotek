@@ -2,11 +2,9 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetReturnsQuery } from '../store/api/returnApi';
 import { useAppSelector } from '../store/types';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { JournalCard, JournalButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { cn } from '../utils/cn';
 import {
   Package,
   Loader2,
@@ -19,7 +17,6 @@ import {
   AlertCircle,
   RotateCcw,
   Eye,
-  TrendingUp,
   Banknote,
   FileText,
 } from 'lucide-react';
@@ -29,17 +26,13 @@ import { format } from 'date-fns';
 const getStatusBadgeColor = (status: ReturnStatus) => {
   switch (status) {
     case 'pending':
-      return 'bg-amber-100 text-amber-700 border-amber-300';
-    case 'approved':
-      return 'bg-blue-100 text-blue-700 border-blue-300';
+      return 'bg-journal-warn-bg text-journal-warn-text';
     case 'rejected':
-      return 'bg-red-100 text-red-700 border-red-300';
-    case 'completed':
-      return 'bg-green-100 text-green-700 border-green-300';
+      return 'bg-journal-danger-bg text-journal-danger-text';
     case 'cancelled':
-      return 'bg-gray-100 text-gray-700 border-gray-300';
+      return 'bg-journal-sand text-journal-body';
     default:
-      return 'bg-gray-100 text-gray-700 border-gray-300';
+      return 'bg-journal-teal-tint text-journal-teal';
   }
 };
 
@@ -84,7 +77,6 @@ export const Returns = () => {
   const totalReturns = returns.length;
   const pendingReturns = returns.filter((r) => r.status === 'pending').length;
   const approvedReturns = returns.filter((r) => r.status === 'approved').length;
-  const completedReturns = returns.filter((r) => r.status === 'completed').length;
   const totalRefundAmount = returns
     .filter((r) => r.status === 'completed')
     .reduce((sum, r) => sum + (r.refundAmount || 0), 0);
@@ -107,7 +99,7 @@ export const Returns = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-journal-teal" />
         </div>
       </div>
     );
@@ -116,11 +108,11 @@ export const Returns = () => {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="p-8 text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <H2>Error Loading Returns</H2>
-          <Body className="mt-2 text-gray-600">Failed to load your returns. Please try again later.</Body>
-        </Card>
+        <JournalCard className="p-8 text-center">
+          <AlertCircle className="h-10 w-10 text-journal-danger-text mx-auto mb-4" />
+          <CardHeading className="!text-[20px]">Error loading returns</CardHeading>
+          <JournalBody className="mt-2 !text-journal-muted">Failed to load your returns. Please try again later.</JournalBody>
+        </JournalCard>
       </div>
     );
   }
@@ -130,64 +122,64 @@ export const Returns = () => {
       <Breadcrumb
         items={[
           { label: 'Home', href: '/' },
-          { label: 'Returns', href: '#' },
+          { label: 'Returns' },
         ]}
       />
 
       <div className="mt-6">
-        <H1>My Returns</H1>
-        <Body className="text-gray-600 mt-2">Track and manage your return requests</Body>
+        <PageHeading className="!text-[28px] sm:!text-[32px]">My returns</PageHeading>
+        <JournalBody className="!text-journal-muted mt-2">Track and manage your return requests</JournalBody>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-        <Card className="p-4">
+        <JournalCard className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Total Returns</Body>
-              <H2 className="text-2xl font-bold text-gray-900 mt-1">{totalReturns}</H2>
+              <p className="text-[12px] font-sans text-journal-muted">Total returns</p>
+              <p className="font-journal text-[22px] text-journal-ink mt-1">{totalReturns}</p>
             </div>
-            <Package className="h-8 w-8 text-teal-600" />
+            <Package className="h-6 w-6 text-journal-teal" />
           </div>
-        </Card>
-        <Card className="p-4">
+        </JournalCard>
+        <JournalCard className="p-4 bg-journal-warn-bg border-journal-warn-bg">
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Pending</Body>
-              <H2 className="text-2xl font-bold text-amber-600 mt-1">{pendingReturns}</H2>
+              <p className="text-[12px] font-sans text-journal-warn-text">Pending</p>
+              <p className="font-journal text-[22px] text-journal-warn-text mt-1">{pendingReturns}</p>
             </div>
-            <Clock className="h-8 w-8 text-amber-600" />
+            <Clock className="h-6 w-6 text-journal-warn-text" />
           </div>
-        </Card>
-        <Card className="p-4">
+        </JournalCard>
+        <JournalCard className="p-4 bg-journal-teal-tint border-journal-teal-tint-border">
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Approved</Body>
-              <H2 className="text-2xl font-bold text-blue-600 mt-1">{approvedReturns}</H2>
+              <p className="text-[12px] font-sans text-journal-teal">Approved</p>
+              <p className="font-journal text-[22px] text-journal-teal mt-1">{approvedReturns}</p>
             </div>
-            <CheckCircle className="h-8 w-8 text-blue-600" />
+            <CheckCircle className="h-6 w-6 text-journal-teal" />
           </div>
-        </Card>
-        <Card className="p-4">
+        </JournalCard>
+        <JournalCard className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <Body className="text-sm text-gray-600">Total Refunded</Body>
-              <H2 className="text-2xl font-bold text-green-600 mt-1">
+              <p className="text-[12px] font-sans text-journal-muted">Total refunded</p>
+              <p className="font-journal text-[22px] text-journal-ink mt-1">
                 MWK {totalRefundAmount.toLocaleString()}
-              </H2>
+              </p>
             </div>
-            <Banknote className="h-8 w-8 text-green-600" />
+            <Banknote className="h-6 w-6 text-journal-teal" />
           </div>
-        </Card>
+        </JournalCard>
       </div>
 
       {/* Filters */}
-      <Card className="p-4 mt-6">
+      <JournalCard className="p-4 mt-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
+              <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-journal-faint" />
+              <JournalInput
                 type="text"
                 placeholder="Search by return ID or order ID..."
                 value={searchQuery}
@@ -197,13 +189,13 @@ export const Returns = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Filter className="h-5 w-5 text-gray-400" />
+            <Filter className="h-4 w-4 text-journal-faint flex-shrink-0" />
             <select
               value={statusFilter || ''}
               onChange={(e) => setStatusFilter(e.target.value as ReturnStatus || undefined)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="px-3 py-2.5 text-[13px] font-sans border border-journal-input-border rounded-journal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal"
             >
-              <option value="">All Statuses</option>
+              <option value="">All statuses</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
@@ -211,29 +203,28 @@ export const Returns = () => {
               <option value="cancelled">Cancelled</option>
             </select>
             {statusFilter && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => setStatusFilter(undefined)}
+                className="p-2 text-journal-danger-text hover:bg-journal-danger-bg rounded-journal transition-colors"
               >
                 <X className="h-4 w-4" />
-              </Button>
+              </button>
             )}
           </div>
         </div>
-      </Card>
+      </JournalCard>
 
       {/* Returns List */}
       {filteredReturns.length === 0 ? (
-        <Card className="p-12 text-center mt-6">
-          <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <H2 className="text-gray-900">No Returns Found</H2>
-          <Body className="text-gray-600 mt-2">
+        <JournalCard className="p-12 text-center mt-6">
+          <Package className="h-12 w-12 text-journal-faint mx-auto mb-4" />
+          <CardHeading className="!text-[22px]">No returns found</CardHeading>
+          <JournalBody className="!text-journal-muted mt-2">
             {searchQuery || statusFilter
               ? 'No returns match your filters. Try adjusting your search.'
               : "You haven't requested any returns yet."}
-          </Body>
-        </Card>
+          </JournalBody>
+        </JournalCard>
       ) : (
         <div className="mt-6 space-y-4">
           {filteredReturns.map((returnDoc) => {
@@ -244,55 +235,55 @@ export const Returns = () => {
               : `/returns/${returnDoc._id}?email=${encodeURIComponent(user?.email || '')}`;
 
             return (
-              <Card key={returnDoc._id} className="p-6 hover:shadow-lg transition-shadow">
+              <JournalCard key={returnDoc._id} className="p-6 hover:border-journal-ink transition-colors">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <H2 className="text-lg font-bold text-gray-900">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <CardHeading className="!text-[17px]">
                         Return #{returnDoc._id.slice(-8).toUpperCase()}
-                      </H2>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(returnDoc.status)}`}>
-                        <StatusIcon className="h-3 w-3 inline mr-1" />
+                      </CardHeading>
+                      <span className={cn('inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-sans font-medium', getStatusBadgeColor(returnDoc.status))}>
+                        <StatusIcon className="h-3 w-3" />
                         {returnDoc.status.charAt(0).toUpperCase() + returnDoc.status.slice(1)}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4" />
+                    <div className="flex flex-wrap items-center gap-4 text-[13px] font-sans text-journal-muted">
+                      <div className="flex items-center gap-1.5">
+                        <Package className="h-3.5 w-3.5" />
                         <span>{returnDoc.items.length} item(s)</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Banknote className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5">
+                        <Banknote className="h-3.5 w-3.5" />
                         <span>MWK {returnDoc.refundAmount.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" />
                         <span>Order #{orderId.slice(-8).toUpperCase()}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" />
                         <span>{format(new Date(returnDoc.createdAt), 'MMM dd, yyyy')}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Link to={returnLink}>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
+                      <JournalButton variant="secondary">
+                        <Eye className="h-3.5 w-3.5" />
+                        View details
+                      </JournalButton>
                     </Link>
                     {returnDoc.status === 'pending' && (
                       <Link to={returnLink}>
-                        <Button variant="outline" size="sm">
-                          <RotateCcw className="h-4 w-4 mr-2" />
+                        <JournalButton variant="secondary">
+                          <RotateCcw className="h-3.5 w-3.5" />
                           Cancel
-                        </Button>
+                        </JournalButton>
                       </Link>
                     )}
                   </div>
                 </div>
-              </Card>
+              </JournalCard>
             );
           })}
         </div>
@@ -300,26 +291,24 @@ export const Returns = () => {
 
       {/* Pagination */}
       {pagination && pagination.pages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="flex items-center justify-center gap-4 mt-6">
+          <JournalButton
+            variant="secondary"
             onClick={() => setPage(page - 1)}
             disabled={page === 1}
           >
             Previous
-          </Button>
-          <Body className="text-sm text-gray-600">
+          </JournalButton>
+          <p className="text-[13px] font-sans text-journal-muted">
             Page {pagination.page} of {pagination.pages}
-          </Body>
-          <Button
-            variant="outline"
-            size="sm"
+          </p>
+          <JournalButton
+            variant="secondary"
             onClick={() => setPage(page + 1)}
             disabled={page === pagination.pages}
           >
             Next
-          </Button>
+          </JournalButton>
         </div>
       )}
     </div>

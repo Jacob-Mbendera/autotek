@@ -29,10 +29,16 @@ import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { CatalogSuggestionsPanel } from '../components/CatalogSuggestionsPanel';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { H1, H2, Body } from '../components/ui/Typography';
+import {
+  JournalCard,
+  JournalButton,
+  JournalInput,
+  JournalSelect,
+  JournalTextarea,
+  PageHeading,
+  SectionHeading,
+  JournalBody,
+} from '../components/journal';
 import {
   OTHER_VEHICLE_VALUE,
   VEHICLE_MAKES,
@@ -90,11 +96,6 @@ const PREFERENCE_OPTIONS: { value: PartPreference; label: string }[] = [
   { value: 'used-reconditioned', label: 'Used / reconditioned' },
   { value: 'no-preference', label: 'No preference' },
 ];
-
-const selectClassName = (hasError?: boolean) =>
-  `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all ${
-    hasError ? 'border-red-500' : 'border-gray-300'
-  }`;
 
 export const RequestPart = () => {
   const navigate = useNavigate();
@@ -423,51 +424,48 @@ export const RequestPart = () => {
         ]}
       />
 
-      <div className="mt-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="small" onClick={() => navigate('/products')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Products
-          </Button>
-        </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => navigate('/products')}
+          className="inline-flex items-center gap-2 text-[13px] font-sans font-medium text-journal-muted hover:text-journal-ink transition-colors mb-6"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to products
+        </button>
 
-        <H1 className="text-3xl font-bold text-gray-900 mb-2">Request a Part</H1>
-        <Body className="text-gray-600 mb-8">
-          Can&apos;t find it in our catalog? Tell us your vehicle and part details so we can source the
+        <PageHeading className="!text-[28px] sm:!text-[32px] mb-2">Request a part</PageHeading>
+        <JournalBody className="!text-journal-muted mb-8">
+          Can&apos;t find it in our catalogue? Tell us your vehicle and part details so we can source the
           correct spare.
-        </Body>
+        </JournalBody>
 
-        <Card variant="lg">
+        <JournalCard padding="lg">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div>
-              <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Car className="h-5 w-5 text-teal-600" />
-                Vehicle Details
-              </H2>
+              <SectionHeading className="!text-[20px] mb-4 flex items-center gap-2">
+                <Car className="h-5 w-5 text-journal-teal" />
+                Vehicle details
+              </SectionHeading>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Make <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.make}
-                    onChange={(e) => handleMakeChange(e.target.value)}
-                    className={selectClassName(Boolean(errors.make))}
-                    required
-                  >
-                    <option value="">Select make</option>
-                    {VEHICLE_MAKES.map((make) => (
-                      <option key={make} value={make}>
-                        {make}
-                      </option>
-                    ))}
-                    <option value={OTHER_VEHICLE_VALUE}>Other</option>
-                  </select>
-                  {errors.make && <p className="mt-1 text-sm text-red-600">{errors.make}</p>}
-                </div>
+                <JournalSelect
+                  label="Make *"
+                  value={formData.make}
+                  onChange={(e) => handleMakeChange(e.target.value)}
+                  error={errors.make}
+                  required
+                >
+                  <option value="">Select make</option>
+                  {VEHICLE_MAKES.map((make) => (
+                    <option key={make} value={make}>
+                      {make}
+                    </option>
+                  ))}
+                  <option value={OTHER_VEHICLE_VALUE}>Other</option>
+                </JournalSelect>
 
                 {formData.make === OTHER_VEHICLE_VALUE ? (
-                  <Input
+                  <JournalInput
                     label="Other make"
                     value={formData.otherMake}
                     onChange={(e) => updateField('otherMake', e.target.value)}
@@ -476,31 +474,26 @@ export const RequestPart = () => {
                     error={errors.otherMake}
                   />
                 ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Model <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formData.model}
-                      onChange={(e) => handleModelChange(e.target.value)}
-                      className={selectClassName(Boolean(errors.model))}
-                      required
-                      disabled={!formData.make}
-                    >
-                      <option value="">{formData.make ? 'Select model' : 'Select make first'}</option>
-                      {modelOptions.map((model) => (
-                        <option key={model} value={model}>
-                          {model}
-                        </option>
-                      ))}
-                      {formData.make && <option value={OTHER_VEHICLE_VALUE}>Other</option>}
-                    </select>
-                    {errors.model && <p className="mt-1 text-sm text-red-600">{errors.model}</p>}
-                  </div>
+                  <JournalSelect
+                    label="Model *"
+                    value={formData.model}
+                    onChange={(e) => handleModelChange(e.target.value)}
+                    error={errors.model}
+                    required
+                    disabled={!formData.make}
+                  >
+                    <option value="">{formData.make ? 'Select model' : 'Select make first'}</option>
+                    {modelOptions.map((model) => (
+                      <option key={model} value={model}>
+                        {model}
+                      </option>
+                    ))}
+                    {formData.make && <option value={OTHER_VEHICLE_VALUE}>Other</option>}
+                  </JournalSelect>
                 )}
 
                 {formData.make === OTHER_VEHICLE_VALUE && (
-                  <Input
+                  <JournalInput
                     label="Model"
                     value={formData.otherModel}
                     onChange={(e) => updateField('otherModel', e.target.value)}
@@ -512,7 +505,7 @@ export const RequestPart = () => {
 
                 {formData.make !== OTHER_VEHICLE_VALUE && formData.model === OTHER_VEHICLE_VALUE && (
                   <div className="md:col-span-2">
-                    <Input
+                    <JournalInput
                       label="Other model"
                       value={formData.otherModel}
                       onChange={(e) => updateField('otherModel', e.target.value)}
@@ -523,8 +516,8 @@ export const RequestPart = () => {
                   </div>
                 )}
 
-                <Input
-                  label="Year"
+                <JournalInput
+                  label="Year *"
                   type="number"
                   min="1900"
                   max={new Date().getFullYear() + 1}
@@ -534,8 +527,8 @@ export const RequestPart = () => {
                   required
                   error={errors.year}
                 />
-                <Input
-                  label="Engine size or engine code"
+                <JournalInput
+                  label="Engine size or engine code *"
                   value={formData.engine}
                   onChange={(e) => updateField('engine', e.target.value)}
                   placeholder="e.g., 1.5L or 1NZ-FE"
@@ -547,7 +540,7 @@ export const RequestPart = () => {
               <button
                 type="button"
                 onClick={() => setShowMoreVehicleDetails((prev) => !prev)}
-                className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-teal-700 hover:text-teal-800"
+                className="mt-4 inline-flex items-center gap-2 text-[13px] font-sans font-medium text-journal-teal hover:text-journal-deep-teal transition-colors"
               >
                 {showMoreVehicleDetails ? (
                   <ChevronUp className="h-4 w-4" />
@@ -559,81 +552,72 @@ export const RequestPart = () => {
 
               {showMoreVehicleDetails && (
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
+                  <JournalInput
                     label="Trim / variant (optional)"
                     value={formData.trim}
                     onChange={(e) => updateField('trim', e.target.value)}
                     placeholder="e.g., XLi, GLX"
                   />
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Transmission</label>
-                    <select
-                      value={formData.transmission}
-                      onChange={(e) => updateField('transmission', e.target.value as Transmission | '')}
-                      className={selectClassName()}
-                    >
-                      <option value="">Select transmission</option>
-                      {TRANSMISSION_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Drivetrain</label>
-                    <select
-                      value={formData.drivetrain}
-                      onChange={(e) => updateField('drivetrain', e.target.value as Drivetrain | '')}
-                      className={selectClassName()}
-                    >
-                      <option value="">Select drivetrain</option>
-                      {DRIVETRAIN_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Body style</label>
-                    <select
-                      value={formData.bodyStyle}
-                      onChange={(e) => updateField('bodyStyle', e.target.value as BodyStyle | '')}
-                      className={selectClassName()}
-                    >
-                      <option value="">Select body style</option>
-                      {BODY_STYLE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <JournalSelect
+                    label="Transmission"
+                    value={formData.transmission}
+                    onChange={(e) => updateField('transmission', e.target.value as Transmission | '')}
+                  >
+                    <option value="">Select transmission</option>
+                    {TRANSMISSION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </JournalSelect>
+                  <JournalSelect
+                    label="Drivetrain"
+                    value={formData.drivetrain}
+                    onChange={(e) => updateField('drivetrain', e.target.value as Drivetrain | '')}
+                  >
+                    <option value="">Select drivetrain</option>
+                    {DRIVETRAIN_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </JournalSelect>
+                  <JournalSelect
+                    label="Body style"
+                    value={formData.bodyStyle}
+                    onChange={(e) => updateField('bodyStyle', e.target.value as BodyStyle | '')}
+                  >
+                    <option value="">Select body style</option>
+                    {BODY_STYLE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </JournalSelect>
                   <div className="md:col-span-2">
-                    <Input
+                    <JournalInput
                       label="VIN or chassis/frame number (optional)"
                       value={formData.vinOrChassis}
                       onChange={(e) => updateField('vinOrChassis', e.target.value)}
                       placeholder="17-character VIN or Japanese frame number"
                       error={errors.vinOrChassis}
                     />
-                    <Body className="text-xs text-gray-500 mt-1">
+                    <JournalBody className="!text-xs !text-journal-muted mt-1.5">
                       Helps us confirm the exact vehicle. Visible only to you and AutoTek staff.
-                    </Body>
+                    </JournalBody>
                   </div>
                 </div>
               )}
             </div>
 
             <div>
-              <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Package className="h-5 w-5 text-teal-600" />
-                Part Details
-              </H2>
+              <SectionHeading className="!text-[20px] mb-4 flex items-center gap-2">
+                <Package className="h-5 w-5 text-journal-teal" />
+                Part details
+              </SectionHeading>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Part name"
+                <JournalInput
+                  label="Part name *"
                   value={formData.productName}
                   onChange={(e) => updateField('productName', e.target.value)}
                   placeholder="e.g., Front brake pads"
@@ -641,36 +625,31 @@ export const RequestPart = () => {
                   error={errors.productName}
                 />
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => {
-                      updateField('category', e.target.value);
-                      if (e.target.value !== OTHER_CATEGORY_VALUE) {
-                        updateField('otherCategory', '');
-                      }
-                    }}
-                    className={selectClassName(Boolean(errors.category))}
-                    required
-                    disabled={isLoadingCategories}
-                  >
-                    <option value="">{isLoadingCategories ? 'Loading categories...' : 'Select a category'}</option>
-                    {categoryOptions.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                    <option value={OTHER_CATEGORY_VALUE}>Other</option>
-                  </select>
-                  {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
-                </div>
+                <JournalSelect
+                  label="Category *"
+                  value={formData.category}
+                  onChange={(e) => {
+                    updateField('category', e.target.value);
+                    if (e.target.value !== OTHER_CATEGORY_VALUE) {
+                      updateField('otherCategory', '');
+                    }
+                  }}
+                  error={errors.category}
+                  required
+                  disabled={isLoadingCategories}
+                >
+                  <option value="">{isLoadingCategories ? 'Loading categories...' : 'Select a category'}</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                  <option value={OTHER_CATEGORY_VALUE}>Other</option>
+                </JournalSelect>
 
                 {formData.category === OTHER_CATEGORY_VALUE && (
                   <div className="md:col-span-2">
-                    <Input
+                    <JournalInput
                       label="Other category"
                       value={formData.otherCategory}
                       onChange={(e) => updateField('otherCategory', e.target.value)}
@@ -681,28 +660,23 @@ export const RequestPart = () => {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Part position <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.position}
-                    onChange={(e) => updateField('position', e.target.value as PartPosition | '')}
-                    className={selectClassName(Boolean(errors.position))}
-                    required
-                  >
-                    <option value="">Select position</option>
-                    {POSITION_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.position && <p className="mt-1 text-sm text-red-600">{errors.position}</p>}
-                </div>
+                <JournalSelect
+                  label="Part position *"
+                  value={formData.position}
+                  onChange={(e) => updateField('position', e.target.value as PartPosition | '')}
+                  error={errors.position}
+                  required
+                >
+                  <option value="">Select position</option>
+                  {POSITION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </JournalSelect>
 
-                <Input
-                  label="Quantity"
+                <JournalInput
+                  label="Quantity *"
                   type="number"
                   min="1"
                   max="100"
@@ -712,29 +686,26 @@ export const RequestPart = () => {
                   error={errors.quantity}
                 />
 
-                <Input
+                <JournalInput
                   label="OEM / part number (optional)"
                   value={formData.partNumber}
                   onChange={(e) => updateField('partNumber', e.target.value)}
                   placeholder="Printed on the old part or packaging"
                 />
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Part preference</label>
-                  <select
-                    value={formData.preference}
-                    onChange={(e) => updateField('preference', e.target.value as PartPreference)}
-                    className={selectClassName()}
-                  >
-                    {PREFERENCE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <JournalSelect
+                  label="Part preference"
+                  value={formData.preference}
+                  onChange={(e) => updateField('preference', e.target.value as PartPreference)}
+                >
+                  {PREFERENCE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </JournalSelect>
 
-                <Input
+                <JournalInput
                   label="Estimated budget in MWK (optional)"
                   type="number"
                   min="0"
@@ -747,37 +718,30 @@ export const RequestPart = () => {
             </div>
 
             <div>
-              <H2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Search className="h-5 w-5 text-teal-600" />
-                Supporting Information
-              </H2>
+              <SectionHeading className="!text-[20px] mb-4 flex items-center gap-2">
+                <Search className="h-5 w-5 text-journal-teal" />
+                Supporting information
+              </SectionHeading>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => updateField('description', e.target.value)}
-                    placeholder="Symptoms, measurements, or anything else that helps us identify the correct part."
-                    rows={5}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none ${
-                      errors.description ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
-                </div>
+                <JournalTextarea
+                  label="Description *"
+                  value={formData.description}
+                  onChange={(e) => updateField('description', e.target.value)}
+                  placeholder="Symptoms, measurements, or anything else that helps us identify the correct part."
+                  rows={5}
+                  error={errors.description}
+                  required
+                />
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block font-sans font-semibold text-[11px] tracking-[0.10em] uppercase text-journal-muted mb-1.5">
                     Photos (optional, max {MAX_IMAGES})
                   </label>
-                  <Body className="text-sm text-gray-600 mb-3 flex items-start gap-2">
-                    <Camera className="h-4 w-4 text-teal-600 mt-0.5 shrink-0" />
+                  <JournalBody className="!text-sm !text-journal-muted mb-3 flex items-start gap-2">
+                    <Camera className="h-4 w-4 text-journal-teal mt-0.5 shrink-0" />
                     Photograph the old part, any printed part number/label, and where it installs on the vehicle.
-                  </Body>
+                  </JournalBody>
                   <label className="block">
                     <input
                       type="file"
@@ -787,13 +751,13 @@ export const RequestPart = () => {
                       className="hidden"
                       disabled={images.length >= MAX_IMAGES || isLoading}
                     />
-                    <div className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-teal-500 transition-colors cursor-pointer">
-                      <Upload className="h-5 w-5 text-gray-400 mr-2" />
-                      <Body className="text-gray-600">
+                    <div className="flex items-center justify-center px-4 py-3 border border-dashed border-journal-input-border rounded-journal hover:border-journal-teal transition-colors cursor-pointer">
+                      <Upload className="h-4 w-4 text-journal-faint mr-2" />
+                      <JournalBody className="!text-journal-muted">
                         {images.length > 0
                           ? `${images.length} of ${MAX_IMAGES} photo(s) selected`
                           : `Choose images (max ${MAX_IMAGES}, 10 MB each)`}
-                      </Body>
+                      </JournalBody>
                     </div>
                   </label>
                   {imagePreviews.length > 0 && (
@@ -803,12 +767,12 @@ export const RequestPart = () => {
                           <img
                             src={preview}
                             alt={`Part request preview ${index + 1}`}
-                            className="w-full h-36 object-contain rounded-lg border border-gray-200 bg-gray-50 p-1"
+                            className="w-full h-36 object-contain rounded-journal border border-journal-hairline bg-journal-sand p-1"
                           />
                           <button
                             type="button"
                             onClick={() => handleRemoveImage(index)}
-                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            className="absolute top-2 right-2 bg-journal-danger-text text-white rounded-full p-1 hover:opacity-90"
                             aria-label={`Remove photo ${index + 1}`}
                           >
                             <X className="h-4 w-4" />
@@ -832,63 +796,59 @@ export const RequestPart = () => {
             )}
 
             {Object.keys(errors).length > 0 && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="p-4 bg-journal-danger-bg border border-journal-error-border rounded-journal flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-journal-danger-text flex-shrink-0 mt-0.5" />
                 <div>
-                  <Body className="font-semibold text-red-900 mb-1">Please fix the highlighted fields.</Body>
-                  <Body className="text-sm text-red-700">
+                  <JournalBody className="!text-journal-danger-text font-semibold mb-1">
+                    Please fix the highlighted fields.
+                  </JournalBody>
+                  <JournalBody className="!text-sm !text-journal-danger-text">
                     Accurate vehicle and part details help us source the correct spare the first time.
-                  </Body>
+                  </JournalBody>
                 </div>
               </div>
             )}
 
             <div className="flex gap-4 pt-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="default"
-                className="flex-1 gap-2"
-                disabled={isLoading}
-              >
+              <JournalButton type="submit" variant="primary" className="flex-1 gap-2" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Submitting...
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="h-5 w-5" />
-                    Submit Part Request
+                    <CheckCircle className="h-4 w-4" />
+                    Submit part request
                   </>
                 )}
-              </Button>
-              <Button
+              </JournalButton>
+              <JournalButton
                 type="button"
                 variant="secondary"
                 onClick={() => navigate('/products')}
                 disabled={isLoading}
               >
                 Cancel
-              </Button>
+              </JournalButton>
             </div>
           </form>
-        </Card>
+        </JournalCard>
 
-        <Card variant="md" className="mt-6 bg-teal-50 border-teal-200">
+        <JournalCard className="mt-6 !bg-journal-teal-tint !border-journal-teal">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Package className="h-5 w-5 text-teal-600" />
+            <div className="h-10 w-10 bg-white rounded-journal border border-journal-teal flex items-center justify-center flex-shrink-0">
+              <Package className="h-5 w-5 text-journal-teal" />
             </div>
             <div>
-              <Body className="font-semibold text-gray-900 mb-1">What happens next?</Body>
-              <Body className="text-sm text-gray-700">
+              <JournalBody className="font-semibold !text-journal-ink mb-1">What happens next?</JournalBody>
+              <JournalBody className="!text-sm !text-journal-body">
                 Our team reviews your vehicle and part details, confirms availability, and updates you in My
                 Part Requests.
-              </Body>
+              </JournalBody>
             </div>
           </div>
-        </Card>
+        </JournalCard>
       </div>
     </div>
   );

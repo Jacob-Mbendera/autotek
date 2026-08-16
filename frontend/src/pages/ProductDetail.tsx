@@ -7,9 +7,6 @@ import { useGuardedAddToCart } from '../hooks/useGuardedAddToCart';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { H1, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
 import {
   ShoppingCart,
@@ -17,6 +14,9 @@ import {
   CheckCircle,
   Package,
   Heart,
+  ShieldCheck,
+  Truck,
+  Wrench,
 } from 'lucide-react';
 import { ReviewList } from '../components/ReviewList';
 import { ReviewForm } from '../components/ReviewForm';
@@ -24,6 +24,8 @@ import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
 import { ProductFitment } from '../components/ProductFitment';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
+import { JournalCard, JournalButton, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { cn } from '../utils/cn';
 
 export const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,12 +38,12 @@ export const ProductDetail = () => {
 
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { data, isLoading, error } = useGetProductQuery(id!);
-  
+
   // Wishlist functionality
   const { data: wishlistData } = useGetWishlistQuery(undefined, { skip: !isAuthenticated });
   const [addToWishlist] = useAddToWishlistMutation();
   const [removeFromWishlist] = useRemoveFromWishlistMutation();
-  
+
   const isInWishlist = wishlistData?.wishlist?.products?.some((p) => p._id === id) || false;
 
   const handleAddToCart = () => {
@@ -121,9 +123,9 @@ export const ProductDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <Body className="text-gray-600">Loading product...</Body>
+          <JournalBody className="!text-journal-muted">Loading product...</JournalBody>
         </div>
       </div>
     );
@@ -131,16 +133,16 @@ export const ProductDetail = () => {
 
   if (error || !data?.product) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <Body className="text-red-600">Product not found.</Body>
-          <Button
+          <JournalBody className="!text-journal-danger-text">Product not found.</JournalBody>
+          <JournalButton
             variant="secondary"
             className="mt-4"
             onClick={() => navigate('/products')}
           >
-            Back to Products
-          </Button>
+            Back to products
+          </JournalButton>
         </div>
       </div>
     );
@@ -183,28 +185,11 @@ export const ProductDetail = () => {
 
   const sku = generateSKU(product._id, product.category);
 
-  // Get stock badge
-  const getStockBadge = () => {
-    if (isOutOfStock) {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-600">
-          OUT OF STOCK
-        </span>
-      );
-    }
-    if (isLowStock) {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-600">
-          LOW STOCK
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-600">
-        IN STOCK
-      </span>
-    );
-  };
+  const stockBadge = isOutOfStock
+    ? { label: 'Out of stock', className: 'bg-journal-danger-bg text-journal-danger-text' }
+    : isLowStock
+      ? { label: 'Low stock', className: 'bg-journal-warn-bg text-journal-warn-text' }
+      : { label: 'In stock', className: 'bg-journal-teal-tint text-journal-teal' };
 
   // Get benefits based on category or default
   const getBenefits = () => {
@@ -212,26 +197,22 @@ export const ProductDetail = () => {
       'Brake Parts': [
         'Low-dust formula keeps wheels clean longer',
         'Dual-layer shim design for quiet operation',
-        '12-month or 20,000km local warranty',
         'Engineered for Malawian road conditions',
       ],
       'Engine Parts': [
         'Premium quality materials for durability',
         'Application details shown separately when available',
-        'Extended warranty coverage',
         'Designed for optimal performance',
       ],
       'Electrical': [
         'Reliable performance in all conditions',
         'Easy installation process',
-        'Long-lasting components',
         'Product specifications available before purchase',
       ],
       'Suspension': [
         'Enhanced ride comfort',
         'Durable construction',
         'Easy to install',
-        'Warranty included',
       ],
     };
 
@@ -239,7 +220,6 @@ export const ProductDetail = () => {
       categoryBenefits[product.category] || [
         'Premium quality materials',
         'Designed for durability',
-        'Local warranty included',
         'Fitment guidance available when listed',
       ]
     );
@@ -258,16 +238,16 @@ export const ProductDetail = () => {
       <Breadcrumb items={breadcrumbItems} />
 
       {/* Main Product Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-12">
         {/* Product Images */}
         <div className="space-y-4">
-          <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ minHeight: '500px' }}>
+          <div className="relative bg-journal-sand border border-journal-hairline overflow-hidden" style={{ minHeight: '500px' }}>
             {isPlaceholder ? (
               <ProductPlaceholderImage
                 productName={product.name}
                 category={product.category}
                 size="lg"
-                className="h-[500px] w-full rounded-lg"
+                className="h-[500px] w-full"
               />
             ) : currentEntry?.url ? (
               <OptimizedImage
@@ -281,16 +261,16 @@ export const ProductDetail = () => {
                 priority={true}
               />
             ) : (
-              <div className="w-full h-[500px] flex items-center justify-center bg-gray-200">
-                <Package className="h-16 w-16 text-gray-400" />
+              <div className="w-full h-[500px] flex items-center justify-center bg-journal-sand">
+                <Package className="h-14 w-14 text-journal-faint" />
               </div>
             )}
             {/* Placeholder indicator */}
             {isPlaceholder && (
               <div className="absolute top-4 right-4 z-10">
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium text-gray-600 border border-gray-200">
+                <span className="bg-white/90 rounded-full px-3 py-1 text-[11px] font-sans font-medium text-journal-muted border border-journal-hairline">
                   Placeholder
-                </div>
+                </span>
               </div>
             )}
             {/* Image carousel indicator */}
@@ -300,11 +280,10 @@ export const ProductDetail = () => {
                   <button
                     key={index}
                     onClick={() => selectImage(index)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      selectedImageIndex === index
-                        ? 'bg-teal-500 w-8'
-                        : 'bg-white bg-opacity-50 hover:bg-opacity-75'
-                    }`}
+                    className={cn(
+                      'h-2 rounded-full transition-all',
+                      selectedImageIndex === index ? 'w-8 bg-journal-teal' : 'w-2 bg-white/60 hover:bg-white/80'
+                    )}
                     aria-label={`View image ${index + 1}`}
                   />
                 ))}
@@ -312,16 +291,15 @@ export const ProductDetail = () => {
             )}
           </div>
           {displayEntries.length > 1 && (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-3">
               {displayEntries.slice(0, 4).map((entry, index) => (
                 <button
                   key={index}
                   onClick={() => selectImage(index)}
-                  className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-75 transition-opacity border-2 ${
-                    selectedImageIndex === index
-                      ? 'border-teal-500'
-                      : 'border-transparent'
-                  }`}
+                  className={cn(
+                    'aspect-square bg-journal-sand overflow-hidden cursor-pointer hover:opacity-80 transition-opacity border',
+                    selectedImageIndex === index ? 'border-journal-teal' : 'border-journal-hairline'
+                  )}
                 >
                   <OptimizedImage
                     src={entry.url}
@@ -342,53 +320,77 @@ export const ProductDetail = () => {
         <div className="space-y-6">
           {/* Title */}
           <div>
-            <H1 className="text-4xl font-bold text-gray-900 mb-4">{product.name}</H1>
-            <div className="flex items-center gap-4 mb-4">
-              <span className="text-4xl font-bold text-teal-600">
+            <PageHeading className="!text-[32px] sm:!text-[38px] mb-4">{product.name}</PageHeading>
+            <div className="flex items-center gap-4 mb-4 flex-wrap">
+              <span className="font-journal text-[34px] text-journal-ink">
                 MWK {product.price.toLocaleString()}
               </span>
-              {getStockBadge()}
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full px-3 py-1 font-sans font-semibold text-[11px] tracking-[0.06em] uppercase',
+                  stockBadge.className
+                )}
+              >
+                {stockBadge.label}
+              </span>
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <Body className="text-gray-600 text-base leading-relaxed whitespace-pre-line">
+            <JournalBody className="whitespace-pre-line">
               {product.description}
-            </Body>
+            </JournalBody>
+          </div>
+
+          {/* Trust badges */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex items-start gap-2.5 border border-journal-hairline rounded-journal p-3">
+              <ShieldCheck className="h-4 w-4 text-journal-teal flex-shrink-0 mt-0.5" />
+              <span className="text-[12px] font-sans text-journal-body leading-snug">Genuine / OEM-spec part</span>
+            </div>
+            <div className="flex items-start gap-2.5 border border-journal-hairline rounded-journal p-3">
+              <Truck className="h-4 w-4 text-journal-teal flex-shrink-0 mt-0.5" />
+              <span className="text-[12px] font-sans text-journal-body leading-snug">Nationwide delivery in 2–4 days</span>
+            </div>
+            <div className="flex items-start gap-2.5 border border-journal-hairline rounded-journal p-3">
+              <Wrench className="h-4 w-4 text-journal-teal flex-shrink-0 mt-0.5" />
+              <span className="text-[12px] font-sans text-journal-body leading-snug">Fitment help from our mechanics</span>
+            </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 pt-4">
-            <Button
-              variant="gray"
-              size="default"
-              className="flex-1 flex items-center justify-center"
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <JournalButton
+              variant="secondary"
+              className="flex-1"
               onClick={handleAddToCart}
               disabled={isOutOfStock}
             >
-              <ShoppingCart className="h-5 w-5 mr-2" />
-              Add to Cart
-            </Button>
-            <Button
+              <ShoppingCart className="h-4 w-4" />
+              Add to cart
+            </JournalButton>
+            <JournalButton
               variant="primary"
-              size="default"
-              className="flex-1 flex items-center justify-center"
+              className="flex-1"
               onClick={handleBuyNow}
               disabled={isOutOfStock}
             >
-              <Zap className="h-5 w-5 mr-2" />
-              Buy Now
-            </Button>
-            <Button
-              variant={isInWishlist ? "primary" : "secondary"}
-              size="default"
-              className="flex items-center justify-center"
+              <Zap className="h-4 w-4" />
+              Buy now
+            </JournalButton>
+            <button
               onClick={handleWishlistToggle}
               title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+              className={cn(
+                'inline-flex items-center justify-center px-4 py-3 border transition-colors',
+                isInWishlist
+                  ? 'bg-journal-ink text-journal-bone border-journal-ink'
+                  : 'border-journal-ink text-journal-ink hover:bg-journal-ink hover:text-journal-bone'
+              )}
             >
-              <Heart className={`h-5 w-5 ${isInWishlist ? 'fill-current' : ''}`} />
-            </Button>
+              <Heart className={cn('h-4 w-4', isInWishlist ? 'fill-current' : '')} />
+            </button>
           </div>
         </div>
       </div>
@@ -396,20 +398,20 @@ export const ProductDetail = () => {
       <ProductFitment product={product} onRequestPart={() => navigate('/request-part')} />
 
       {/* Technical Specifications */}
-      <Card variant="md" className="mb-8">
-        <H1 className="text-2xl font-bold text-gray-900 mb-6">Technical Specifications</H1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex justify-between py-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-900">Brand</span>
-            <span className="text-gray-600">{product.brand || 'Not specified'}</span>
+      <JournalCard className="mb-8">
+        <CardHeading className="!text-[22px] mb-6">Technical specifications</CardHeading>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+          <div className="flex justify-between py-3 border-b border-journal-hairline">
+            <span className="font-sans font-semibold text-[13px] text-journal-ink">Brand</span>
+            <span className="font-sans text-[13px] text-journal-muted">{product.brand || 'Not specified'}</span>
           </div>
-          <div className="flex justify-between py-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-900">SKU</span>
-            <span className="text-gray-600">{sku}</span>
+          <div className="flex justify-between py-3 border-b border-journal-hairline">
+            <span className="font-sans font-semibold text-[13px] text-journal-ink">SKU</span>
+            <span className="font-sans text-[13px] text-journal-muted">{sku}</span>
           </div>
-          <div className="flex justify-between py-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-900">Material</span>
-            <span className="text-gray-600">
+          <div className="flex justify-between py-3 border-b border-journal-hairline">
+            <span className="font-sans font-semibold text-[13px] text-journal-ink">Material</span>
+            <span className="font-sans text-[13px] text-journal-muted">
               {product.description.toLowerCase().includes('ceramic')
                 ? 'Premium Ceramic'
                 : product.description.toLowerCase().includes('organic')
@@ -419,35 +421,35 @@ export const ProductDetail = () => {
                 : 'Premium Quality'}
             </span>
           </div>
-          <div className="flex justify-between py-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-900">OEM Part Number</span>
-            <span className="text-gray-600">{product.oemPartNumber || 'Not specified'}</span>
+          <div className="flex justify-between py-3 border-b border-journal-hairline">
+            <span className="font-sans font-semibold text-[13px] text-journal-ink">OEM part number</span>
+            <span className="font-sans text-[13px] text-journal-muted">{product.oemPartNumber || 'Not specified'}</span>
           </div>
           {alternatePartNumbers.length > 0 && (
-            <div className="flex justify-between gap-6 py-3 border-b border-gray-200">
-              <span className="font-semibold text-gray-900">Alternate Part Numbers</span>
-              <span className="text-gray-600 text-right">{alternatePartNumbers.join(', ')}</span>
+            <div className="flex justify-between gap-6 py-3 border-b border-journal-hairline">
+              <span className="font-sans font-semibold text-[13px] text-journal-ink">Alternate part numbers</span>
+              <span className="font-sans text-[13px] text-journal-muted text-right">{alternatePartNumbers.join(', ')}</span>
             </div>
           )}
         </div>
-      </Card>
+      </JournalCard>
 
       {/* Why Choose This Part? */}
-      <Card variant="md" className="mb-8">
-        <H1 className="text-2xl font-bold text-gray-900 mb-6">Why Choose This Part?</H1>
+      <JournalCard className="mb-8">
+        <CardHeading className="!text-[22px] mb-6">Why choose this part?</CardHeading>
         <div className="space-y-4">
           {getBenefits().map((benefit, index) => (
             <div key={index} className="flex items-start gap-3">
-              <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0 mt-0.5" />
-              <Body className="text-gray-700">{benefit}</Body>
+              <CheckCircle className="h-4 w-4 text-journal-teal flex-shrink-0 mt-0.5" />
+              <JournalBody>{benefit}</JournalBody>
             </div>
           ))}
         </div>
-      </Card>
+      </JournalCard>
 
       {/* Reviews Section */}
       <div className="mb-8">
-        <H1 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</H1>
+        <CardHeading className="!text-[22px] mb-6">Customer reviews</CardHeading>
         <div className="space-y-8">
           <ReviewForm productId={id!} />
           <ReviewList productId={id!} />

@@ -24,11 +24,18 @@ import {
   getServerServicePaychanguLockSnapshot,
   normalizeServiceId,
 } from '../utils/pendingPaychanguService';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { H1, H2, Body } from '../components/ui/Typography';
-import { Breadcrumb } from '../components/Breadcrumb';
+import {
+  PageHeading,
+  MonoLabel,
+  JournalBody,
+  JournalCard,
+  JournalButton,
+  JournalInput,
+  StatusPill,
+  SERVICE_STATUS_TONE,
+  type StatusPillTone,
+} from '../components/journal';
+import { cn } from '../utils/cn';
 import {
   Truck,
   Wrench,
@@ -43,7 +50,6 @@ import {
   CreditCard,
   X,
   Package,
-  TrendingUp,
   Car,
   User,
   ExternalLink,
@@ -73,37 +79,10 @@ const getCarServiceTypeLabels = (service: CarService): string[] => {
   return types.map((type) => serviceTypeInfo[type]?.name || type);
 };
 
-// Helper function to get status badge colors
-const getStatusBadgeColor = (status: ServiceStatus) => {
-  switch (status) {
-    case 'pending':
-      return 'bg-amber-100 text-amber-700 border-amber-300';
-    case 'assigned':
-      return 'bg-blue-100 text-blue-700 border-blue-300';
-    case 'in-progress':
-      return 'bg-indigo-100 text-indigo-700 border-indigo-300';
-    case 'completed':
-      return 'bg-green-100 text-green-700 border-green-300';
-    case 'cancelled':
-      return 'bg-red-100 text-red-700 border-red-300';
-    default:
-      return 'bg-gray-100 text-gray-700 border-gray-300';
-  }
-};
-
-// Helper function to get payment status badge color
-const getPaymentStatusBadgeColor = (status: string) => {
-  switch (status) {
-    case 'completed':
-      return 'bg-green-100 text-green-700';
-    case 'pending':
-      return 'bg-amber-100 text-amber-700';
-    case 'failed':
-      return 'bg-red-100 text-red-700';
-    default:
-      return 'bg-gray-100 text-gray-700';
-  }
-};
+const paymentStatusTone = (status: string): StatusPillTone =>
+  status === 'completed' ? 'completed' : status === 'pending' ? 'unpaid' : 'unpaid';
+const paymentStatusLabel = (status: string): string =>
+  status === 'completed' ? 'Paid' : status === 'pending' ? 'Unpaid' : 'Payment Failed';
 
 // Format date
 const formatDate = (dateString: string) => {
@@ -170,6 +149,8 @@ function statusGuidance(
       return null;
   }
 }
+
+const statTileClasses = 'border-r border-journal-ink last:border-r-0 px-5 sm:px-8 py-5';
 
 export const MyServices = () => {
   const navigate = useNavigate();
@@ -473,144 +454,100 @@ export const MyServices = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        {/* Breadcrumb */}
-        <Breadcrumb
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'My Services' },
-          ]}
-        />
+    <div className="min-h-screen bg-journal-bone">
+      <div className="max-w-[1080px] mx-auto px-4 sm:px-10 py-10 sm:py-12">
+        <div className="text-[12px] text-journal-faint mb-3">
+          Home / <span className="text-journal-ink">My Services</span>
+        </div>
 
         {showPaychanguReconcileBanner && (
-          <Card className="mt-4 p-4 border-teal-200 bg-teal-50/90 flex items-center gap-3">
-            <Loader2 className="w-6 h-6 text-teal-600 shrink-0 animate-spin" aria-hidden />
-            <Body className="text-sm text-teal-900">
+          <div className="mb-6 border border-journal-teal-tint-border bg-journal-teal-tint rounded-journal px-4 py-3 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-journal-teal shrink-0 animate-spin" aria-hidden />
+            <p className="text-[13px] text-journal-teal">
               Confirming your PayChangu payment and refreshing your bookings…
-            </Body>
-          </Card>
+            </p>
+          </div>
         )}
 
-        {/* Header */}
-        <div className="mb-8 mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <H1 className="text-4xl font-bold text-gray-900 mb-2">
-                My Services
-              </H1>
-              <Body className="text-gray-600">
-                View and manage your service requests
-              </Body>
+        <PageHeading className="!text-[36px] sm:!text-[46px] mb-6">My services</PageHeading>
+
+        {/* Statistics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-l border-journal-ink mb-7">
+          <div className={statTileClasses}>
+            <MonoLabel>Total</MonoLabel>
+            <div className="font-journal text-[32px] tabular-nums text-journal-ink mt-1">{totalServices}</div>
+          </div>
+          <div className={cn(statTileClasses, 'border-b sm:border-b-0')}>
+            <MonoLabel>Pending</MonoLabel>
+            <div className="font-journal text-[32px] tabular-nums text-journal-warn-text mt-1">{pendingServices}</div>
+          </div>
+          <div className={cn(statTileClasses, 'border-b sm:border-b-0')}>
+            <MonoLabel>Completed</MonoLabel>
+            <div className="font-journal text-[32px] tabular-nums text-journal-teal mt-1">{completedServices}</div>
+          </div>
+          <div className={cn(statTileClasses, 'border-b')}>
+            <MonoLabel>Total spent</MonoLabel>
+            <div className="font-journal text-[32px] tabular-nums text-journal-ink mt-1">
+              {totalSpent.toLocaleString()}
             </div>
           </div>
+        </div>
 
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card className="p-4 border-2 border-teal-100 bg-teal-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">Total Services</p>
-                  <p className="text-2xl font-bold text-teal-700 mt-1">{totalServices}</p>
-                </div>
-                <Package className="w-10 h-10 text-teal-500 opacity-20" />
-              </div>
-            </Card>
-
-            <Card className="p-4 border-2 border-amber-100 bg-amber-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">Pending</p>
-                  <p className="text-2xl font-bold text-amber-700 mt-1">{pendingServices}</p>
-                </div>
-                <Clock className="w-10 h-10 text-amber-500 opacity-20" />
-              </div>
-            </Card>
-
-            <Card className="p-4 border-2 border-green-100 bg-green-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">Completed</p>
-                  <p className="text-2xl font-bold text-green-700 mt-1">{completedServices}</p>
-                </div>
-                <CheckCircle className="w-10 h-10 text-green-500 opacity-20" />
-              </div>
-            </Card>
-
-            <Card className="p-4 border-2 border-blue-100 bg-blue-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">Total Spent</p>
-                  <p className="text-2xl font-bold text-blue-700 mt-1">
-                    MWK {totalSpent.toLocaleString()}
-                  </p>
-                </div>
-                <TrendingUp className="w-10 h-10 text-blue-500 opacity-20" />
-              </div>
-            </Card>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-journal-faint w-4 h-4" />
+            <JournalInput
+              type="text"
+              placeholder="Search bookings…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="!pl-10"
+            />
           </div>
-
-          {/* Filters */}
-          <Card className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  type="text"
-                  placeholder="Search services..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {/* Service Type Filter */}
-              <select
-                value={serviceTypeFilter}
-                onChange={(e) => setServiceTypeFilter(e.target.value as 'all' | 'towing' | 'car')}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              >
-                <option value="all">All Services</option>
-                <option value="towing">Towing Only</option>
-                <option value="car">Car Services Only</option>
-              </select>
-
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as ServiceStatus | 'all')}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              >
-                <option value="all">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="assigned">Assigned</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </Card>
+          <select
+            value={serviceTypeFilter}
+            onChange={(e) => setServiceTypeFilter(e.target.value as 'all' | 'towing' | 'car')}
+            className="border border-journal-input-border rounded-journal px-3.5 py-3 text-sm bg-white font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal"
+          >
+            <option value="all">All services</option>
+            <option value="towing">Towing only</option>
+            <option value="car">Car services only</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ServiceStatus | 'all')}
+            className="border border-journal-input-border rounded-journal px-3.5 py-3 text-sm bg-white font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal"
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="in-progress">In progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
 
         {/* Services List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-12 h-12 animate-spin text-teal-600" />
+            <Loader2 className="w-10 h-10 animate-spin text-journal-teal" />
           </div>
         ) : allServices.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-            <H2 className="text-xl font-semibold text-gray-700 mb-2">No Services Found</H2>
-            <Body className="text-gray-500 mb-6">
+          <JournalCard className="p-12 text-center">
+            <Package className="w-14 h-14 mx-auto mb-4 text-journal-hairline" />
+            <h2 className="font-journal text-[22px] text-journal-ink mb-2">No Services Found</h2>
+            <JournalBody className="mb-6">
               {searchQuery || statusFilter !== 'all' || serviceTypeFilter !== 'all'
                 ? 'Try adjusting your filters'
                 : "You haven't requested any services yet"}
-            </Body>
-            <Button onClick={() => navigate('/book-service')}>Book a Service</Button>
-          </Card>
+            </JournalBody>
+            <JournalButton variant="primary" onClick={() => navigate('/book-service')}>
+              Book a Service
+            </JournalButton>
+          </JournalCard>
         ) : (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {allServices.map(({ type, service }) => {
               const isTowing = type === 'towing';
               const towingService = isTowing ? (service as TowingService) : null;
@@ -632,386 +569,357 @@ export const MyServices = () => {
                   : 'Selected town and landmark';
 
               return (
-                <Card key={service._id} className="p-4 sm:p-6">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 w-full items-start gap-3 sm:gap-4 sm:flex-1">
-                      {/* Icon */}
-                      <div
-                        className={`p-3 rounded-lg ${
-                          isTowing
-                            ? 'bg-blue-100 text-blue-600'
-                            : 'bg-teal-100 text-teal-600'
-                        }`}
-                      >
+                <JournalCard key={service._id} padding="none">
+                  <div className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-journal-hairline">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-journal bg-journal-sand flex items-center justify-center flex-shrink-0">
                         {isTowing ? (
-                          <Truck className="w-6 h-6" />
+                          <Truck className="w-5 h-5 text-journal-ink" />
                         ) : (
-                          <Wrench className="w-6 h-6" />
+                          <Wrench className="w-5 h-5 text-journal-ink" />
                         )}
                       </div>
-
-                      {/* Service Details */}
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 gap-y-2 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {isTowing
-                              ? 'Towing Service'
-                              : carServiceLabels.join(', ') || 'Car Service'}
-                          </h3>
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-mono text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200"
-                            title="Use this reference when contacting support"
-                          >
-                            <Hash className="w-3 h-3" />
-                            {shortRef(service._id)}
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-sans font-bold text-[16px] text-journal-ink">
+                            {isTowing ? 'Towing Service' : carServiceLabels.join(', ') || 'Car Service'}
                           </span>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(
-                              service.status
-                            )}`}
-                          >
-                            {service.status.charAt(0).toUpperCase() + service.status.slice(1)}
-                          </span>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${getPaymentStatusBadgeColor(
-                              service.paymentStatus
-                            )}`}
-                          >
-                            {service.paymentStatus === 'completed'
-                              ? 'Paid'
-                              : service.paymentStatus === 'pending'
-                              ? 'Unpaid'
-                              : 'Payment Failed'}
-                          </span>
-                          {canRequestQuote(service) && hasSubmittedQuoteRequest(service) && (
-                            <span
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-900 border border-teal-300"
-                              title="We have your quote request and will contact you"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                              Quote requested
-                            </span>
-                          )}
                         </div>
+                        <div className="text-[12px] text-journal-faint flex items-center gap-1 mt-0.5">
+                          <span title="Use this reference when contacting support">
+                            #{shortRef(service._id)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <StatusPill tone={SERVICE_STATUS_TONE[service.status] ?? 'pending'}>
+                        {service.status}
+                      </StatusPill>
+                      <StatusPill tone={paymentStatusTone(service.paymentStatus)}>
+                        {paymentStatusLabel(service.paymentStatus)}
+                      </StatusPill>
+                      {canRequestQuote(service) && hasSubmittedQuoteRequest(service) && (
+                        <StatusPill tone="completed">
+                          <CheckCircle className="w-3 h-3 mr-1 -ml-0.5" aria-hidden />
+                          Quote requested
+                        </StatusPill>
+                      )}
+                    </div>
+                  </div>
 
-                        {service.paymentStatus === 'pending' &&
-                          service.status !== 'cancelled' &&
-                          service.status !== 'completed' &&
-                          service.estimatedCost != null &&
-                          service.estimatedCost > 0 && (
-                            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
-                              Complete payment in MWK to confirm your booking.
+                  <div className="px-5 sm:px-6 py-4">
+                    {service.paymentStatus === 'pending' &&
+                      service.status !== 'cancelled' &&
+                      service.status !== 'completed' &&
+                      service.estimatedCost != null &&
+                      service.estimatedCost > 0 && (
+                        <p className="text-xs text-journal-warn-text bg-journal-warn-bg border border-journal-warn-text/20 rounded-journal px-3 py-2 mb-3">
+                          Complete payment in MWK to confirm your booking.
+                        </p>
+                      )}
+
+                    {service.paymentStatus === 'pending' &&
+                      service.status !== 'cancelled' &&
+                      service.status !== 'completed' &&
+                      (!service.estimatedCost || service.estimatedCost <= 0) && (
+                        <div className="space-y-2 mb-3">
+                          {hasSubmittedQuoteRequest(service) ? (
+                            <div className="text-sm bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal px-3 py-2.5">
+                              <div className="flex items-start gap-2">
+                                <CheckCircle className="w-5 h-5 text-journal-teal shrink-0 mt-0.5" aria-hidden />
+                                <div>
+                                  <p className="font-semibold text-journal-teal">Quote request received</p>
+                                  <p className="text-xs text-journal-teal/90 mt-1">
+                                    We will call or WhatsApp you on the numbers you provided, then set your
+                                    price in MWK. You can use <span className="font-medium">Update quote request</span>{' '}
+                                    if your contact details change.
+                                  </p>
+                                  <p className="text-xs text-journal-teal mt-2 font-medium">
+                                    Submitted: {formatDateTime(service.quoteRequestSubmittedAt!)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-journal-ink bg-journal-sand rounded-journal px-3 py-2">
+                              <span className="font-semibold">Price not set yet.</span>{' '}
+                              Use <span className="font-medium">Contact for quote</span> so we can review your
+                              request and send you an amount in Malawi Kwacha (MWK).
                             </p>
                           )}
-
-                        {service.paymentStatus === 'pending' &&
-                          service.status !== 'cancelled' &&
-                          service.status !== 'completed' &&
-                          (!service.estimatedCost || service.estimatedCost <= 0) && (
-                            <div className="space-y-2 mb-2">
-                              {hasSubmittedQuoteRequest(service) ? (
-                                <div className="text-sm text-teal-950 bg-teal-50 border border-teal-200 rounded-md px-3 py-2.5">
-                                  <div className="flex items-start gap-2">
-                                    <CheckCircle
-                                      className="w-5 h-5 text-teal-600 shrink-0 mt-0.5"
-                                      aria-hidden
-                                    />
-                                    <div>
-                                      <p className="font-semibold text-teal-900">Quote request received</p>
-                                      <p className="text-xs text-teal-800 mt-1">
-                                        We will call or WhatsApp you on the numbers you provided, then set your
-                                        price in MWK. You can use <span className="font-medium">Update quote request</span>{' '}
-                                        if your contact details change.
-                                      </p>
-                                      <p className="text-xs text-teal-700 mt-2 font-medium">
-                                        Submitted: {formatDateTime(service.quoteRequestSubmittedAt!)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
-                                  <span className="font-semibold">Price not set yet.</span>{' '}
-                                  Use <span className="font-medium">Contact for quote</span> so we can review your
-                                  request and send you an amount in Malawi Kwacha (MWK).
-                                </p>
-                              )}
-                              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                                Final pricing may change if vehicle, location, or other details are not accurate.
-                                We will call or message you to confirm before setting your quote.
-                              </p>
-                            </div>
-                          )}
-
-                        {statusGuidance(service, isTowing) && service.status !== 'cancelled' && (
-                          <p className="text-sm text-teal-900 bg-teal-50 border border-teal-100 rounded-md px-3 py-2 mb-2">
-                            {statusGuidance(service, isTowing)}
+                          <p className="text-xs text-journal-warn-text bg-journal-warn-bg border border-journal-warn-text/20 rounded-journal px-3 py-2">
+                            Final pricing may change if vehicle, location, or other details are not accurate.
+                            We will call or message you to confirm before setting your quote.
                           </p>
+                        </div>
+                      )}
+
+                    {statusGuidance(service, isTowing) && service.status !== 'cancelled' && (
+                      <p className="text-sm text-journal-teal bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal px-3 py-2 mb-3">
+                        {statusGuidance(service, isTowing)}
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+                      <div>
+                        <MonoLabel className="mb-1 block">Vehicle</MonoLabel>
+                        <div className="flex items-start gap-1.5 text-sm text-journal-body">
+                          <Car className="w-4 h-4 text-journal-faint mt-0.5 shrink-0" />
+                          <span>
+                            {service.vehicleType || 'Not specified'}
+                            {service.vehicleModel ? ` · ${service.vehicleModel}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <MonoLabel className="mb-1 block">Price</MonoLabel>
+                        {service.estimatedCost != null && service.estimatedCost > 0 ? (
+                          <span className="text-sm font-bold text-journal-teal tabular-nums">
+                            MWK {service.estimatedCost.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-journal-muted">Price not set yet</span>
                         )}
-
-                        <div className="space-y-2 text-sm text-gray-600">
-                          <div className="flex items-start gap-2">
-                            <Car className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                      </div>
+                      <div>
+                        <MonoLabel className="mb-1 block">
+                          {isTowing ? 'Pickup / Destination' : 'Location'}
+                        </MonoLabel>
+                        <div className="flex items-start gap-1.5 text-sm text-journal-body">
+                          <MapPin className="w-4 h-4 text-journal-faint mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
                             <div>
-                              <span className="font-medium text-gray-800">Vehicle: </span>
-                              {service.vehicleType || 'Not specified'}
-                              {service.vehicleModel ? ` · ${service.vehicleModel}` : ''}
+                              {isTowing
+                                ? `${towingService?.location.address} → ${towingService?.destination?.address || 'Not specified'}`
+                                : carService?.location.address}
                             </div>
                           </div>
-
-                          <div className="flex items-start gap-2">
-                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium">
-                                {isTowing
-                                  ? `${towingService?.location.address} → ${towingService?.destination?.address || 'Not specified'}`
-                                  : carService?.location.address}
-                              </div>
-                              {isTowing && towingService?.location.description && (
-                                <div className="text-sm text-gray-600 italic mt-1">
-                                  Pickup: {towingService.location.description}
-                                </div>
-                              )}
-                              {isTowing && towingService?.destination?.description && (
-                                <div className="text-sm text-gray-600 italic mt-1">
-                                  Destination: {towingService.destination.description}
-                                </div>
-                              )}
-                              {!isTowing && carService?.location.description && (
-                                <div className="text-sm text-gray-600 italic mt-1">
-                                  Location: {carService.location.description}
-                                </div>
-                              )}
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                                <a
-                                  href={mapsHref(
-                                    service.location.latitude,
-                                    service.location.longitude,
-                                    service.location.address
-                                  )}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 font-medium text-xs"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                  {isTowing ? 'Open pickup in Maps' : 'Open location in Maps'}
-                                </a>
-                                {isTowing &&
-                                  towingService?.destination?.address &&
-                                  towingService.destination.latitude !== undefined &&
-                                  towingService.destination.longitude !== undefined && (
-                                    <a
-                                      href={mapsHref(
-                                        towingService.destination.latitude,
-                                        towingService.destination.longitude,
-                                        towingService.destination.address
-                                      )}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 font-medium text-xs"
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                      Open destination in Maps
-                                    </a>
-                                  )}
-                              </div>
-                              <div className="mt-2 text-xs text-gray-500">
-                                {isTowing ? (
-                                  <>
-                                    <div>Pickup source: {pickupSource}</div>
-                                    <div>Destination source: {destinationSource}</div>
-                                    {towingService?.pickupLocationMethod === 'pin' && (
-                                      <div>
-                                        Pickup pin: {towingService.location.latitude.toFixed(6)},{' '}
-                                        {towingService.location.longitude.toFixed(6)}
-                                      </div>
-                                    )}
-                                    {towingService?.destinationLocationMethod === 'pin' &&
-                                      towingService.destination && (
-                                        <div>
-                                          Destination pin: {towingService.destination.latitude.toFixed(6)},{' '}
-                                          {towingService.destination.longitude.toFixed(6)}
-                                        </div>
-                                      )}
-                                  </>
-                                ) : (
-                                  <>
-                                    <div>Location source: {serviceSource}</div>
-                                    {carService?.serviceLocationMethod === 'pin' && (
-                                      <div>
-                                        Service pin: {carService.location.latitude.toFixed(6)},{' '}
-                                        {carService.location.longitude.toFixed(6)}
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
-                            <span>Requested: {formatDateTime(service.createdAt)}</span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-400 shrink-0" />
-                            <span>Last updated: {formatDateTime(service.updatedAt)}</span>
-                          </div>
-
-                          {!isTowing && carService?.preferredDate && (
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
-                              <span>
-                                Preferred: {formatDate(carService.preferredDate)}
-                                {carService.preferredTime ? ` at ${carService.preferredTime}` : ''}
-                              </span>
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {service.estimatedCost != null && service.estimatedCost > 0 ? (
-                              <>
-                                <span
-                                  className="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 shrink-0"
-                                  aria-hidden
-                                >
-                                  MWK
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                  {service.estimatedCost.toLocaleString()}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-gray-600 font-medium">Price not set yet</span>
-                            )}
-                          </div>
-
-                          {assignedDriver && (
-                            <div className="flex items-start gap-2">
-                              <User className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                              <div>
-                                <span className="font-medium text-gray-800">Assigned driver: </span>
-                                {assignedDriver.name}
-                                {assignedDriver.phone && (
-                                  <span className="text-gray-600"> · {assignedDriver.phone}</span>
-                                )}
-                                {assignedDriver.garageName && (
-                                  <span className="text-gray-600 text-sm block mt-0.5">
-                                    Garage: {assignedDriver.garageName}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {assignedMechanic && (
-                            <div className="flex items-start gap-2">
-                              <User className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                              <div>
-                                <span className="font-medium text-gray-800">Assigned mechanic: </span>
-                                {assignedMechanic.name}
-                                {assignedMechanic.phone && (
-                                  <span className="text-gray-600"> · {assignedMechanic.phone}</span>
-                                )}
-                                {assignedMechanic.garageName && (
-                                  <span className="text-gray-600 text-sm block mt-0.5">
-                                    Garage: {assignedMechanic.garageName}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {(isTowing ? towingService?.estimatedArrivalAt : carService?.estimatedArrivalAt) && (
-                            <div className="flex items-start gap-2">
-                              <Clock className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                              <div className="text-sm text-gray-700">
-                                <span className="font-medium text-gray-800">Estimated arrival: </span>
-                                {formatDateTime(
-                                  (isTowing ? towingService!.estimatedArrivalAt : carService!.estimatedArrivalAt)!
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {service.status === 'completed' && (assignedDriver || assignedMechanic) && (
-                            <div className="flex flex-wrap items-center gap-1 mt-2">
-                              <span className="text-sm text-gray-600 mr-1">Rate provider:</span>
-                              {[1, 2, 3, 4, 5].map((n) => (
-                                <button
-                                  key={n}
-                                  type="button"
-                                  className="min-w-[2rem] px-2 py-1 text-sm rounded border border-gray-300 text-gray-800 hover:bg-teal-50 hover:border-teal-400"
-                                  onClick={() =>
-                                    submitProviderRating(service._id, isTowing ? 'towing' : 'car', n)
-                                  }
-                                >
-                                  {n}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {service.notes && (
-                            <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                              <p className="text-sm text-gray-700">{service.notes}</p>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Actions: full-width stack on mobile so title/body keep the row width */}
-                    <div className="flex w-full shrink-0 flex-col gap-2 border-t border-gray-100 pt-4 sm:w-auto sm:border-t-0 sm:pt-0 sm:pl-2">
+                    {isTowing && towingService?.location.description && (
+                      <div className="text-sm text-journal-muted italic mb-1">
+                        Pickup: {towingService.location.description}
+                      </div>
+                    )}
+                    {isTowing && towingService?.destination?.description && (
+                      <div className="text-sm text-journal-muted italic mb-1">
+                        Destination: {towingService.destination.description}
+                      </div>
+                    )}
+                    {!isTowing && carService?.location.description && (
+                      <div className="text-sm text-journal-muted italic mb-1">
+                        Location: {carService.location.description}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                      <a
+                        href={mapsHref(
+                          service.location.latitude,
+                          service.location.longitude,
+                          service.location.address
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-journal-teal hover:underline font-medium text-xs"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {isTowing ? 'Open pickup in Maps' : 'Open location in Maps'}
+                      </a>
+                      {isTowing &&
+                        towingService?.destination?.address &&
+                        towingService.destination.latitude !== undefined &&
+                        towingService.destination.longitude !== undefined && (
+                          <a
+                            href={mapsHref(
+                              towingService.destination.latitude,
+                              towingService.destination.longitude,
+                              towingService.destination.address
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-journal-teal hover:underline font-medium text-xs"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Open destination in Maps
+                          </a>
+                        )}
+                    </div>
+
+                    <div className="text-xs text-journal-faint mb-3">
+                      {isTowing ? (
+                        <>
+                          <div>Pickup source: {pickupSource}</div>
+                          <div>Destination source: {destinationSource}</div>
+                          {towingService?.pickupLocationMethod === 'pin' && (
+                            <div>
+                              Pickup pin: {towingService.location.latitude.toFixed(6)},{' '}
+                              {towingService.location.longitude.toFixed(6)}
+                            </div>
+                          )}
+                          {towingService?.destinationLocationMethod === 'pin' &&
+                            towingService.destination && (
+                              <div>
+                                Destination pin: {towingService.destination.latitude.toFixed(6)},{' '}
+                                {towingService.destination.longitude.toFixed(6)}
+                              </div>
+                            )}
+                        </>
+                      ) : (
+                        <>
+                          <div>Location source: {serviceSource}</div>
+                          {carService?.serviceLocationMethod === 'pin' && (
+                            <div>
+                              Service pin: {carService.location.latitude.toFixed(6)},{' '}
+                              {carService.location.longitude.toFixed(6)}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 text-sm text-journal-muted mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-journal-faint shrink-0" />
+                        <span>Requested: {formatDateTime(service.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-journal-faint shrink-0" />
+                        <span>Last updated: {formatDateTime(service.updatedAt)}</span>
+                      </div>
+                      {!isTowing && carService?.preferredDate && (
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-journal-faint shrink-0" />
+                          <span>
+                            Preferred: {formatDate(carService.preferredDate)}
+                            {carService.preferredTime ? ` at ${carService.preferredTime}` : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {assignedDriver && (
+                      <div className="flex items-start gap-1.5 text-sm text-journal-body mb-2">
+                        <User className="w-4 h-4 text-journal-faint mt-0.5 shrink-0" />
+                        <div>
+                          <span className="font-medium text-journal-ink">Assigned driver: </span>
+                          {assignedDriver.name}
+                          {assignedDriver.phone && (
+                            <span className="text-journal-muted"> · {assignedDriver.phone}</span>
+                          )}
+                          {assignedDriver.garageName && (
+                            <span className="text-journal-muted text-sm block mt-0.5">
+                              Garage: {assignedDriver.garageName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {assignedMechanic && (
+                      <div className="flex items-start gap-1.5 text-sm text-journal-body mb-2">
+                        <User className="w-4 h-4 text-journal-faint mt-0.5 shrink-0" />
+                        <div>
+                          <span className="font-medium text-journal-ink">Assigned mechanic: </span>
+                          {assignedMechanic.name}
+                          {assignedMechanic.phone && (
+                            <span className="text-journal-muted"> · {assignedMechanic.phone}</span>
+                          )}
+                          {assignedMechanic.garageName && (
+                            <span className="text-journal-muted text-sm block mt-0.5">
+                              Garage: {assignedMechanic.garageName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {(isTowing ? towingService?.estimatedArrivalAt : carService?.estimatedArrivalAt) && (
+                      <div className="flex items-start gap-1.5 text-sm text-journal-body mb-2">
+                        <Clock className="w-4 h-4 text-journal-faint mt-0.5 shrink-0" />
+                        <div>
+                          <span className="font-medium text-journal-ink">Estimated arrival: </span>
+                          {formatDateTime(
+                            (isTowing ? towingService!.estimatedArrivalAt : carService!.estimatedArrivalAt)!
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {service.status === 'completed' && (assignedDriver || assignedMechanic) && (
+                      <div className="flex flex-wrap items-center gap-1 mt-2 mb-1">
+                        <span className="text-sm text-journal-muted mr-1">Rate provider:</span>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            className="min-w-[2rem] px-2 py-1 text-sm rounded-journal border border-journal-input-border text-journal-ink hover:bg-journal-teal-tint hover:border-journal-teal transition-colors"
+                            onClick={() => submitProviderRating(service._id, isTowing ? 'towing' : 'car', n)}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {service.notes && (
+                      <div className="mt-2 p-3 bg-journal-sand rounded-journal">
+                        <p className="text-sm text-journal-body">{service.notes}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {(canPayOnline(service) || canRequestQuote(service) || canCancelService(service)) && (
+                    <div className="flex flex-col sm:flex-row gap-2.5 px-5 sm:px-6 py-4 border-t border-journal-hairline">
                       {canPayOnline(service) && (
-                        <Button
-                          size="sm"
+                        <JournalButton
+                          size="default"
                           variant="primary"
-                          className="w-full justify-center sm:w-auto"
+                          className="!px-5 !py-2.5"
                           disabled={shouldHoldPayNowForPaychangu(service, type)}
                           onClick={() => handlePayForService(service, type)}
                         >
                           {shouldHoldPayNowForPaychangu(service, type) ? (
                             <>
-                              <Loader2 className="w-4 h-4 mr-2 shrink-0 animate-spin" aria-hidden />
+                              <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden />
                               Confirming payment…
                             </>
                           ) : (
                             <>
-                              <CreditCard className="w-4 h-4 mr-2" />
+                              <CreditCard className="w-4 h-4" />
                               Pay Now (MWK)
                             </>
                           )}
-                        </Button>
+                        </JournalButton>
                       )}
 
                       {canRequestQuote(service) && (
-                        <Button
-                          size="sm"
-                          variant={hasSubmittedQuoteRequest(service) ? 'primary' : 'outline'}
-                          className="w-full justify-center sm:w-auto"
+                        <JournalButton
+                          size="default"
+                          variant="secondary"
+                          className="!px-5 !py-2.5"
                           onClick={() => openQuoteModal(service, type)}
                         >
                           {hasSubmittedQuoteRequest(service) ? (
                             <>
-                              <CheckCircle className="w-4 h-4 mr-2" />
+                              <CheckCircle className="w-4 h-4" />
                               Update quote request
                             </>
                           ) : (
                             <>
-                              <MessageCircle className="w-4 h-4 mr-2" />
+                              <MessageCircle className="w-4 h-4" />
                               Contact for quote
                             </>
                           )}
-                        </Button>
+                        </JournalButton>
                       )}
 
                       {canCancelService(service) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full justify-center sm:w-auto"
+                        <button
+                          type="button"
                           onClick={() =>
                             setShowCancelModal({
                               show: true,
@@ -1019,14 +927,15 @@ export const MyServices = () => {
                               id: service._id,
                             })
                           }
+                          className="inline-flex items-center justify-center gap-2 text-[12px] font-sans font-medium tracking-[0.1em] uppercase text-journal-danger-text hover:underline px-2 py-2.5"
                         >
-                          <XCircle className="w-4 h-4 mr-2" />
+                          <XCircle className="w-4 h-4" />
                           Cancel
-                        </Button>
+                        </button>
                       )}
                     </div>
-                  </div>
-                </Card>
+                  )}
+                </JournalCard>
               );
             })}
           </div>
@@ -1034,44 +943,40 @@ export const MyServices = () => {
 
         {/* Quote request modal */}
         {quoteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <Card className="max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {hasSubmittedQuoteRequest(quoteModal.service)
-                    ? 'Update quote request'
-                    : 'Contact for quote'}
+          <div className="fixed inset-0 bg-journal-ink/55 flex items-center justify-center z-50 p-4">
+            <JournalCard className="max-w-[440px] w-full !p-0 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-journal-ink">
+                <h3 className="font-journal text-[24px] text-journal-ink">
+                  {hasSubmittedQuoteRequest(quoteModal.service) ? 'Update quote request' : 'Contact for quote'}
                 </h3>
                 <button
                   type="button"
                   onClick={() => setQuoteModal(null)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
+                  className="p-1 hover:bg-journal-sand rounded-full transition-colors"
                   disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-journal-muted" />
                 </button>
               </div>
 
-              <p className="text-sm text-gray-600 mb-3">
-                Add the numbers we should use to reach you. Our team will confirm your service details before
-                setting your price in Malawi Kwacha (MWK).
-              </p>
-
-              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-900">
-                  If pickup location, vehicle, or other information is not accurate, the quoted amount may change
-                  after we verify with you.
+              <div className="px-6 pt-4">
+                <p className="text-[13px] text-journal-muted mb-3">
+                  Add the numbers we should use to reach you. Our team will confirm your service details
+                  before setting your price in Malawi Kwacha (MWK).
                 </p>
-              </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="quote-mobile" className="block text-sm font-medium text-gray-700 mb-1">
-                    Mobile number (for calls)
-                  </label>
-                  <Input
+                <div className="flex items-start gap-2 p-3 bg-journal-warn-bg border border-journal-warn-text/20 rounded-journal mb-4">
+                  <AlertCircle className="w-4 h-4 text-journal-warn-text shrink-0 mt-0.5" />
+                  <p className="text-[13px] text-journal-warn-text">
+                    If pickup location, vehicle, or other information is not accurate, the quoted amount may
+                    change after we verify with you.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <JournalInput
                     id="quote-mobile"
+                    label="Mobile number (for calls)"
                     type="tel"
                     autoComplete="tel"
                     placeholder="+265991234567 or 0991234567"
@@ -1083,29 +988,25 @@ export const MyServices = () => {
                     }}
                     disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
                   />
-                </div>
 
-                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                    checked={sameWhatsappAsMobile}
-                    onChange={(e) => {
-                      setSameWhatsappAsMobile(e.target.checked);
-                      setQuoteFieldErrors((prev) => ({ ...prev, whatsApp: undefined }));
-                    }}
-                    disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
-                  />
-                  WhatsApp number is the same as mobile
-                </label>
+                  <label className="flex items-center gap-2 text-[13px] text-journal-body cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="rounded-sm border-journal-input-border text-journal-teal focus:ring-journal-teal"
+                      checked={sameWhatsappAsMobile}
+                      onChange={(e) => {
+                        setSameWhatsappAsMobile(e.target.checked);
+                        setQuoteFieldErrors((prev) => ({ ...prev, whatsApp: undefined }));
+                      }}
+                      disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                    />
+                    WhatsApp number is the same as mobile
+                  </label>
 
-                {!sameWhatsappAsMobile && (
-                  <div>
-                    <label htmlFor="quote-wa" className="block text-sm font-medium text-gray-700 mb-1">
-                      WhatsApp number
-                    </label>
-                    <Input
+                  {!sameWhatsappAsMobile && (
+                    <JournalInput
                       id="quote-wa"
+                      label="WhatsApp number"
                       type="tel"
                       autoComplete="tel"
                       placeholder="+265991234567 or 0991234567"
@@ -1117,36 +1018,36 @@ export const MyServices = () => {
                       }}
                       disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
                     />
-                  </div>
-                )}
+                  )}
 
-                <div>
-                  <label htmlFor="quote-notes" className="block text-sm font-medium text-gray-700 mb-1">
-                    Note for our team (optional)
-                  </label>
-                  <textarea
-                    id="quote-notes"
-                    rows={3}
-                    maxLength={500}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-sm"
-                    placeholder="Best time to call, landmarks, etc."
-                    value={quoteNotes}
-                    onChange={(e) => setQuoteNotes(e.target.value)}
-                    disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
-                  />
+                  <div>
+                    <label htmlFor="quote-notes" className="block text-[11px] font-sans font-semibold tracking-[0.10em] uppercase text-journal-muted mb-1.5">
+                      Note for our team (optional)
+                    </label>
+                    <textarea
+                      id="quote-notes"
+                      rows={3}
+                      maxLength={500}
+                      className="w-full border border-journal-input-border rounded-journal px-3.5 py-3 text-sm bg-white font-sans placeholder:text-journal-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal transition-colors resize-y"
+                      placeholder="Best time to call, landmarks, etc."
+                      value={quoteNotes}
+                      onChange={(e) => setQuoteNotes(e.target.value)}
+                      disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
-                <Button
-                  variant="outline"
+              <div className="flex gap-3 px-6 py-5 mt-2">
+                <JournalButton
+                  variant="secondary"
                   className="flex-1"
                   onClick={() => setQuoteModal(null)}
                   disabled={isSubmittingTowingQuote || isSubmittingCarQuote}
                 >
                   Cancel
-                </Button>
-                <Button
+                </JournalButton>
+                <JournalButton
                   variant="primary"
                   className="flex-1"
                   onClick={handleSubmitQuoteRequest}
@@ -1154,7 +1055,7 @@ export const MyServices = () => {
                 >
                   {isSubmittingTowingQuote || isSubmittingCarQuote ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       {hasSubmittedQuoteRequest(quoteModal.service) ? 'Updating...' : 'Sending...'}
                     </>
                   ) : hasSubmittedQuoteRequest(quoteModal.service) ? (
@@ -1162,65 +1063,65 @@ export const MyServices = () => {
                   ) : (
                     'Send quote request'
                   )}
-                </Button>
+                </JournalButton>
               </div>
-            </Card>
+            </JournalCard>
           </div>
         )}
 
         {/* Cancel Confirmation Modal */}
         {showCancelModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <Card className="max-w-md w-full p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">Cancel Service</h3>
+          <div className="fixed inset-0 bg-journal-ink/55 flex items-center justify-center z-50 p-4">
+            <JournalCard className="max-w-[440px] w-full !p-0">
+              <div className="flex items-center justify-between px-6 pt-6 pb-4">
+                <h3 className="font-journal text-[24px] text-journal-ink">Cancel this service?</h3>
                 <button
                   onClick={() => setShowCancelModal(null)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
+                  className="p-1 hover:bg-journal-sand rounded-full transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-journal-muted" />
                 </button>
               </div>
 
-              <div className="mb-6">
-                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div className="px-6 pb-5">
+                <div className="flex items-start gap-3 p-4 bg-journal-warn-bg border border-journal-warn-text/20 rounded-journal">
+                  <AlertCircle className="w-5 h-5 text-journal-warn-text mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-amber-900">Are you sure?</p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      This action cannot be undone. If you've already paid, a refund will be
-                      processed within 3-5 business days.
+                    <p className="text-[13px] font-medium text-journal-warn-text">Are you sure?</p>
+                    <p className="text-[13px] text-journal-warn-text/90 mt-1">
+                      This action cannot be undone. If you've already paid, a refund will be processed
+                      within 3-5 business days.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
+              <div className="flex gap-3 px-6 py-5">
+                <JournalButton
+                  variant="secondary"
                   onClick={() => setShowCancelModal(null)}
                   className="flex-1"
                   disabled={isCancellingTowing || isCancellingCar}
                 >
-                  Keep Service
-                </Button>
-                <Button
-                  variant="danger"
+                  Keep service
+                </JournalButton>
+                <button
+                  type="button"
                   onClick={handleCancelService}
-                  className="flex-1"
                   disabled={isCancellingTowing || isCancellingCar}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-journal-danger-text text-white px-6 py-3 text-xs font-sans font-semibold tracking-[0.12em] uppercase disabled:opacity-50 hover:bg-journal-danger-text/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-danger-text focus-visible:ring-offset-2"
                 >
                   {isCancellingTowing || isCancellingCar ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Cancelling...
                     </>
                   ) : (
-                    'Yes, Cancel Service'
+                    'Cancel service'
                   )}
-                </Button>
+                </button>
               </div>
-            </Card>
+            </JournalCard>
           </div>
         )}
       </div>

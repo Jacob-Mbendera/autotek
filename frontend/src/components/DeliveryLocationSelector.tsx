@@ -1,6 +1,7 @@
 import { useGetDeliveryLocationsQuery } from '../store/api/deliveryLocationApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 export type ServiceLocationVariant =
   | 'delivery'
@@ -104,38 +105,38 @@ export const DeliveryLocationSelector = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
-        <span className="ml-2 text-gray-600">Loading delivery locations...</span>
+        <Loader2 className="w-5 h-5 animate-spin text-journal-teal" />
+        <span className="ml-2 text-[13px] font-sans text-journal-muted">Loading delivery locations...</span>
       </div>
     );
   }
 
   if (isError || !data) {
     return (
-      <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-        <AlertCircle className="w-5 h-5" />
-        <span>Failed to load delivery locations. Please try again.</span>
+      <div className="flex items-center gap-2 p-4 bg-journal-danger-bg border border-journal-error-border rounded-journal text-journal-danger-text">
+        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+        <span className="text-[13px] font-sans">Failed to load delivery locations. Please try again.</span>
       </div>
     );
   }
 
   const towns = data.deliveryLocations.map((loc) => loc.town);
+  const selectClassName =
+    'w-full px-3.5 py-3 border rounded-journal text-[14px] font-sans text-journal-ink bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal transition-colors';
 
   return (
     <div className="space-y-4">
       {/* Town Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          <MapPin className="w-4 h-4 inline mr-1" />
-          Town / City {required && <span className="text-red-500">*</span>}
+        <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">
+          <MapPin className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+          Town / City {required && <span className="text-journal-danger-text">*</span>}
         </label>
         <select
           value={selectedTown}
           onChange={(e) => handleTownChange(e.target.value)}
           required={required}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all ${
-            error && !selectedTown ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={cn(selectClassName, error && !selectedTown ? 'border-journal-error-border-strong' : 'border-journal-input-border')}
         >
           <option value="">Select your town or city</option>
           {towns.map((town) => (
@@ -149,16 +150,14 @@ export const DeliveryLocationSelector = ({
       {/* Landmark Selection */}
       {selectedTown && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Landmark / Area {required && <span className="text-red-500">*</span>}
+          <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">
+            Landmark / Area {required && <span className="text-journal-danger-text">*</span>}
           </label>
           <select
             value={selectedLandmark}
             onChange={(e) => handleLandmarkChange(e.target.value)}
             required={required}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all ${
-              error && !selectedLandmark ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={cn(selectClassName, error && !selectedLandmark ? 'border-journal-error-border-strong' : 'border-journal-input-border')}
           >
             <option value="">Select a landmark or area</option>
             {landmarks.map((landmark) => (
@@ -167,15 +166,15 @@ export const DeliveryLocationSelector = ({
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-500">{copy.landmarkHint}</p>
+          <p className="mt-1.5 text-[12px] font-sans text-journal-faint">{copy.landmarkHint}</p>
         </div>
       )}
 
       {/* Custom Address Input (shown when "Other/Custom" is selected) */}
       {showCustomInput && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Describe Your Location {required && <span className="text-red-500">*</span>}
+          <label className="block text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-journal-muted mb-1.5">
+            Describe your location {required && <span className="text-journal-danger-text">*</span>}
           </label>
           <textarea
             value={customAddress}
@@ -183,11 +182,12 @@ export const DeliveryLocationSelector = ({
             required={required}
             placeholder="Please provide detailed directions to your location (e.g., near the blue gate, opposite the church, behind the market)"
             rows={3}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none ${
-              error && !customAddress.trim() ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={cn(
+              'w-full px-3.5 py-3 border rounded-journal text-[14px] font-sans text-journal-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-journal-teal transition-colors resize-none',
+              error && !customAddress.trim() ? 'border-journal-error-border-strong' : 'border-journal-input-border'
+            )}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1.5 text-[12px] font-sans text-journal-faint">
             Help us find you: Describe nearby landmarks, buildings, or notable features
           </p>
         </div>
@@ -195,24 +195,24 @@ export const DeliveryLocationSelector = ({
 
       {/* Error Message */}
       {error && (
-        <p className="text-sm text-red-600 flex items-center gap-1">
-          <AlertCircle className="w-4 h-4" />
+        <p className="text-[13px] font-sans text-journal-danger-text flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5" />
           {error}
         </p>
       )}
 
       {/* Selected Address Preview */}
       {selectedTown && selectedLandmark && !showCustomInput && (
-        <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
-          <p className="text-sm text-teal-800">
+        <div className="p-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal">
+          <p className="text-[13px] font-sans text-journal-teal">
             <strong>{copy.previewPrefix}</strong> {selectedTown}, {selectedLandmark}
           </p>
         </div>
       )}
 
       {selectedTown && selectedLandmark && showCustomInput && customAddress.trim() && (
-        <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
-          <p className="text-sm text-teal-800">
+        <div className="p-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal">
+          <p className="text-[13px] font-sans text-journal-teal">
             <strong>{copy.previewPrefix}</strong> {selectedTown} - {customAddress}
           </p>
         </div>

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Eye, Sparkles, Package, Heart } from 'lucide-react';
+import { ShoppingCart, Heart } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/types';
 import { addItem } from '../store/slices/cartSlice';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import type { Product } from '../store/api/productApi';
 import type { VehicleFitmentMatchStrength } from '@shared/utils/productFitmentMatch';
-import { Button } from './ui/Button';
 import { OptimizedImage } from './ui/OptimizedImage';
 import { getProductImageBlur, getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
 import { ProductPlaceholderImage } from './ProductPlaceholderImage';
+import { JournalButton, MonoLabel } from './journal';
+import { cn } from '../utils/cn';
 
 interface ProductCardListProps {
   product: Product;
@@ -46,7 +47,7 @@ export const ProductCardList = ({ product, fitmentMatch = 'none' }: ProductCardL
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     dispatch(
       addItem({
         productId: product._id,
@@ -108,27 +109,11 @@ export const ProductCardList = ({ product, fitmentMatch = 'none' }: ProductCardL
   const isOutOfStock = product.status === 'out-of-stock' || product.stock === 0;
   const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
 
-  const getStatusBadge = () => {
-    if (isOutOfStock) {
-      return (
-        <span className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg border-2 border-white">
-          OUT OF STOCK
-        </span>
-      );
-    }
-    if (isLowStock) {
-      return (
-        <span className="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-full shadow-lg border-2 border-white">
-          LOW STOCK
-        </span>
-      );
-    }
-    return (
-      <span className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-full shadow-lg border-2 border-white">
-        IN STOCK
-      </span>
-    );
-  };
+  const stockBadge = isOutOfStock
+    ? { label: 'Out of stock', className: 'bg-journal-danger-bg text-journal-danger-text' }
+    : isLowStock
+      ? { label: 'Low stock', className: 'bg-journal-warn-bg text-journal-warn-text' }
+      : { label: 'In stock', className: 'bg-journal-teal-tint text-journal-teal' };
 
   const brand = product.brand || product.supplier || 'Brand not listed';
   const categoryDisplay = product.category.toUpperCase();
@@ -136,55 +121,58 @@ export const ProductCardList = ({ product, fitmentMatch = 'none' }: ProductCardL
   return (
     <Link
       to={`/products/${product._id}`}
-      className="group bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-teal-300 relative flex flex-row"
+      className="group bg-white border border-journal-hairline rounded-journal overflow-hidden hover:border-journal-ink transition-colors relative flex flex-row"
     >
       {/* Image section */}
-      <div className="relative w-48 h-48 flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-        <div
-          className={`w-full h-full group-hover:scale-110 transition-transform duration-500`}
-        >
-          {isPlaceholder ? (
-            <ProductPlaceholderImage
-              productName={product.name}
-              category={product.category}
-              size="md"
-              className="w-full h-full"
-            />
-          ) : (
-            <OptimizedImage
-              src={getProductImageUrl(product.images?.[0])}
-              blurDataUrl={getProductImageBlur(product.images?.[0])}
-              alt={product.name}
-              width={192}
-              height={192}
-              className="w-full h-full object-cover"
-              priority={false}
-            />
-          )}
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent"></div>
-        
+      <div className="relative w-40 sm:w-48 flex-shrink-0 bg-journal-sand overflow-hidden">
+        {isPlaceholder ? (
+          <ProductPlaceholderImage
+            productName={product.name}
+            category={product.category}
+            size="md"
+            className="w-full h-full"
+          />
+        ) : (
+          <OptimizedImage
+            src={getProductImageUrl(product.images?.[0])}
+            blurDataUrl={getProductImageBlur(product.images?.[0])}
+            alt={product.name}
+            width={192}
+            height={192}
+            className="w-full h-full object-cover"
+            priority={false}
+          />
+        )}
+
         {isPlaceholder && (
           <div className="absolute top-2 right-2 z-10">
-            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 text-xs font-medium text-gray-600 border border-gray-200">
+            <span className="bg-white/90 rounded-full px-2 py-1 text-[10px] font-sans font-medium text-journal-muted border border-journal-hairline">
               Placeholder
-            </div>
+            </span>
           </div>
         )}
-        
+
         <div className="absolute top-2 left-2 z-10">
-          {getStatusBadge()}
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full px-2.5 py-1 font-sans font-semibold text-[10px] tracking-[0.06em] uppercase',
+              stockBadge.className
+            )}
+          >
+            {stockBadge.label}
+          </span>
         </div>
         {fitmentMatch !== 'none' && (
           <div className="absolute bottom-2 left-2 z-10">
             <span
-              className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold shadow border ${
+              className={cn(
+                'inline-flex items-center rounded-full px-2 py-1 font-sans font-semibold text-[10px]',
                 fitmentMatch === 'strong'
-                  ? 'bg-green-100 text-green-800 border-green-200'
+                  ? 'bg-journal-teal-tint text-journal-teal'
                   : fitmentMatch === 'universal'
-                    ? 'bg-teal-100 text-teal-800 border-teal-200'
-                    : 'bg-amber-100 text-amber-800 border-amber-200'
-              }`}
+                    ? 'bg-journal-sand text-journal-ink'
+                    : 'bg-journal-warn-bg text-journal-warn-text'
+              )}
             >
               {fitmentMatch === 'strong'
                 ? 'Fits your vehicle'
@@ -195,69 +183,65 @@ export const ProductCardList = ({ product, fitmentMatch = 'none' }: ProductCardL
           </div>
         )}
       </div>
-      
+
       {/* Content section */}
-      <div className="flex-1 p-6 flex flex-col justify-between">
+      <div className="flex-1 p-5 flex flex-col justify-between min-w-0">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="text-xs font-bold text-teal-600 uppercase tracking-wide">
-              {brand}
-            </div>
-            <span className="text-gray-300">•</span>
-            <div className="text-xs font-medium text-gray-500">
-              {categoryDisplay}
-            </div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <MonoLabel className="!text-journal-teal">{brand}</MonoLabel>
+            <span className="text-journal-hairline">&#183;</span>
+            <span className="text-[11px] font-sans text-journal-faint">{categoryDisplay}</span>
           </div>
-          
-          <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-teal-600 transition-colors duration-300">
+
+          <h3 className="font-journal text-[19px] leading-snug text-journal-ink mb-2 group-hover:text-journal-teal transition-colors">
             {product.name}
           </h3>
-          
+
           {product.description && (
-            <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed">
+            <p className="text-[13px] font-sans text-journal-body mb-4 line-clamp-2 leading-relaxed">
               {product.description}
             </p>
           )}
         </div>
-        
-        <div className="flex items-center justify-between">
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-teal-500 bg-clip-text text-transparent">
+            <span className="font-journal text-[24px] text-journal-ink">
               MWK {product.price.toLocaleString()}
             </span>
             {product.stock > 0 && (
-              <span className="text-sm text-gray-500">
+              <span className="text-[12px] font-sans text-journal-faint">
                 ({product.stock} in stock)
               </span>
             )}
           </div>
-          
-          <div className="flex items-center gap-3">
+
+          <div className="flex items-center gap-2.5">
             {isAuthenticated && (
               <button
                 onClick={handleWishlistToggle}
                 disabled={isAddingToWishlist}
-                className={`p-2 rounded-lg transition-all ${
+                className={cn(
+                  'p-2 rounded-journal border transition-colors',
                   isInWishlist
-                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                } ${isAddingToWishlist ? 'opacity-70 cursor-wait' : ''}`}
+                    ? 'border-journal-error-border-strong text-journal-danger-text'
+                    : 'border-journal-hairline text-journal-body hover:border-journal-ink',
+                  isAddingToWishlist ? 'opacity-70 cursor-wait' : ''
+                )}
                 aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
                 title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
               >
-                <Heart className={`h-5 w-5 ${isInWishlist ? 'fill-current' : ''} ${isAddingToWishlist ? 'animate-pulse' : ''}`} />
+                <Heart className={cn('h-4 w-4', isInWishlist ? 'fill-current' : '')} />
               </button>
             )}
-            <Button
+            <JournalButton
               variant="primary"
-              size="default"
-              className="shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
               onClick={handleAddToCart}
               disabled={isOutOfStock}
             >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-            </Button>
+              <ShoppingCart className="h-3.5 w-3.5" />
+              {isOutOfStock ? 'Out of stock' : 'Add to cart'}
+            </JournalButton>
           </div>
         </div>
       </div>

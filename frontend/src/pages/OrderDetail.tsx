@@ -1,22 +1,45 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGetOrderQuery, useCancelOrderMutation } from '../store/api/orderApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { useGetReturnsQuery } from '../store/api/returnApi';
-import { useAppSelector } from '../store/types';
-import { useGetAdminOrderQuery, useUpdateOrderStatusMutation } from '../store/api/adminApi';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { H1, Body } from '../components/ui/Typography';
+import { useAppSelector, useAppDispatch } from '../store/types';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { Input } from '../components/ui/Input';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
-import { useAppDispatch } from '../store/types';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
+import { JournalCard, JournalButton, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { cn } from '../utils/cn';
+import {
+  ArrowLeft,
+  Package,
+  MapPin,
+  CreditCard,
+  Loader2,
+  Calendar,
+  FileText,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Truck,
+  RotateCcw,
+  MessageCircle,
+  TrendingUp,
+  History,
+  Copy,
+  RefreshCw,
+  Store,
+} from 'lucide-react';
+import { OrderStatus, PaymentStatus } from '@shared/types';
+import {
+  assertCustomerCanCancelOrder,
+  canCustomerCancelOrder,
+  getCustomerCancelBlockMessage,
+  getOrderStatusLabel,
+} from '@shared/utils/orderStatusTransitions';
 
 // Helper function to format shipping address
 const formatShippingAddress = (address: ShippingAddress | string): string => {
@@ -34,68 +57,16 @@ const formatShippingAddress = (address: ShippingAddress | string): string => {
 
   return 'Address not specified';
 };
-import {
-  ArrowLeft,
-  Package,
-  MapPin,
-  CreditCard,
-  Loader2,
-  Calendar,
-  FileText,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Truck,
-  RotateCcw,
-  MessageCircle,
-  Percent,
-  TrendingUp,
-  History,
-  Copy,
-  ExternalLink,
-  RefreshCw,
-  Store,
-} from 'lucide-react';
-import { OrderStatus, PaymentStatus } from '@shared/types';
-import {
-  assertCustomerCanCancelOrder,
-  assertValidOrderStatusTransition,
-  canCustomerCancelOrder,
-  getAllowedNextOrderStatuses,
-  getCustomerCancelBlockMessage,
-  getOrderStatusLabel,
-} from '@shared/utils/orderStatusTransitions';
 
 // Helper function to get status badge colors
 const getStatusBadgeColor = (status: OrderStatus) => {
   switch (status) {
     case 'pending':
-      return 'bg-amber-100 text-amber-700';
-    case 'processing':
-      return 'bg-blue-100 text-blue-700';
-    case 'dispatched':
-      return 'bg-indigo-100 text-indigo-700';
-    case 'ready_for_collection':
-      return 'bg-purple-100 text-purple-700';
-    case 'completed':
-      return 'bg-green-100 text-green-700';
+      return 'bg-journal-warn-bg text-journal-warn-text';
     case 'cancelled':
-      return 'bg-red-100 text-red-700';
+      return 'bg-journal-danger-bg text-journal-danger-text';
     default:
-      return 'bg-gray-100 text-gray-700';
-  }
-};
-
-const getAdminStatusOptionLabel = (status: OrderStatus): string => {
-  switch (status) {
-    case OrderStatus.DISPATCHED:
-      return 'Dispatched (on the way to pickup)';
-    case OrderStatus.READY_FOR_COLLECTION:
-      return 'Ready for collection';
-    case OrderStatus.COMPLETED:
-      return 'Collected / case closed';
-    default:
-      return getOrderStatusLabel(status);
+      return 'bg-journal-teal-tint text-journal-teal';
   }
 };
 
@@ -138,13 +109,13 @@ const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
 const getPaymentStatusBadgeColor = (status: PaymentStatus) => {
   switch (status) {
     case 'completed':
-      return 'bg-green-100 text-green-700';
+      return 'bg-journal-teal-tint text-journal-teal';
     case 'pending':
-      return 'bg-amber-100 text-amber-700';
+      return 'bg-journal-warn-bg text-journal-warn-text';
     case 'failed':
-      return 'bg-red-100 text-red-700';
+      return 'bg-journal-danger-bg text-journal-danger-text';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-journal-sand text-journal-body';
   }
 };
 
@@ -169,32 +140,20 @@ const formatPaymentMethod = (method?: string) => {
     .join(' ');
 };
 
-interface OrderDetailProps {
-  isAdmin?: boolean;
-}
-
-export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) => {
+export const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<OrderStatus | ''>('');
-  const [adminCancelReason, setAdminCancelReason] = useState('');
 
-  // Determine if this is an admin route by checking the pathname FIRST
-  // Calculate synchronously (not in useMemo) to ensure it's available immediately
-  // This must be calculated before hooks to ensure correct query selection
-  const isAdminRoute = location.pathname.startsWith('/admin/orders/');
-  const isAdmin = Boolean(isAdminProp || isAdminRoute);
   const { isAuthenticated } = useAppSelector((state) => state.auth);
-  
+
   // Get email from sessionStorage for guest orders (not URL for privacy)
   // Fallback to URL param for backward compatibility with old links
   const searchParams = new URLSearchParams(location.search);
   const guestEmail = sessionStorage.getItem('guestOrderEmail') || searchParams.get('email') || undefined;
-  
+
   // Returns for this order only (skip if admin) — avoids paginated global list staleness.
   // Polls independently of order-status polling below, which stops once the order is
   // COMPLETED — the exact status required for Quick Actions (Request/View Return) to show,
@@ -207,7 +166,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         }
       : undefined,
     {
-      skip: isAdmin || !id,
+      skip: !id,
       refetchOnMountOrArgChange: true,
       refetchOnFocus: true,
       refetchOnReconnect: true,
@@ -215,26 +174,9 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     }
   );
 
-  // Use admin API if admin, otherwise use regular order API
-  // CRITICAL: Use very strict skip conditions to prevent both queries from running
-  // When isAdmin is true, userQuery MUST be skipped (skip: true)
-  // When isAdmin is false, adminQuery MUST be skipped (skip: true)
-  // Calculate skip values synchronously to ensure they're evaluated before hooks run
-  const shouldSkipAdmin = !isAdmin || !id;
-  const shouldSkipUser = isAdmin || !id;
-
-  // Only call the appropriate query - use strict skip to prevent both from running
-  const adminQueryResult = useGetAdminOrderQuery(id || '', { 
-    skip: shouldSkipAdmin,
-  });
-  
-  // CRITICAL: This query should NEVER run when isAdmin is true
-  // Using strict skip condition - if isAdmin is true, skip MUST be true
-  // For guest orders, pass email in the query
-  // Always pass an object with id and optional email
   const orderQueryArg = {
     id: id || '',
-    email: guestEmail && !isAuthenticated ? guestEmail : undefined
+    email: guestEmail && !isAuthenticated ? guestEmail : undefined,
   };
 
   const [customerOrderPollMs, setCustomerOrderPollMs] = useState(0);
@@ -248,52 +190,35 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
     [customerOrderPollMs]
   );
 
-  const userQueryResult = useGetOrderQuery(orderQueryArg, {
-    skip: shouldSkipUser,
+  const orderQuery = useGetOrderQuery(orderQueryArg, {
+    skip: !id,
     ...customerOrderQueryOpts,
   });
 
   useEffect(() => {
-    if (isAdmin) return;
-    const status = userQueryResult.data?.order?.status;
+    const status = orderQuery.data?.order?.status;
     const needPoll = status != null && ACTIVE_ORDER_STATUSES.includes(status);
     const next = needPoll ? 30000 : 0;
     if (customerPollTargetRef.current !== next) {
       customerPollTargetRef.current = next;
       setCustomerOrderPollMs(next);
     }
-  }, [isAdmin, userQueryResult.data?.order?.status]);
+  }, [orderQuery.data?.order?.status]);
 
-  useEffect(() => {
-    if (!isAdmin || !selectedStatus) return;
-    const o = adminQueryResult.data?.order;
-    if (!o) return;
-    const allowed = getAllowedNextOrderStatuses(o.status, o.paymentStatus);
-    if (!allowed.includes(selectedStatus)) {
-      setSelectedStatus('');
-    }
-  }, [isAdmin, selectedStatus, adminQueryResult.data?.order]);
+  const data = orderQuery.data;
+  const isLoading = orderQuery.isLoading;
+  const error = orderQuery.error;
 
-  // Determine which data to use based on isAdmin
-  // Only use the query result that should be active
-  const activeQuery = isAdmin ? adminQueryResult : userQueryResult;
-  const data = activeQuery.data;
-  const isLoading = activeQuery.isLoading;
-  const error = activeQuery.error;
-
-  // Admin-only: Order status update mutation
-  const [updateOrderStatus, { isLoading: isUpdatingStatus }] = useUpdateOrderStatusMutation();
-  
   // Order cancellation mutation
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
   const { completePayment, isCompletingPayment } = useCompleteOrderPayment();
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 text-teal-600 animate-spin mx-auto mb-4" />
-          <Body className="text-gray-600">Loading order details...</Body>
+          <Loader2 className="h-10 w-10 text-journal-teal animate-spin mx-auto mb-4" />
+          <JournalBody className="!text-journal-muted">Loading order details...</JournalBody>
         </div>
       </div>
     );
@@ -301,27 +226,23 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
 
   if (error || !data?.order) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Card variant="md" className="text-center">
-          <Body className="text-red-600 mb-4">Order not found.</Body>
-          <Button variant="secondary" onClick={() => navigate(isAdmin ? '/admin/orders' : '/orders')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Orders
-          </Button>
-        </Card>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <JournalCard className="text-center py-10">
+          <JournalBody className="!text-journal-danger-text mb-4">Order not found.</JournalBody>
+          <JournalButton variant="secondary" onClick={() => navigate('/orders')} className="mx-auto">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to orders
+          </JournalButton>
+        </JournalCard>
       </div>
     );
   }
 
   const order = data.order;
 
-  const allowedNextOrderStatuses = isAdmin
-    ? getAllowedNextOrderStatuses(order.status, order.paymentStatus)
-    : [];
-
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
-    { label: isAdmin ? 'Admin Orders' : 'Orders', href: isAdmin ? '/admin/orders' : '/orders' },
+    { label: 'Orders', href: '/orders' },
     { label: `Order #${order._id.slice(-8).toUpperCase()}` },
   ];
 
@@ -433,6 +354,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         description: 'This order was cancelled',
         icon: XCircle,
         completed: true,
+        active: false,
         date: order.updatedAt,
         estimatedDate: null,
       });
@@ -453,7 +375,6 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   ];
 
   const handleReorder = () => {
-    // Reorder logic would go here
     navigate('/cart');
   };
 
@@ -471,26 +392,20 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
 
   const handleCancelConfirm = async () => {
     if (!id) return;
-    
+
     try {
       await cancelOrder({
         id,
         email: guestEmail,
       }).unwrap();
-      
+
       dispatch(showNotification({
         message: 'Order cancelled successfully',
         type: 'success',
       }));
-      
+
       setShowCancelModal(false);
-      
-      // Refetch order to get updated status
-      if (isAdmin) {
-        adminQueryResult.refetch();
-      } else {
-        userQueryResult.refetch();
-      }
+      orderQuery.refetch();
     } catch (error: any) {
       const errorInfo = getErrorInfo(error, 'Failed to cancel order');
       dispatch(showNotification({
@@ -506,80 +421,6 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
       message: 'Order ID copied to clipboard',
       type: 'success',
     }));
-  };
-
-  const handleStatusUpdateClick = () => {
-    if (!selectedStatus) {
-      dispatch(showNotification({
-        message: 'Please select a status',
-        type: 'warning',
-      }));
-      return;
-    }
-    if (selectedStatus === OrderStatus.CANCELLED && adminCancelReason.trim().length < 3) {
-      dispatch(showNotification({
-        message: 'Please enter a cancellation reason (at least 3 characters)',
-        type: 'warning',
-      }));
-      return;
-    }
-    const transition = assertValidOrderStatusTransition(
-      order.status,
-      selectedStatus as OrderStatus,
-      order.paymentStatus
-    );
-    if (!transition.ok) {
-      dispatch(showNotification({
-        message: transition.message,
-        type: 'error',
-      }));
-      return;
-    }
-    setShowStatusUpdateModal(true);
-  };
-
-  const handleStatusUpdateConfirm = async () => {
-    if (!selectedStatus || !id) return;
-
-    if (selectedStatus === OrderStatus.CANCELLED && adminCancelReason.trim().length < 3) {
-      dispatch(showNotification({
-        message: 'Please enter a cancellation reason (at least 3 characters)',
-        type: 'warning',
-      }));
-      return;
-    }
-
-    try {
-      const result = await updateOrderStatus({
-        id,
-        status: selectedStatus as OrderStatus,
-        cancelReason:
-          selectedStatus === OrderStatus.CANCELLED
-            ? adminCancelReason.trim()
-            : undefined,
-      }).unwrap();
-      setShowStatusUpdateModal(false);
-      setSelectedStatus('');
-      setAdminCancelReason('');
-      const successMessage =
-        selectedStatus === OrderStatus.CANCELLED && result.message
-          ? result.message
-          : selectedStatus === OrderStatus.CANCELLED && result.refundPending
-            ? 'Order cancelled. Refund will be processed within 3-5 business days.'
-            : 'Order status updated successfully!';
-      dispatch(showNotification({
-        message: successMessage,
-        type: 'success',
-      }));
-      await adminQueryResult.refetch();
-    } catch (error: any) {
-      setShowStatusUpdateModal(false);
-      const errorInfo = getErrorInfo(error, 'Failed to update order status');
-      dispatch(showNotification({
-        message: errorInfo.message,
-        type: 'error',
-      }));
-    }
   };
 
   // Check if order is eligible for return (within 30 days of collection)
@@ -609,13 +450,12 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
   };
 
   const needsPayment =
-    !isAdmin &&
     order.status !== OrderStatus.CANCELLED &&
     (order.paymentStatus === PaymentStatus.PENDING ||
       order.paymentStatus === PaymentStatus.FAILED);
 
-  const customerCanCancel = !isAdmin && canCustomerCancelOrder(order.status);
-  const customerCancelBlockedMessage = !isAdmin && !canCustomerCancelOrder(order.status)
+  const customerCanCancel = canCustomerCancelOrder(order.status);
+  const customerCancelBlockedMessage = !canCustomerCancelOrder(order.status)
     && order.status !== OrderStatus.CANCELLED
     && order.status !== OrderStatus.COMPLETED
     ? getCustomerCancelBlockMessage(order.status)
@@ -638,116 +478,106 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
       <Breadcrumb items={breadcrumbItems} />
 
       {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="small"
-        onClick={() => navigate(isAdmin ? '/admin/orders' : '/orders')}
-        className="mb-6"
+      <button
+        onClick={() => navigate('/orders')}
+        className="inline-flex items-center gap-1.5 text-[12px] font-sans font-semibold tracking-[0.08em] uppercase text-journal-teal hover:underline mb-6"
       >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Orders
-      </Button>
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to orders
+      </button>
 
       {/* Order Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 sm:mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 sm:mb-8 gap-4">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <H1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Order #{order._id.slice(-8).toUpperCase()}
-          </H1>
+          <div className="flex items-center gap-2 mb-2">
+            <PageHeading className="!text-[26px] sm:!text-[32px]">
+              Order #{order._id.slice(-8).toUpperCase()}
+            </PageHeading>
             <button
               onClick={handleCopyOrderId}
-              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1.5 text-journal-faint hover:text-journal-body transition-colors"
               title="Copy Order ID"
             >
-              <Copy className="h-4 w-4" />
+              <Copy className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="flex items-center gap-4 text-gray-600 flex-wrap">
+          <div className="flex items-center gap-4 text-journal-muted flex-wrap">
             <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            <Body className="text-sm">Placed on {formatDate(order.createdAt)}</Body>
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="text-[13px] font-sans">Placed on {formatDate(order.createdAt)}</span>
             </div>
             {order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED && (
-              <div className="flex items-center gap-2 text-teal-600">
-                <Truck className="h-4 w-4" />
-                <Body className="text-sm font-medium">Est. ready for pickup: {getEstimatedPickup()}</Body>
+              <div className="flex items-center gap-2 text-journal-teal">
+                <Truck className="h-3.5 w-3.5" />
+                <span className="text-[13px] font-sans font-medium">Est. ready for pickup: {getEstimatedPickup()}</span>
               </div>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3 mt-4 md:mt-0 flex-wrap">
-          <span
-            className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium ${getStatusBadgeColor(
-              order.status
-            )}`}
-          >
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={cn('px-3 py-1.5 rounded-full text-[12px] font-sans font-medium', getStatusBadgeColor(order.status))}>
             {getStatusLabel(order.status)}
           </span>
-          <span
-            className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium ${getPaymentStatusBadgeColor(
-              order.paymentStatus
-            )}`}
-          >
+          <span className={cn('px-3 py-1.5 rounded-full text-[12px] font-sans font-medium', getPaymentStatusBadgeColor(order.paymentStatus))}>
             Payment: {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
           </span>
         </div>
       </div>
 
       {needsPayment && (
-        <Card variant="md" className="mb-6 border-amber-200 bg-amber-50">
+        <JournalCard className="mb-6 bg-journal-warn-bg border-journal-warn-bg">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <Body className="font-medium text-amber-900 mb-1">Payment required</Body>
-              <Body className="text-sm text-amber-800">
+              <p className="font-sans font-medium text-[14px] text-journal-warn-text mb-1">Payment required</p>
+              <p className="text-[13px] font-sans text-journal-warn-text">
                 This order is waiting for payment. Complete checkout with PayChangu to confirm your
                 order.
-              </Body>
+              </p>
             </div>
-            <Button
+            <JournalButton
               variant="primary"
-              className="shrink-0 flex items-center justify-center"
+              className="shrink-0"
               onClick={handleCompletePayment}
               disabled={isCompletingPayment}
             >
               {isCompletingPayment ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                   Redirecting...
                 </>
               ) : (
                 <>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Complete Payment
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Complete payment
                 </>
               )}
-            </Button>
+            </JournalButton>
           </div>
-        </Card>
+        </JournalCard>
       )}
 
       {/* Progress Bar */}
       {order.status !== OrderStatus.CANCELLED && (
-        <Card variant="md" className="mb-6 sm:mb-8">
+        <JournalCard className="mb-6 sm:mb-8">
           <div className="flex items-center justify-between mb-2">
-            <Body className="text-sm font-medium text-gray-700">Order Progress</Body>
-            <Body className="text-sm font-bold text-teal-600">{progressPercentage}%</Body>
+            <span className="text-[13px] font-sans font-medium text-journal-body">Order progress</span>
+            <span className="text-[13px] font-sans font-bold text-journal-teal">{progressPercentage}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className="w-full bg-journal-hairline rounded-full h-2">
             <div
-              className="bg-teal-600 h-2.5 rounded-full transition-all duration-500"
+              className="bg-journal-teal h-2 rounded-full transition-all duration-500"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
-        </Card>
+        </JournalCard>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Order Items - Left Column (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Order Timeline */}
-          <Card variant="md">
-            <H1 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Order Status</H1>
+          <JournalCard>
+            <CardHeading className="!text-[19px] mb-6">Order status</CardHeading>
             <div className="space-y-4">
               {timelineSteps.map((step, index) => {
                 const Icon = step.icon;
@@ -760,102 +590,102 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                     {/* Timeline Line */}
                     <div className="flex flex-col items-center">
                       <div
-                        className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all ${
+                        className={cn(
+                          'flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border transition-colors',
                           isCompleted
-                            ? 'bg-green-100 border-green-500 text-green-600'
+                            ? 'bg-journal-teal-tint border-journal-teal-tint-border text-journal-teal'
                             : isActive
-                            ? 'bg-blue-100 border-blue-500 text-blue-600 animate-pulse'
-                            : 'bg-gray-100 border-gray-300 text-gray-400'
-                        }`}
+                            ? 'bg-journal-sand border-journal-ink text-journal-ink'
+                            : 'bg-journal-sand border-journal-hairline text-journal-faint'
+                        )}
                       >
                         {isActive ? (
-                          <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
+                          <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                         ) : (
-                          <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                         )}
                       </div>
                       {!isLast && (
                         <div
-                          className={`w-0.5 h-12 sm:h-16 mt-2 transition-colors ${
-                            isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                          }`}
+                          className={cn(
+                            'w-px h-12 sm:h-16 mt-2 transition-colors',
+                            isCompleted ? 'bg-journal-teal' : 'bg-journal-hairline'
+                          )}
                         />
                       )}
                     </div>
 
                     {/* Timeline Content */}
                     <div className="flex-1 pb-6 sm:pb-8 last:pb-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-start justify-between gap-2 mb-1 flex-wrap">
                         <div className="flex items-center gap-2 flex-1">
-                        <H1
-                            className={`text-base sm:text-lg font-semibold ${
-                            isCompleted || isActive ? 'text-gray-900' : 'text-gray-500'
-                          }`}
-                        >
-                          {step.label}
-                        </H1>
-                        {isCompleted && !isActive && (
-                            <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
+                          <h3 className={cn(
+                            'font-sans font-semibold text-[14px] sm:text-[15px]',
+                            isCompleted || isActive ? 'text-journal-ink' : 'text-journal-faint'
+                          )}>
+                            {step.label}
+                          </h3>
+                          {isCompleted && !isActive && (
+                            <CheckCircle className="h-4 w-4 text-journal-teal flex-shrink-0" />
                           )}
                         </div>
                         {step.estimatedDate && (
-                          <Body className="text-xs text-teal-600 font-medium whitespace-nowrap">
+                          <span className="text-[11px] font-sans text-journal-teal font-medium whitespace-nowrap">
                             Est: {step.estimatedDate}
-                          </Body>
+                          </span>
                         )}
                       </div>
-                      <Body
-                        className={`text-sm ${
-                          isCompleted || isActive ? 'text-gray-600' : 'text-gray-400'
-                        }`}
-                      >
+                      <p className={cn(
+                        'text-[13px] font-sans',
+                        isCompleted || isActive ? 'text-journal-muted' : 'text-journal-faint'
+                      )}>
                         {step.description}
-                      </Body>
+                      </p>
                       {step.date && (
-                        <Body className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <p className="text-[11px] font-sans text-journal-faint mt-1 flex items-center gap-1.5">
                           <Clock className="h-3 w-3" />
                           {formatDate(step.date)}
-                        </Body>
+                        </p>
                       )}
                       {isActive && (
-                        <Body className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                        <p className="text-[11px] font-sans text-journal-ink mt-1 flex items-center gap-1.5">
                           <TrendingUp className="h-3 w-3" />
                           In progress...
-                        </Body>
+                        </p>
                       )}
                     </div>
                   </div>
                 );
               })}
             </div>
-          </Card>
+          </JournalCard>
 
           {/* Activity Log */}
-          <Card variant="md">
+          <JournalCard>
             <div className="flex items-center gap-2 mb-4">
-              <History className="h-5 w-5 text-teal-600" />
-              <H1 className="text-lg sm:text-xl font-bold text-gray-900">Activity Log</H1>
+              <History className="h-4 w-4 text-journal-teal" />
+              <CardHeading className="!text-[19px]">Activity log</CardHeading>
             </div>
             <div className="space-y-3">
               {activityLog.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                  <div className="w-2 h-2 rounded-full bg-teal-500 mt-2 flex-shrink-0" />
+                <div key={index} className="flex items-start gap-3 pb-3 border-b border-journal-hairline last:border-0 last:pb-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-journal-teal mt-1.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <Body className="text-sm font-medium text-gray-900">{activity.action}</Body>
+                    <p className="text-[13px] font-sans font-medium text-journal-ink">{activity.action}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Body className="text-xs text-gray-500">{activity.user}</Body>
-                      <span className="text-gray-300">•</span>
-                      <Body className="text-xs text-gray-500">{formatDate(activity.date)}</Body>
+                      <span className="text-[11px] font-sans text-journal-faint">{activity.user}</span>
+                      <span className="text-journal-hairline">&#183;</span>
+                      <span className="text-[11px] font-sans text-journal-faint">{formatDate(activity.date)}</span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </Card>
+          </JournalCard>
 
           {/* Order Items */}
-          <Card variant="md">
-            <H1 className="text-xl font-bold text-gray-900 mb-6">Order Items</H1>
+          <JournalCard>
+            <CardHeading className="!text-[19px] mb-6">Order items</CardHeading>
             <div className="space-y-4">
               {order.items.map((item, index) => {
                 const product = item.product;
@@ -864,7 +694,7 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                 return (
                   <div
                     key={index}
-                    className="flex items-start gap-4 pb-4 border-b border-gray-200 last:border-0 last:pb-0"
+                    className="flex items-start gap-4 pb-4 border-b border-journal-hairline last:border-0 last:pb-0"
                   >
                     {product?.images && product.images.length > 0 ? (
                       <OptimizedImage
@@ -873,305 +703,204 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
                         alt={product.name || 'Product'}
                         width={80}
                         height={80}
-                        className="w-20 h-20 object-cover rounded-lg"
+                        className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-journal flex-shrink-0"
                         priority={false}
                       />
                     ) : (
-                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <Package className="h-8 w-8 text-gray-400" />
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-journal-sand rounded-journal flex items-center justify-center flex-shrink-0">
+                        <Package className="h-6 w-6 text-journal-faint" />
                       </div>
                     )}
                     <div className="flex-1">
-                      <Body className="font-semibold text-gray-900 mb-1">
+                      <p className="font-sans font-semibold text-[14px] text-journal-ink mb-1">
                         {isProductDeleted ? (
-                          <span className="text-gray-500 italic">Product no longer available</span>
+                          <span className="text-journal-faint italic">Product no longer available</span>
                         ) : (
                           product.name
                         )}
-                      </Body>
+                      </p>
                       {isProductDeleted && (
-                        <Body className="text-xs text-amber-600 mb-1">
+                        <p className="text-[11px] font-sans text-journal-warn-text mb-1">
                           This product has been removed from the catalog
-                        </Body>
+                        </p>
                       )}
-                      <div className="flex items-center justify-between">
-                        <Body className="text-sm text-gray-600">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <p className="text-[13px] font-sans text-journal-muted">
                           Quantity: {item.quantity} × MWK {item.price.toLocaleString()}
-                        </Body>
-                        <Body className="font-semibold text-gray-900">
+                        </p>
+                        <p className="font-sans font-semibold text-[13px] text-journal-ink">
                           MWK {(item.price * item.quantity).toLocaleString()}
-                        </Body>
+                        </p>
                       </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </Card>
+          </JournalCard>
         </div>
 
         {/* Order Summary - Right Column (1/3 width) */}
         <div className="lg:col-span-1 space-y-6">
           {/* Shipping Address */}
-          <Card variant="md">
+          <JournalCard>
             <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-5 w-5 text-teal-600" />
-              <H1 className="text-lg font-bold text-gray-900">Shipping Address</H1>
+              <MapPin className="h-4 w-4 text-journal-teal" />
+              <CardHeading className="!text-[17px]">Shipping address</CardHeading>
             </div>
-            <Body className="text-gray-700 whitespace-pre-line">
+            <JournalBody className="whitespace-pre-line">
               {formatShippingAddress(order.shippingAddress)}
-            </Body>
-          </Card>
+            </JournalBody>
+          </JournalCard>
 
           {/* Payment Information */}
-          <Card variant="md">
+          <JournalCard>
             <div className="flex items-center gap-2 mb-4">
-              <CreditCard className="h-5 w-5 text-teal-600" />
-              <H1 className="text-lg font-bold text-gray-900">Payment Information</H1>
+              <CreditCard className="h-4 w-4 text-journal-teal" />
+              <CardHeading className="!text-[17px]">Payment information</CardHeading>
             </div>
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <Body className="text-gray-600">Payment Method:</Body>
-                <Body className="font-medium text-gray-900">
+              <div className="flex justify-between text-[13px] font-sans">
+                <span className="text-journal-muted">Payment method:</span>
+                <span className="font-medium text-journal-ink">
                   {formatPaymentMethod(order.paymentMethod)}
-                </Body>
+                </span>
               </div>
-              <div className="flex justify-between">
-                <Body className="text-gray-600">Payment Status:</Body>
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${getPaymentStatusBadgeColor(
-                    order.paymentStatus
-                  )}`}
-                >
+              <div className="flex justify-between items-center text-[13px] font-sans">
+                <span className="text-journal-muted">Payment status:</span>
+                <span className={cn('px-2 py-1 rounded text-[11px] font-medium', getPaymentStatusBadgeColor(order.paymentStatus))}>
                   {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
                 </span>
               </div>
               {order.status === OrderStatus.CANCELLED && order.cancelReason ? (
-                <div className="pt-2 border-t border-gray-100">
-                  <Body className="text-gray-600 mb-1">Cancellation reason:</Body>
-                  <Body className="text-gray-900 text-sm">{order.cancelReason}</Body>
+                <div className="pt-2 border-t border-journal-hairline">
+                  <p className="text-journal-muted text-[12px] font-sans mb-1">Cancellation reason:</p>
+                  <p className="text-journal-ink text-[13px] font-sans">{order.cancelReason}</p>
                 </div>
               ) : null}
             </div>
-          </Card>
+          </JournalCard>
 
           {/* Order Summary */}
-          <Card variant="md">
-            <H1 className="text-lg font-bold text-gray-900 mb-4">Order Summary</H1>
+          <JournalCard>
+            <CardHeading className="!text-[17px] mb-4">Order summary</CardHeading>
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <Body className="text-gray-600">Subtotal:</Body>
-                <Body className="text-gray-900">MWK {order.totalAmount.toLocaleString()}</Body>
+              <div className="flex justify-between text-[13px] font-sans">
+                <span className="text-journal-muted">Subtotal:</span>
+                <span className="text-journal-ink">MWK {order.totalAmount.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between">
-                <Body className="text-gray-600">Shipping:</Body>
-                <Body className="text-gray-900">MWK 0</Body>
+              <div className="flex justify-between text-[13px] font-sans">
+                <span className="text-journal-muted">Shipping:</span>
+                <span className="text-journal-ink">MWK 0</span>
               </div>
-              <div className="border-t border-gray-200 pt-3">
-                <div className="flex justify-between">
-                  <Body className="text-lg font-bold text-gray-900">Total:</Body>
-                  <Body className="text-lg font-bold text-teal-600">
+              <div className="border-t border-journal-hairline pt-3">
+                <div className="flex justify-between items-baseline">
+                  <span className="font-sans font-semibold text-[15px] text-journal-ink">Total:</span>
+                  <span className="font-journal text-[22px] text-journal-ink">
                     MWK {order.totalAmount.toLocaleString()}
-                  </Body>
+                  </span>
                 </div>
               </div>
             </div>
-          </Card>
-
-          {/* Admin: Update Order Status */}
-          {isAdmin && (
-            <Card variant="md">
-              <H1 className="text-lg font-bold text-gray-900 mb-4">Update Order Status</H1>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current Status: <span className="font-bold text-teal-600">{order.status.toUpperCase()}</span>
-                  </label>
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => {
-                      const next = e.target.value as OrderStatus | '';
-                      setSelectedStatus(next);
-                      if (next !== OrderStatus.CANCELLED) {
-                        setAdminCancelReason('');
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
-                    disabled={allowedNextOrderStatuses.length === 0}
-                  >
-                    <option value="">Select new status...</option>
-                    {allowedNextOrderStatuses.map((status) => (
-                      <option key={status} value={status}>
-                        {getAdminStatusOptionLabel(status)}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedStatus === OrderStatus.CANCELLED && (
-                    <div className="mt-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Cancellation reason (required)
-                      </label>
-                      <Input
-                        value={adminCancelReason}
-                        onChange={(e) => setAdminCancelReason(e.target.value)}
-                        placeholder="e.g. Customer request — duplicate order"
-                        maxLength={500}
-                      />
-                      <Body className="text-xs text-gray-500 mt-1">
-                        Saved on the order and shown on Admin Refunds for PayChangu processing.
-                      </Body>
-                    </div>
-                  )}
-                  {order.paymentStatus !== PaymentStatus.COMPLETED && (
-                    <Body className="text-xs text-amber-800 mt-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      Payment is not complete. You can cancel this order or wait until payment clears
-                      before moving to Processing or any later pickup step.
-                    </Body>
-                  )}
-                  {allowedNextOrderStatuses.length === 0 ? (
-                    <Body className="text-xs text-gray-500 mt-2">
-                      No further status changes are available for this order.
-                    </Body>
-                  ) : (
-                    <Body className="text-xs text-gray-500 mt-2">
-                      Advance one step at a time: Processing → Dispatched → Ready for collection →
-                      Collected. Cancel is allowed until the order is collected.
-                    </Body>
-                  )}
-                </div>
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={handleStatusUpdateClick}
-                  disabled={
-                    !selectedStatus ||
-                    isUpdatingStatus ||
-                    allowedNextOrderStatuses.length === 0 ||
-                    (selectedStatus === OrderStatus.CANCELLED &&
-                      adminCancelReason.trim().length < 3)
-                  }
-                >
-                  {isUpdatingStatus ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Update Status
-                    </>
-                  )}
-                </Button>
-              </div>
-            </Card>
-          )}
+          </JournalCard>
 
           {/* Quick Actions */}
-          <Card variant="md">
-            <H1 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</H1>
+          <JournalCard>
+            <CardHeading className="!text-[17px] mb-4">Quick actions</CardHeading>
             <div className="space-y-2">
               {needsPayment && (
-                <Button
+                <JournalButton
                   variant="primary"
-                  className="w-full flex items-center justify-center"
+                  className="w-full"
                   onClick={handleCompletePayment}
                   disabled={isCompletingPayment}
                 >
                   {isCompletingPayment ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                       Redirecting...
                     </>
                   ) : (
                     <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Complete Payment
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Complete payment
                     </>
                   )}
-                </Button>
+                </JournalButton>
               )}
               {customerCanCancel && (
-                <Button
+                <JournalButton
                   variant="secondary"
-                  className="w-full flex items-center justify-center"
+                  className="w-full"
                   onClick={handleCancelOrder}
                   disabled={isCancelling}
                 >
                   {isCancelling ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Cancelling...
                     </>
                   ) : (
                     <>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancel Order
+                      <XCircle className="h-3.5 w-3.5" />
+                      Cancel order
                     </>
                   )}
-                </Button>
+                </JournalButton>
               )}
               {customerCancelBlockedMessage && (
-                <Body className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                <p className="text-[12px] font-sans text-journal-warn-text bg-journal-warn-bg rounded-journal px-3 py-2">
                   {customerCancelBlockedMessage}
-                </Body>
+                </p>
               )}
               {order.status === OrderStatus.COMPLETED && isEligibleForReturn() && !hasActiveReturn && (
-                <Button
+                <JournalButton
                   variant="primary"
-                  className="w-full flex items-center justify-center"
+                  className="w-full"
                   onClick={handleRequestReturn}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Request Return
-                </Button>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Request return
+                </JournalButton>
               )}
-              {hasActiveReturn && activeReturn && !isAdmin && (
-                <Link
-                  to={`/returns/${activeReturn._id}`}
-                  className="block"
-                >
-                  <Button
-                    variant="secondary"
-                    className="w-full flex items-center justify-center"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    View Return Request
-                  </Button>
+              {hasActiveReturn && activeReturn && (
+                <Link to={`/returns/${activeReturn._id}`} className="block">
+                  <JournalButton variant="secondary" className="w-full">
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    View return request
+                  </JournalButton>
                 </Link>
               )}
-              <Button
+              <JournalButton
                 variant="primary"
-                className="w-full flex items-center justify-center"
+                className="w-full"
                 onClick={handleReorder}
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reorder Items
-              </Button>
-            <Button
-              variant="secondary"
-                className="w-full flex items-center justify-center"
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reorder items
+              </JournalButton>
+              <JournalButton
+                variant="secondary"
+                className="w-full"
                 onClick={() => {
-                  // Contact support logic
                   window.location.href = 'mailto:support@autotek.mw?subject=Order ' + order._id.slice(-8).toUpperCase();
                 }}
               >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Contact Support
-              </Button>
-              <Button
-                variant="ghost"
-              className="w-full flex items-center justify-center"
-              disabled
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Download Invoice
-            </Button>
-            <Body className="text-xs text-gray-500 text-center mt-2">
-              Invoice generation coming soon
-            </Body>
+                <MessageCircle className="h-3.5 w-3.5" />
+                Contact support
+              </JournalButton>
+              <button
+                disabled
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 border border-journal-hairline text-journal-faint font-sans font-medium text-[11px] tracking-[0.1em] uppercase cursor-not-allowed"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Download invoice
+              </button>
+              <p className="text-[11px] font-sans text-journal-faint text-center mt-2">
+                Invoice generation coming soon
+              </p>
             </div>
-          </Card>
+          </JournalCard>
         </div>
       </div>
 
@@ -1186,23 +915,6 @@ export const OrderDetail = ({ isAdmin: isAdminProp = false }: OrderDetailProps) 
         cancelText="Keep Order"
         variant="warning"
         isLoading={isCancelling}
-      />
-
-      {/* Update Status Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showStatusUpdateModal}
-        onClose={() => setShowStatusUpdateModal(false)}
-        onConfirm={handleStatusUpdateConfirm}
-        title={selectedStatus === OrderStatus.CANCELLED ? 'Cancel Order' : 'Update Order Status'}
-        message={
-          selectedStatus === OrderStatus.CANCELLED
-            ? `Cancel this order for reason: "${adminCancelReason.trim()}"? If paid, a refund will be queued (3–5 business days) and stock restored.`
-            : `Are you sure you want to change the order status from "${getStatusLabel(order.status)}" to "${selectedStatus ? getStatusLabel(selectedStatus as OrderStatus) : ''}"?`
-        }
-        confirmText={selectedStatus === OrderStatus.CANCELLED ? 'Cancel Order' : 'Update Status'}
-        cancelText="Back"
-        variant={selectedStatus === OrderStatus.CANCELLED ? 'warning' : 'info'}
-        isLoading={isUpdatingStatus}
       />
     </div>
   );

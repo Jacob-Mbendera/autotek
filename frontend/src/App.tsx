@@ -25,12 +25,16 @@ const Cart = lazy(() => import('./pages/Cart').then(m => ({ default: m.Cart })))
 const Checkout = lazy(() => import('./pages/Checkout').then(m => ({ default: m.Checkout })));
 const Orders = lazy(() => import('./pages/Orders').then(m => ({ default: m.Orders })));
 const OrderDetail = lazy(() => import('./pages/OrderDetail').then(m => ({ default: m.OrderDetail })));
+const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail').then(m => ({ default: m.AdminOrderDetail })));
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
 const Returns = lazy(() => import('./pages/Returns').then(m => ({ default: m.Returns })));
 const ReturnDetail = lazy(() => import('./pages/ReturnDetail').then(m => ({ default: m.ReturnDetail })));
+const AdminReturnDetail = lazy(() => import('./pages/admin/AdminReturnDetail').then(m => ({ default: m.AdminReturnDetail })));
 const RequestReturn = lazy(() => import('./pages/RequestReturn').then(m => ({ default: m.RequestReturn })));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess').then(m => ({ default: m.PaymentSuccess })));
 const PaymentCancel = lazy(() => import('./pages/PaymentCancel').then(m => ({ default: m.PaymentCancel })));
+const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })));
+const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })));
 
 // Lazy load admin pages
 const AdminDashboard = lazy(() => import('./pages/admin').then(m => ({ default: m.AdminDashboard })));
@@ -149,7 +153,15 @@ function App() {
             </Layout>
           }
         />
-        
+        <Route
+          path="/compare"
+          element={
+            <Layout>
+              <CompareProducts />
+            </Layout>
+          }
+        />
+
         {/* Protected routes with layout */}
         <Route
           path="/wishlist"
@@ -289,7 +301,23 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
+        <Route
+          path="/terms"
+          element={
+            <Layout>
+              <Terms />
+            </Layout>
+          }
+        />
+        <Route
+          path="/privacy"
+          element={
+            <Layout>
+              <Privacy />
+            </Layout>
+          }
+        />
+
         {/* Admin routes */}
         <Route
           path="/admin/dashboard"
@@ -406,7 +434,7 @@ function App() {
           element={
             <ProtectedRoute adminOnly>
               <AdminLayout>
-                <OrderDetail isAdmin={true} />
+                <AdminOrderDetail />
               </AdminLayout>
             </ProtectedRoute>
           }
@@ -446,7 +474,7 @@ function App() {
           element={
             <ProtectedRoute adminOnly>
               <AdminLayout>
-                <ReturnDetail isAdmin />
+                <AdminReturnDetail />
               </AdminLayout>
             </ProtectedRoute>
           }

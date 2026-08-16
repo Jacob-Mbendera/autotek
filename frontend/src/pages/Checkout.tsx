@@ -15,11 +15,9 @@ import { useReconcilePendingPaychanguOrder } from '../hooks/useReconcilePendingP
 import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
 import { UserRole, PaymentStatus } from '@shared/types';
 import type { PaymentMethod } from '../../../shared/types';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { H1, Body } from '../components/ui/Typography';
 import { DeliveryLocationSelector } from '../components/DeliveryLocationSelector';
+import { JournalCard, JournalButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { cn } from '../utils/cn';
 import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil, Smartphone, Building2, Shield, Lock } from 'lucide-react';
 
 export const Checkout = () => {
@@ -29,7 +27,7 @@ export const Checkout = () => {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const { shouldBlockCheckout, isCheckingPayment } = useReconcilePendingPaychanguOrder();
-  
+
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
   const [initiatePayment, { isLoading: isInitiatingPayment }] = useInitiatePaymentMutation();
   const { completePayment, isCompletingPayment } = useCompleteOrderPayment();
@@ -65,7 +63,7 @@ export const Checkout = () => {
 
     return '';
   };
-  
+
   // Guest information (only if not authenticated)
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
@@ -73,14 +71,14 @@ export const Checkout = () => {
   const [createAccount, setCreateAccount] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(
     user?.address && typeof user.address === 'object' ? user.address : null
   );
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paychangu' as PaymentMethod);
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
-  
+
   const isLoading = isCreatingOrder || isInitiatingPayment || isCompletingPayment;
 
   useEffect(() => {
@@ -92,13 +90,13 @@ export const Checkout = () => {
       navigate('/admin/dashboard', { replace: true });
     }
   }, [user, dispatch, navigate]);
-  
+
   // Calculate final total with discount
   const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
 
   // Checkout steps
   const CHECKOUT_STEPS = [
-    { id: 1, name: 'Shipping Info', icon: MapPin },
+    { id: 1, name: 'Shipping', icon: MapPin },
     { id: 2, name: 'Payment', icon: CreditCard },
     { id: 3, name: 'Review', icon: CheckCircle },
   ];
@@ -282,9 +280,9 @@ export const Checkout = () => {
       if (orderResult.token && orderResult.user) {
         dispatch(setUser({ user: orderResult.user }));
         broadcastClientSync('auth');
-        dispatch(showNotification({ 
-          message: 'Account created successfully! You are now logged in.', 
-          type: 'success' 
+        dispatch(showNotification({
+          message: 'Account created successfully! You are now logged in.',
+          type: 'success'
         }));
       }
 
@@ -301,7 +299,7 @@ export const Checkout = () => {
         const frontendBaseUrl = getResolvedFrontendBaseUrl();
         const returnUrl = `${frontendBaseUrl}/payment/success?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
         const cancelUrl = `${frontendBaseUrl}/payment/cancel?orderId=${orderResult.order._id}${!orderResult.user ? `&email=${encodeURIComponent(emailForUrl)}` : ''}`;
-        
+
         const paymentResult = await initiatePayment({
           orderId: orderResult.order._id,
           paymentMethod: paymentMethod as PaymentMethod,
@@ -340,115 +338,115 @@ export const Checkout = () => {
 
   if (cart.items.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Card variant="md" className="text-center">
-          <ShoppingCart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <H1 className="text-2xl mb-2">Your cart is empty</H1>
-          <Body className="text-gray-600 mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <JournalCard className="text-center py-16">
+          <ShoppingCart className="h-12 w-12 text-journal-faint mx-auto mb-4" />
+          <CardHeading className="!text-[22px] mb-2">Your cart is empty</CardHeading>
+          <JournalBody className="!text-journal-muted mb-6">
             Add some products to your cart before checkout.
-          </Body>
-          <Button variant="primary" onClick={() => navigate('/products')}>
-            Browse Products
-          </Button>
-        </Card>
+          </JournalBody>
+          <JournalButton variant="primary" onClick={() => navigate('/products')} className="mx-auto">
+            Browse products
+          </JournalButton>
+        </JournalCard>
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <H1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</H1>
+      <PageHeading className="!text-[32px] sm:!text-[38px] mb-8">Checkout</PageHeading>
 
       {shouldBlockCheckout && (
-        <Card variant="md" className="mb-6 bg-amber-50 border-amber-200">
-          <Body className="text-sm text-amber-800">
+        <JournalCard className="mb-6 bg-journal-warn-bg border-journal-warn-bg">
+          <JournalBody className="!text-journal-warn-text">
             Confirming your recent payment attempt. Please wait a moment before placing another order.
-          </Body>
-        </Card>
+          </JournalBody>
+        </JournalCard>
       )}
 
       {!isAuthenticated && (
-        <Card variant="md" className="mb-6 bg-blue-50 border-blue-200">
+        <JournalCard className="mb-6 bg-journal-teal-tint border-journal-teal-tint-border">
           <div className="flex items-start gap-3">
             <div className="flex-1">
-              <H1 className="text-lg font-semibold text-gray-900 mb-2">Guest Checkout</H1>
-              <Body className="text-sm text-gray-600 mb-4">
+              <CardHeading className="!text-[18px] mb-2">Guest checkout</CardHeading>
+              <JournalBody className="!text-journal-body mb-4">
                 You're checking out as a guest. You can create an account after placing your order for faster checkout next time.
-              </Body>
+              </JournalBody>
               <div className="space-y-3">
-                <Input
-                  label="Full Name"
+                <JournalInput
+                  label="Full name"
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
                   required
                   placeholder="Enter your full name"
-                  icon={User}
                 />
-                <Input
-                  label="Email Address"
+                <JournalInput
+                  label="Email address"
                   type="email"
                   value={guestEmail}
                   onChange={(e) => setGuestEmail(e.target.value)}
                   required
                   placeholder="Enter your email"
-                  icon={Mail}
                 />
-                <Input
-                  label="Phone Number"
+                <JournalInput
+                  label="Phone number"
                   value={guestPhone}
                   onChange={(e) => setGuestPhone(e.target.value)}
                   required
                   placeholder="+265XXXXXXXXX or 0XXXXXXXXX"
-                  icon={Phone}
                 />
               </div>
             </div>
           </div>
-        </Card>
+        </JournalCard>
       )}
 
       {/* Progress Indicator */}
-      <Card variant="md" className="mb-8">
+      <JournalCard className="mb-8">
         <div className="flex items-center justify-between">
           {CHECKOUT_STEPS.map((step, index) => {
             const isActive = currentStep >= step.id;
             const isCompleted = currentStep > step.id;
             const StepIcon = step.icon;
-            
+
             return (
               <Fragment key={step.id}>
                 <div className="flex items-center">
-                  <div className={`rounded-full p-3 transition-all ${
-                    isActive ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    <StepIcon className="h-5 w-5" />
+                  <div className={cn(
+                    'rounded-full p-2.5 transition-colors',
+                    isActive ? 'bg-journal-ink text-journal-bone' : 'bg-journal-sand text-journal-faint'
+                  )}>
+                    <StepIcon className="h-4 w-4" />
                   </div>
-                  <span className={`ml-3 text-sm font-medium ${
-                    isActive ? 'text-teal-600' : 'text-gray-500'
-                  }`}>
+                  <span className={cn(
+                    'ml-2.5 text-[13px] font-sans font-medium hidden sm:inline',
+                    isActive ? 'text-journal-ink' : 'text-journal-faint'
+                  )}>
                     {step.name}
                   </span>
                 </div>
                 {index < CHECKOUT_STEPS.length - 1 && (
-                  <div className={`flex-1 h-1 mx-4 transition-all ${
-                    isCompleted ? 'bg-teal-500' : 'bg-gray-200'
-                  }`} />
+                  <div className={cn(
+                    'flex-1 h-px mx-3 sm:mx-4 transition-colors',
+                    isCompleted ? 'bg-journal-ink' : 'bg-journal-hairline'
+                  )} />
                 )}
               </Fragment>
             );
           })}
         </div>
-      </Card>
+      </JournalCard>
 
       <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column - Order Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Step 1: Shipping Address */}
           {currentStep === 1 && (
-            <Card variant="md">
+            <JournalCard>
               <div className="flex items-center gap-2 mb-4">
-                <MapPin className="h-5 w-5 text-teal-600" />
-                <H1 className="text-xl">Shipping Address</H1>
+                <MapPin className="h-4 w-4 text-journal-teal" />
+                <CardHeading className="!text-[19px]">Shipping address</CardHeading>
               </div>
               <div>
                 <DeliveryLocationSelector
@@ -459,122 +457,116 @@ export const Checkout = () => {
                 />
               </div>
               <div className="mt-6 flex justify-end">
-                <Button
+                <JournalButton
                   type="button"
                   variant="primary"
                   onClick={handleContinue}
                 >
                   Continue
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </JournalButton>
               </div>
-            </Card>
+            </JournalCard>
           )}
 
           {/* Step 2: Payment Method */}
           {currentStep === 2 && (
-            <Card variant="md">
+            <JournalCard>
               <div className="flex items-center gap-2 mb-6">
-                <CreditCard className="h-5 w-5 text-teal-600" />
-                <H1 className="text-xl">Payment Method</H1>
+                <CreditCard className="h-4 w-4 text-journal-teal" />
+                <CardHeading className="!text-[19px]">Payment method</CardHeading>
               </div>
 
               {/* PayChangu Payment Section */}
-              <div className="border-2 border-blue-200 rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-white">
+              <div className="border border-journal-hairline rounded-journal overflow-hidden">
                 {/* PayChangu Header */}
-                <div className="bg-white px-6 py-5 border-b-2 border-blue-100">
-                  <div className="flex items-center justify-between">
+                <div className="bg-journal-sand px-5 py-4 border-b border-journal-hairline">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-4">
                       <img
                         src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771401/autotek/payment%20methods/PayChangu_Logo-04_blue-DXGspjyy_zgdgpp.png"
                         alt="PayChangu"
-                        className="h-10 w-auto"
+                        className="h-8 w-auto"
                       />
-                      <div className="border-l border-gray-300 pl-4">
-                        <p className="text-gray-700 text-sm font-medium">Modern online payments for Malawi</p>
+                      <div className="border-l border-journal-hairline pl-4">
+                        <p className="text-journal-body text-[13px] font-sans font-medium">Modern online payments for Malawi</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full">
-                      <Shield className="h-4 w-4 text-green-600" />
-                      <span className="text-green-700 text-xs font-medium">Secure</span>
+                    <div className="flex items-center gap-1.5 bg-journal-teal-tint border border-journal-teal-tint-border px-3 py-1 rounded-full">
+                      <Shield className="h-3.5 w-3.5 text-journal-teal" />
+                      <span className="text-journal-teal text-[11px] font-sans font-medium">Secure</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Methods Grid */}
-                <div className="p-6">
-                  <label className="flex items-start cursor-pointer group">
+                <div className="p-5">
+                  <label className="flex items-start cursor-pointer">
                     <input
                       type="radio"
                       name="paymentMethod"
                       value={PAYMENT_METHOD_PAYCHANGU}
                       checked={paymentMethod === PAYMENT_METHOD_PAYCHANGU}
                       onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="mt-1 w-4 h-4 text-journal-teal border-journal-input-border focus:ring-journal-teal"
                     />
                     <div className="ml-4 flex-1">
-                      <p className="text-sm text-gray-600 mb-4">
+                      <p className="text-[13px] font-sans text-journal-muted mb-4">
                         Choose from multiple secure payment options:
                       </p>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                         {/* Cards */}
-                        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                        <div className="bg-white border border-journal-hairline rounded-journal p-4 hover:border-journal-ink transition-colors">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                              <CreditCard className="h-5 w-5 text-blue-600" />
+                            <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                              <CreditCard className="h-4 w-4 text-journal-teal" />
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900 text-sm">Cards</h4>
-                            </div>
+                            <h4 className="font-sans font-semibold text-journal-ink text-[13px]">Cards</h4>
                           </div>
-                          <p className="text-xs text-gray-600">Visa, Mastercard</p>
-                          <div className="mt-2 flex gap-1.5">
-                            <div className="px-2 py-0.5 bg-blue-50 rounded text-xs font-medium text-blue-700">Visa</div>
-                            <div className="px-2 py-0.5 bg-blue-50 rounded text-xs font-medium text-blue-700">Mastercard</div>
+                          <p className="text-[12px] font-sans text-journal-muted">Visa, Mastercard</p>
+                          <div className="mt-2 flex gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 bg-journal-sand rounded text-[11px] font-sans font-medium text-journal-body">Visa</span>
+                            <span className="px-2 py-0.5 bg-journal-sand rounded text-[11px] font-sans font-medium text-journal-body">Mastercard</span>
                           </div>
                         </div>
 
                         {/* Mobile Money */}
-                        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                        <div className="bg-white border border-journal-hairline rounded-journal p-4 hover:border-journal-ink transition-colors">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-green-100 rounded-lg">
-                              <Smartphone className="h-5 w-5 text-green-600" />
+                            <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                              <Smartphone className="h-4 w-4 text-journal-teal" />
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900 text-sm">Mobile Money</h4>
-                            </div>
+                            <h4 className="font-sans font-semibold text-journal-ink text-[13px]">Mobile money</h4>
                           </div>
-                          <p className="text-xs text-gray-600">Instant mobile payments</p>
-                          <div className="mt-2 flex gap-1.5">
-                            <div className="px-2 py-0.5 bg-red-50 rounded text-xs font-medium text-red-700">Airtel</div>
-                            <div className="px-2 py-0.5 bg-blue-50 rounded text-xs font-medium text-blue-700">TNM</div>
+                          <p className="text-[12px] font-sans text-journal-muted">Instant mobile payments</p>
+                          <div className="mt-2 flex gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 bg-journal-sand rounded text-[11px] font-sans font-medium text-journal-body">Airtel</span>
+                            <span className="px-2 py-0.5 bg-journal-sand rounded text-[11px] font-sans font-medium text-journal-body">TNM</span>
                           </div>
                         </div>
 
                         {/* Bank Transfer */}
-                        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                        <div className="bg-white border border-journal-hairline rounded-journal p-4 hover:border-journal-ink transition-colors">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-purple-100 rounded-lg">
-                              <Building2 className="h-5 w-5 text-purple-600" />
+                            <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                              <Building2 className="h-4 w-4 text-journal-teal" />
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900 text-sm">Bank Transfer</h4>
-                            </div>
+                            <h4 className="font-sans font-semibold text-journal-ink text-[13px]">Bank transfer</h4>
                           </div>
-                          <p className="text-xs text-gray-600">Direct bank payment</p>
+                          <p className="text-[12px] font-sans text-journal-muted">Direct bank payment</p>
                           <div className="mt-2">
-                            <div className="px-2 py-0.5 bg-purple-50 rounded text-xs font-medium text-purple-700">All Major Banks</div>
+                            <span className="px-2 py-0.5 bg-journal-sand rounded text-[11px] font-sans font-medium text-journal-body">All major banks</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Security Notice */}
-                      <div className="flex items-start gap-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <Lock className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex items-start gap-2 bg-journal-sand rounded-journal p-3">
+                        <Lock className="h-3.5 w-3.5 text-journal-body mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="text-xs text-gray-700 font-medium">256-bit SSL Encryption</p>
-                          <p className="text-xs text-gray-600 mt-0.5">Your payment information is fully encrypted and secure. Licensed by Reserve Bank of Malawi.</p>
+                          <p className="text-[12px] font-sans text-journal-ink font-medium">256-bit SSL encryption</p>
+                          <p className="text-[12px] font-sans text-journal-muted mt-0.5">Your payment information is fully encrypted and secure. Licensed by Reserve Bank of Malawi.</p>
                         </div>
                       </div>
                     </div>
@@ -583,59 +575,57 @@ export const Checkout = () => {
               </div>
 
               <div className="mt-6 flex justify-between">
-                <Button
+                <JournalButton
                   type="button"
                   variant="secondary"
                   onClick={handleBack}
                 >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  <ArrowLeft className="h-3.5 w-3.5" />
                   Back
-                </Button>
-                <Button
+                </JournalButton>
+                <JournalButton
                   type="button"
                   variant="primary"
                   onClick={handleContinue}
                 >
                   Continue
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </JournalButton>
               </div>
-            </Card>
+            </JournalCard>
           )}
 
           {/* Step 3: Review */}
           {currentStep === 3 && (
             <div className="space-y-6">
-              <Card variant="md">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-teal-600" />
-                    <H1 className="text-xl">Review Your Order</H1>
-                  </div>
+              <JournalCard>
+                <div className="flex items-center gap-2 mb-4">
+                  <CheckCircle className="h-4 w-4 text-journal-teal" />
+                  <CardHeading className="!text-[19px]">Review your order</CardHeading>
                 </div>
 
                 {/* Order Items Summary */}
                 <div className="mb-6">
-                  <H1 className="text-lg font-semibold mb-3">Order Items</H1>
-                  <div className="space-y-3">
+                  <h3 className="font-sans font-semibold text-[14px] text-journal-ink mb-3">Order items</h3>
+                  <div className="space-y-2">
                     {cart.items.map((item) => (
-                      <div key={item.productId} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div key={item.productId} className="flex items-center gap-3 p-3 bg-journal-sand rounded-journal">
                         {item.image && (
                           <img
                             src={item.image}
                             alt="Product"
-                            className="w-16 h-16 object-cover rounded"
+                            className="w-14 h-14 object-cover rounded-journal"
                           />
                         )}
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-[13px] font-sans font-medium text-journal-ink">
                             Product ID: {item.productId.slice(0, 8)}...
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-[12px] font-sans text-journal-muted">
                             Qty: {item.quantity} × MWK {item.price.toLocaleString()}
                           </div>
                         </div>
-                        <div className="text-sm font-semibold text-gray-900">
+                        <div className="text-[13px] font-sans font-semibold text-journal-ink">
                           MWK {(item.quantity * item.price).toLocaleString()}
                         </div>
                       </div>
@@ -644,24 +634,22 @@ export const Checkout = () => {
                 </div>
 
                 {/* Shipping Address Review */}
-                <div className="mb-6 pb-6 border-b border-gray-200">
+                <div className="mb-6 pb-6 border-b border-journal-hairline">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-600" />
-                      <H1 className="text-lg font-semibold">Shipping Address</H1>
+                      <MapPin className="h-3.5 w-3.5 text-journal-body" />
+                      <h3 className="font-sans font-semibold text-[14px] text-journal-ink">Shipping address</h3>
                     </div>
-                    <Button
+                    <button
                       type="button"
-                      variant="secondary"
-                      size="sm"
                       onClick={handleEditShipping}
-                      className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200 hover:border-teal-300 px-3 py-1.5"
+                      className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-teal hover:underline"
                     >
-                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      <Pencil className="h-3 w-3" />
                       Edit
-                    </Button>
+                    </button>
                   </div>
-                  <Body className="text-sm text-gray-600">
+                  <JournalBody className="!text-journal-muted">
                     {shippingAddress?.customAddress
                       ? shippingAddress.town
                         ? `${shippingAddress.town} - ${shippingAddress.customAddress}`
@@ -669,84 +657,80 @@ export const Checkout = () => {
                       : shippingAddress?.town && shippingAddress?.landmark
                       ? `${shippingAddress.town}, ${shippingAddress.landmark}`
                       : 'No address provided'}
-                  </Body>
+                  </JournalBody>
                 </div>
 
                 {/* Payment Method Review */}
-                <div className="mb-6 pb-6 border-b border-gray-200">
+                <div className="mb-6 pb-6 border-b border-journal-hairline">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-gray-600" />
-                      <H1 className="text-lg font-semibold">Payment Method</H1>
+                      <CreditCard className="h-3.5 w-3.5 text-journal-body" />
+                      <h3 className="font-sans font-semibold text-[14px] text-journal-ink">Payment method</h3>
                     </div>
-                    <Button
+                    <button
                       type="button"
-                      variant="secondary"
-                      size="sm"
                       onClick={handleEditPayment}
-                      className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200 hover:border-teal-300 px-3 py-1.5"
+                      className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-teal hover:underline"
                     >
-                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      <Pencil className="h-3 w-3" />
                       Edit
-                    </Button>
+                    </button>
                   </div>
-                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center gap-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal p-3">
                     <img
                       src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771401/autotek/payment%20methods/PayChangu_Logo-04_blue-DXGspjyy_zgdgpp.png"
                       alt="PayChangu"
-                      className="h-7 w-auto flex-shrink-0"
+                      className="h-6 w-auto flex-shrink-0"
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-blue-900 text-sm">Secure Payment</p>
-                        <Shield className="h-4 w-4 text-green-600" />
+                        <p className="font-sans font-semibold text-journal-teal text-[13px]">Secure payment</p>
+                        <Shield className="h-3.5 w-3.5 text-journal-teal" />
                       </div>
-                      <p className="text-xs text-blue-700">Cards, Mobile Money & Bank Transfer available</p>
+                      <p className="text-[12px] font-sans text-journal-teal">Cards, mobile money & bank transfer available</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Applied Coupon */}
                 {cart.appliedCoupon && (
-                  <div className="mb-6 pb-6 border-b border-gray-200">
+                  <div className="mb-6 pb-6 border-b border-journal-hairline">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Percent className="h-4 w-4 text-green-600" />
-                        <H1 className="text-lg font-semibold">Applied Coupon</H1>
+                        <Percent className="h-3.5 w-3.5 text-journal-teal" />
+                        <h3 className="font-sans font-semibold text-[14px] text-journal-ink">Applied coupon</h3>
                       </div>
-                      <Button
+                      <button
                         type="button"
-                        variant="secondary"
-                        size="sm"
                         onClick={() => {
                           dispatch(removeCoupon());
-                          dispatch(showNotification({ 
-                            message: 'Coupon removed', 
-                            type: 'success' 
+                          dispatch(showNotification({
+                            message: 'Coupon removed',
+                            type: 'success'
                           }));
                         }}
-                        className="text-red-600 hover:text-red-700"
+                        className="inline-flex items-center gap-1.5 text-[12px] font-sans font-medium text-journal-danger-text hover:underline"
                       >
-                        <X className="h-4 w-4 mr-1" />
+                        <X className="h-3 w-3" />
                         Remove
-                      </Button>
+                      </button>
                     </div>
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="p-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal">
                       <div className="flex items-center justify-between">
                         <div>
-                          <Body className="text-sm font-medium text-green-900">
+                          <p className="text-[13px] font-sans font-medium text-journal-teal">
                             {cart.appliedCoupon.code}
-                          </Body>
-                          <Body className="text-xs text-green-700">
+                          </p>
+                          <p className="text-[12px] font-sans text-journal-teal">
                             {cart.appliedCoupon.type === 'percentage'
                               ? `${cart.appliedCoupon.value}% off`
                               : `MWK ${cart.appliedCoupon.value.toLocaleString()} off`
                             }
-                          </Body>
+                          </p>
                         </div>
-                        <Body className="text-sm font-semibold text-green-700">
+                        <p className="text-[13px] font-sans font-semibold text-journal-teal">
                           -MWK {cart.discount.toLocaleString()}
-                        </Body>
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -754,22 +738,22 @@ export const Checkout = () => {
 
                 {/* Navigation Buttons */}
                 <div className="flex justify-between">
-                  <Button
+                  <JournalButton
                     type="button"
                     variant="secondary"
                     onClick={handleBack}
                   >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    <ArrowLeft className="h-3.5 w-3.5" />
                     Back
-                  </Button>
+                  </JournalButton>
                 </div>
-              </Card>
+              </JournalCard>
             </div>
           )}
 
           {/* Optional Account Creation (for guests) - Show on Step 1 and Step 2 */}
           {!isAuthenticated && (currentStep === 1 || currentStep === 2) && (
-            <Card variant="md" className="bg-gray-50 border-gray-200">
+            <JournalCard className="bg-journal-sand">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -782,81 +766,79 @@ export const Checkout = () => {
                       setConfirmPassword('');
                     }
                   }}
-                  className="mt-1 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                  className="mt-1 h-4 w-4 text-journal-teal focus:ring-journal-teal border-journal-input-border rounded"
                 />
                 <div className="flex-1">
-                  <Body className="text-sm font-medium text-gray-900 mb-1">
+                  <p className="text-[13px] font-sans font-medium text-journal-ink mb-1">
                     Create an account for faster checkout next time
-                  </Body>
-                  <Body className="text-xs text-gray-600">
-                    {createAccount 
+                  </p>
+                  <p className="text-[12px] font-sans text-journal-muted">
+                    {createAccount
                       ? 'Enter a password to create your account'
                       : `We'll send you a password setup link to ${guestEmail || 'your email'} after your order is placed.`
                     }
-                  </Body>
+                  </p>
                 </div>
               </label>
-              
+
               {/* Password fields - shown when checkbox is checked */}
               {createAccount && (
-                <div className="mt-4 space-y-4 pt-4 border-t border-gray-200">
-                  <Input
+                <div className="mt-4 space-y-4 pt-4 border-t border-journal-hairline">
+                  <JournalInput
                     label="Password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required={createAccount}
                     placeholder="Enter your password"
-                    className="text-sm"
                   />
-                  <Input
-                    label="Confirm Password"
+                  <JournalInput
+                    label="Confirm password"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required={createAccount}
                     placeholder="Confirm your password"
-                    className="text-sm"
                   />
                   {password && confirmPassword && password !== confirmPassword && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <Body className="text-sm text-red-600">Passwords do not match</Body>
+                    <div className="p-3 bg-journal-danger-bg border border-journal-error-border rounded-journal">
+                      <p className="text-[13px] font-sans text-journal-danger-text">Passwords do not match</p>
                     </div>
                   )}
                   {password && password.length < 6 && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <Body className="text-sm text-amber-600">Password must be at least 6 characters long</Body>
+                    <div className="p-3 bg-journal-warn-bg border border-journal-warn-bg rounded-journal">
+                      <p className="text-[13px] font-sans text-journal-warn-text">Password must be at least 6 characters long</p>
                     </div>
                   )}
                 </div>
               )}
-            </Card>
+            </JournalCard>
           )}
 
           {/* Login Prompt for Guests - Show on Step 1 and Step 2 */}
           {!isAuthenticated && (currentStep === 1 || currentStep === 2) && (
-            <Card variant="md" className="bg-teal-50 border-teal-200">
-              <Body className="text-sm text-gray-700">
+            <JournalCard className="bg-journal-teal-tint border-journal-teal-tint-border">
+              <p className="text-[13px] font-sans text-journal-body">
                 Already have an account?{' '}
-                <Link to={`/login?returnUrl=/checkout`} className="text-teal-600 hover:text-teal-700 font-medium underline">
+                <Link to={`/login?returnUrl=/checkout`} className="text-journal-teal hover:underline font-medium">
                   Sign in
                 </Link>
                 {' '}for faster checkout and order tracking.
-              </Body>
-            </Card>
+              </p>
+            </JournalCard>
           )}
 
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="p-4 bg-journal-danger-bg border border-journal-error-border rounded-journal">
+              <p className="text-[13px] font-sans text-journal-danger-text">{error}</p>
             </div>
           )}
         </div>
 
         {/* Right Column - Order Summary */}
         <div className="lg:col-span-1">
-          <Card variant="md" className="sticky top-24">
-            <H1 className="text-xl font-bold mb-4">Order Summary</H1>
+          <JournalCard className="sticky top-24">
+            <CardHeading className="!text-[19px] mb-4">Order summary</CardHeading>
 
             {/* Cart Items */}
             <div className="space-y-3 mb-6">
@@ -866,14 +848,14 @@ export const Checkout = () => {
                     <img
                       src={item.image}
                       alt="Product"
-                      className="w-16 h-16 object-cover rounded"
+                      className="w-14 h-14 object-cover rounded-journal"
                     />
                   )}
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-[13px] font-sans font-medium text-journal-ink">
                       Product ID: {item.productId.slice(0, 8)}...
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-[12px] font-sans text-journal-muted">
                       Qty: {item.quantity} × MWK {item.price.toLocaleString()}
                     </div>
                   </div>
@@ -882,50 +864,49 @@ export const Checkout = () => {
             </div>
 
             {/* Totals */}
-            <div className="border-t border-gray-200 pt-4 space-y-2">
-              <div className="flex justify-between text-gray-600">
+            <div className="border-t border-journal-hairline pt-4 space-y-2">
+              <div className="flex justify-between text-journal-body text-[13px] font-sans">
                 <span>Subtotal</span>
                 <span>MWK {cart.totalAmount.toLocaleString()}</span>
               </div>
               {cart.discount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span className="flex items-center gap-1">
+                <div className="flex justify-between text-journal-teal text-[13px] font-sans">
+                  <span className="flex items-center gap-1.5">
                     <Percent className="h-3 w-3" />
                     Discount {cart.appliedCoupon?.code && `(${cart.appliedCoupon.code})`}
                   </span>
                   <span>-MWK {cart.discount.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-journal-body text-[13px] font-sans">
                 <span>Shipping</span>
                 <span>MWK 0</span>
               </div>
-              <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
-                <span>Total</span>
-                <span>MWK {finalTotal.toLocaleString()}</span>
+              <div className="flex justify-between items-baseline pt-3 border-t border-journal-hairline">
+                <span className="font-sans font-semibold text-[15px] text-journal-ink">Total</span>
+                <span className="font-journal text-[22px] text-journal-ink">MWK {finalTotal.toLocaleString()}</span>
               </div>
             </div>
 
             {/* Place Order Button - Only show on Review step (Step 3) */}
             {currentStep === 3 && (
-              <Button
+              <JournalButton
                 type="submit"
                 variant="primary"
-                size="default"
                 className="w-full mt-6"
                 disabled={isLoading || shouldBlockCheckout}
               >
                 {isLoading || isCheckingPayment ? (
-                  'Placing Order...'
+                  'Placing order...'
                 ) : (
                   <>
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    Place Order
+                    <CheckCircle className="h-4 w-4" />
+                    Place order
                   </>
                 )}
-              </Button>
+              </JournalButton>
             )}
-          </Card>
+          </JournalCard>
         </div>
       </form>
     </div>

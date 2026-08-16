@@ -7,13 +7,11 @@ import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
 import { getProductImageUrl } from '../utils/productImage';
 import { ProductCard } from '../components/ProductCard';
-import { Button } from '../components/ui/Button';
-import { H1, H2, Body } from '../components/ui/Typography';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { Card } from '../components/ui/Card';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { Heart, Trash2, ShoppingBag, Package, ShoppingCart, Loader2, 
-  TrendingUp, Banknote, BarChart3, Sparkles, Gift, Star, Award, AlertCircle } from 'lucide-react';
+import { JournalCard, JournalButton, PageHeading, CardHeading, JournalBody } from '../components/journal';
+import { Heart, Trash2, ShoppingBag, Package, ShoppingCart, Loader2,
+  TrendingUp, Banknote, BarChart3, AlertCircle } from 'lucide-react';
 
 export const Wishlist = () => {
   const dispatch = useAppDispatch();
@@ -133,168 +131,165 @@ export const Wishlist = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-journal-bone">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
 
         {/* Hero Section */}
-        <div className="mt-8 mb-8">
-          <Card variant="lg" className="bg-rose-50 border border-rose-100 shadow-sm">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-rose-100 border-2 border-rose-200 flex items-center justify-center">
-                  <Heart className="h-10 w-10 text-rose-500 fill-rose-500" />
-                </div>
-                <div>
-                  <H1 className="text-3xl font-bold mb-2 text-gray-900">My Wishlist</H1>
-                  <Body className="text-gray-600">
-                    {products.length} item{products.length !== 1 ? 's' : ''} saved • MWK {totalValue.toLocaleString()} total value
-                  </Body>
-                </div>
+        <div className="mt-8 mb-8 bg-white border border-journal-hairline p-6 sm:p-8 rounded-journal">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="h-16 w-16 rounded-full bg-journal-danger-bg border border-journal-error-border flex items-center justify-center flex-shrink-0">
+                <Heart className="h-8 w-8 text-journal-danger-text fill-journal-danger-text" />
               </div>
-              {products.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    variant="primary"
-                    size="default"
-                    onClick={handleMoveAllToCart}
-                    disabled={movingAllToCart}
-                  >
-                    {movingAllToCart ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Add All to Cart
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowClearModal(true)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Clear All
-                  </Button>
-                </div>
-              )}
+              <div>
+                <PageHeading className="!text-[28px] sm:!text-[32px] mb-1.5">My wishlist</PageHeading>
+                <p className="text-[14px] font-sans text-journal-muted">
+                  {products.length} item{products.length !== 1 ? 's' : ''} saved &#183; MWK {totalValue.toLocaleString()} total value
+                </p>
+              </div>
             </div>
-          </Card>
+            {products.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                <JournalButton
+                  variant="primary"
+                  onClick={handleMoveAllToCart}
+                  disabled={movingAllToCart}
+                >
+                  {movingAllToCart ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                      Add all to cart
+                    </>
+                  )}
+                </JournalButton>
+                <JournalButton
+                  variant="secondary"
+                  onClick={() => setShowClearModal(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear all
+                </JournalButton>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Statistics Cards */}
         {products.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {/* Total Value */}
-            <Card variant="md" className="bg-rose-50/80 border-rose-100">
+            <JournalCard className="bg-journal-danger-bg border-journal-error-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <Body className="text-gray-600 text-sm mb-1">Total Value</Body>
-                  <H2 className="text-2xl font-bold text-gray-900">MWK {totalValue.toLocaleString()}</H2>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-4 w-4 text-rose-500" />
-                    <Body className="text-sm text-rose-600 font-medium">{products.length} items</Body>
+                  <p className="text-[12px] font-sans text-journal-muted mb-1">Total value</p>
+                  <p className="font-journal text-[22px] text-journal-ink">MWK {totalValue.toLocaleString()}</p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <TrendingUp className="h-3.5 w-3.5 text-journal-danger-text" />
+                    <span className="text-[12px] font-sans font-medium text-journal-danger-text">{products.length} items</span>
                   </div>
                 </div>
-                <div className="h-16 w-16 bg-rose-100 rounded-full flex items-center justify-center">
-                  <Banknote className="h-8 w-8 text-rose-500" />
+                <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                  <Banknote className="h-6 w-6 text-journal-danger-text" />
                 </div>
               </div>
-            </Card>
+            </JournalCard>
 
             {/* Items Count */}
-            <Card variant="md" className="bg-gray-50 border-gray-200">
+            <JournalCard>
               <div className="flex items-center justify-between">
                 <div>
-                  <Body className="text-gray-600 text-sm mb-1">Saved Items</Body>
-                  <H2 className="text-2xl font-bold text-gray-900">{products.length}</H2>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
-                    <Body className="text-sm text-gray-600 font-medium">In wishlist</Body>
+                  <p className="text-[12px] font-sans text-journal-muted mb-1">Saved items</p>
+                  <p className="font-journal text-[22px] text-journal-ink">{products.length}</p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Heart className="h-3.5 w-3.5 text-journal-danger-text fill-journal-danger-text" />
+                    <span className="text-[12px] font-sans font-medium text-journal-body">In wishlist</span>
                   </div>
                 </div>
-                <div className="h-16 w-16 bg-rose-50 rounded-full flex items-center justify-center">
-                  <Heart className="h-8 w-8 text-rose-400 fill-rose-400" />
+                <div className="h-12 w-12 bg-journal-sand rounded-full flex items-center justify-center flex-shrink-0">
+                  <Heart className="h-6 w-6 text-journal-body" />
                 </div>
               </div>
-            </Card>
+            </JournalCard>
 
             {/* In Stock */}
-            <Card variant="md" className="bg-green-50 border-green-200">
+            <JournalCard className="bg-journal-teal-tint border-journal-teal-tint-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <Body className="text-gray-600 text-sm mb-1">In Stock</Body>
-                  <H2 className="text-2xl font-bold text-gray-900">{inStockCount}</H2>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Package className="h-4 w-4 text-green-600" />
-                    <Body className="text-sm text-green-600 font-medium">Available now</Body>
+                  <p className="text-[12px] font-sans text-journal-muted mb-1">In stock</p>
+                  <p className="font-journal text-[22px] text-journal-ink">{inStockCount}</p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Package className="h-3.5 w-3.5 text-journal-teal" />
+                    <span className="text-[12px] font-sans font-medium text-journal-teal">Available now</span>
                   </div>
                 </div>
-                <div className="h-16 w-16 bg-green-500/20 rounded-full flex items-center justify-center">
-                  <Package className="h-8 w-8 text-green-600" />
+                <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                  <Package className="h-6 w-6 text-journal-teal" />
                 </div>
               </div>
-            </Card>
+            </JournalCard>
 
             {/* Average Price */}
-            <Card variant="md" className="bg-purple-50 border-purple-200">
+            <JournalCard>
               <div className="flex items-center justify-between">
                 <div>
-                  <Body className="text-gray-600 text-sm mb-1">Avg. Price</Body>
-                  <H2 className="text-2xl font-bold text-gray-900">MWK {Math.round(averagePrice).toLocaleString()}</H2>
-                  <div className="flex items-center gap-1 mt-2">
-                    <BarChart3 className="h-4 w-4 text-purple-600" />
-                    <Body className="text-sm text-purple-600 font-medium">Per item</Body>
+                  <p className="text-[12px] font-sans text-journal-muted mb-1">Avg. price</p>
+                  <p className="font-journal text-[22px] text-journal-ink">MWK {Math.round(averagePrice).toLocaleString()}</p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <BarChart3 className="h-3.5 w-3.5 text-journal-body" />
+                    <span className="text-[12px] font-sans font-medium text-journal-body">Per item</span>
                   </div>
                 </div>
-                <div className="h-16 w-16 bg-purple-500/20 rounded-full flex items-center justify-center">
-                  <BarChart3 className="h-8 w-8 text-purple-600" />
+                <div className="h-12 w-12 bg-journal-sand rounded-full flex items-center justify-center flex-shrink-0">
+                  <BarChart3 className="h-6 w-6 text-journal-body" />
                 </div>
               </div>
-            </Card>
+            </JournalCard>
           </div>
         )}
 
         {/* Content */}
         {isLoading ? (
           <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-rose-100 border-t-rose-500 mb-4"></div>
-            <Body className="text-gray-600 text-lg">Loading wishlist...</Body>
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-journal-hairline border-t-journal-teal mb-4"></div>
+            <JournalBody className="!text-journal-muted">Loading wishlist...</JournalBody>
           </div>
         ) : error ? (
-          <Card variant="md" className="text-center py-16">
-            <div className="h-24 w-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Heart className="h-12 w-12 text-red-500" />
+          <JournalCard className="text-center py-16">
+            <div className="h-20 w-20 bg-journal-danger-bg rounded-full flex items-center justify-center mx-auto mb-6">
+              <Heart className="h-10 w-10 text-journal-danger-text" />
             </div>
-            <Body className="text-red-600 text-lg font-semibold mb-2">Error loading wishlist</Body>
-            <Body className="text-red-500">Please try again later</Body>
-          </Card>
+            <JournalBody className="!text-journal-danger-text !text-[16px] font-semibold mb-2">Error loading wishlist</JournalBody>
+            <JournalBody className="!text-journal-danger-text">Please try again later</JournalBody>
+          </JournalCard>
         ) : products.length === 0 ? (
-          <Card variant="md" className="text-center py-16">
-            <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Heart className="h-12 w-12 text-gray-400" />
+          <JournalCard className="text-center py-16">
+            <div className="h-20 w-20 bg-journal-sand rounded-full flex items-center justify-center mx-auto mb-6">
+              <Heart className="h-10 w-10 text-journal-faint" />
             </div>
-            <H2 className="text-gray-700 text-2xl font-bold mb-2">Your wishlist is empty</H2>
-            <Body className="text-gray-600 mb-6 max-w-md mx-auto">
+            <CardHeading className="!text-[24px] mb-2">Your wishlist is empty</CardHeading>
+            <JournalBody className="!text-journal-muted mb-6 max-w-md mx-auto">
               Start adding products you love to your wishlist. Save items for later and never miss out on your favorites!
-            </Body>
+            </JournalBody>
             <Link to="/products">
-              <Button variant="primary" className="flex items-center gap-2 mx-auto">
-                <ShoppingBag className="h-4 w-4" />
-                Browse Products
-              </Button>
+              <JournalButton variant="primary" className="mx-auto">
+                <ShoppingBag className="h-3.5 w-3.5" />
+                Browse products
+              </JournalButton>
             </Link>
-          </Card>
+          </JournalCard>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {products.map((product) => (
                 <div key={product._id} className="relative group">
                   <ProductCard product={product} onAddToCart={handleAddToCart} />
-                  <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-14 right-3 z-20 flex flex-col gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -302,14 +297,14 @@ export const Wishlist = () => {
                         handleAddToCart(product);
                       }}
                       disabled={addingToCart === product._id || product.status === 'out-of-stock' || product.stock === 0}
-                      className="bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-sm hover:bg-teal-50 hover:text-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-200"
+                      className="bg-white rounded-full p-2 shadow border border-journal-hairline hover:border-journal-ink text-journal-teal transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Move to cart"
                       title="Move to cart"
                     >
                       {addingToCart === product._id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        <ShoppingCart className="h-4 w-4" />
+                        <ShoppingCart className="h-3.5 w-3.5" />
                       )}
                     </button>
                     <button
@@ -318,11 +313,11 @@ export const Wishlist = () => {
                         e.stopPropagation();
                         handleRemove(product._id);
                       }}
-                      className="bg-white/95 backdrop-blur-sm rounded-full p-2.5 shadow-sm hover:bg-red-50 hover:text-red-600 transition-all border-2 border-gray-200"
+                      className="bg-white rounded-full p-2 shadow border border-journal-hairline hover:border-journal-ink text-journal-danger-text transition-colors"
                       aria-label="Remove from wishlist"
                       title="Remove from wishlist"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
@@ -331,14 +326,14 @@ export const Wishlist = () => {
 
             {/* Out of Stock Notice */}
             {outOfStockCount > 0 && (
-              <Card variant="md" className="bg-amber-50 border-2 border-amber-200 mb-8">
+              <JournalCard className="bg-journal-warn-bg border-journal-warn-bg mb-8">
                 <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
-                  <Body className="text-amber-800">
+                  <AlertCircle className="h-4 w-4 text-journal-warn-text flex-shrink-0" />
+                  <JournalBody className="!text-journal-warn-text">
                     <strong>{outOfStockCount}</strong> item{outOfStockCount !== 1 ? 's' : ''} in your wishlist {outOfStockCount === 1 ? 'is' : 'are'} currently out of stock.
-                  </Body>
+                  </JournalBody>
                 </div>
-              </Card>
+              </JournalCard>
             )}
           </>
         )}
