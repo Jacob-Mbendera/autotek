@@ -212,12 +212,13 @@ export const RequestPart = () => {
   );
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login?returnUrl=/request-part', { replace: true });
-      return;
-    }
-
-    if (user.role === UserRole.ADMIN) {
+    // Unauthenticated access is already handled by the route's <ProtectedRoute>
+    // wrapper, which redirects reactively once the auth bootstrap resolves.
+    // Redirecting here too (on an imperative navigate()) fires a real history
+    // push on the very first render — before that bootstrap has had a chance
+    // to populate `user` — bouncing even genuinely logged-in visitors to
+    // /login on any hard page load.
+    if (user?.role === UserRole.ADMIN) {
       dispatch(
         showNotification({
           message: 'Admin accounts cannot create customer part requests',

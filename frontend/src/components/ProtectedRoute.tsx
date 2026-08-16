@@ -16,8 +16,17 @@ export const ProtectedRoute = ({
   allowedRoles,
 }: ProtectedRouteProps) => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const isInitialized = useAppSelector((state) => state.auth.isInitialized);
   const user = useAppSelector((state) => state.auth.user);
   const location = useLocation();
+
+  // On a hard page load, isAuthenticated starts false until the app-root
+  // auth bootstrap has asked the server who the httpOnly cookie belongs to.
+  // Redirecting to login before that resolves would wrongly bounce a
+  // genuinely logged-in visitor. Render nothing until it settles.
+  if (!isInitialized && !guestAllowed) {
+    return null;
+  }
 
   if (!isAuthenticated && !guestAllowed) {
     // Preserve the current location as return URL
