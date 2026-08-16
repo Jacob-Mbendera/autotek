@@ -1,6 +1,20 @@
 # Current Work - AutoTek Development
 
-## Latest Update (July 19, 2026) - Product vehicle fitment Phase 3 implemented
+## Latest Update (August 16, 2026) - Client UI redesign Phase 1 & 2 complete
+
+### "The Garage Journal" client-facing redesign
+**Status**: Phase 1 (Home, Services, booking flow) and Phase 2 (Products, Product Detail, Cart, Wishlist, Checkout, Payment Success, Orders, Returns, Profile, Compare Products, Request Part, My Part Requests, Login, Sign Up) both completed — see [`CLIENT_UI_REDESIGN_STATUS_2026-08-16.md`](CLIENT_UI_REDESIGN_STATUS_2026-08-16.md) for the full decision-by-decision verification against code, and [`CLIENT_UI_REDESIGN_GAP_ANALYSIS_2026-08-14.md`](CLIENT_UI_REDESIGN_GAP_ANALYSIS_2026-08-14.md) for the scope decisions behind it.
+
+- All customer-facing pages restyled to the new journal design system; Admin section untouched by design.
+- Split `OrderDetail`/`ReturnDetail` into separate customer and admin components so the restyle can't leak into Admin.
+- Fixed a pre-existing dead `/compare` route (Products page "Compare" button had no route to land on).
+- Every Decision Log item (§8 of the gap analysis) verified against the live code — 10 of 11 pass exactly as decided, 1 shipped a functionally-equivalent variant (see status doc).
+
+**Next:** Decision 2 (dynamic delivery fee + admin settings) is the one item still deliberately deferred to the end of the whole redesign project — Cart/Checkout keep `MWK 0` until then.
+
+---
+
+## Previous Update (July 19, 2026) - Product vehicle fitment Phase 3 implemented
 
 ### Product fitment — match part requests to catalog
 **Status**: Phase 3 completed — see [`PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md`](../product-fitment/PRODUCT_FITMENT_IMPLEMENTATION_PLAN.md)
