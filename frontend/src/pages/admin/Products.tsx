@@ -71,6 +71,7 @@ export const AdminProducts = () => {
     compatibility: [] as ProductCompatibilityEntry[],
     fitmentStatus: 'none' as ProductFitmentStatus,
     status: 'available' as 'available' | 'out-of-stock',
+    badge: '' as '' | 'new' | 'sale' | 'featured',
     images: [] as File[],
   });
 
@@ -148,6 +149,7 @@ export const AdminProducts = () => {
         compatibility: product.compatibility || [],
         fitmentStatus: product.fitmentStatus || 'none',
         status: product.status,
+        badge: product.badge || '',
         images: [],
       });
     } else {
@@ -166,6 +168,7 @@ export const AdminProducts = () => {
         compatibility: [],
         fitmentStatus: 'none',
         status: 'available',
+        badge: '',
         images: [],
       });
     }
@@ -306,6 +309,7 @@ export const AdminProducts = () => {
         compatibility: formData.isUniversal ? [] : formData.compatibility,
         fitmentStatus: formData.fitmentStatus,
         status: formData.status,
+        badge: formData.badge || 'none',
         images: formData.images.length > 0 ? formData.images : undefined,
       };
 
@@ -1049,6 +1053,24 @@ export const AdminProducts = () => {
                 >
                   <option value="available">Available</option>
                   <option value="out-of-stock">Out of Stock</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Badge
+                </label>
+                <select
+                  value={formData.badge}
+                  onChange={(e) =>
+                    setFormData({ ...formData, badge: e.target.value as typeof formData.badge })
+                  }
+                  className="w-full px-4 py-3 bg-slate-900 border border-gray-700 rounded-lg text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                >
+                  <option value="">None</option>
+                  <option value="new">New</option>
+                  <option value="sale">Sale</option>
+                  <option value="featured">Featured</option>
                 </select>
               </div>
 

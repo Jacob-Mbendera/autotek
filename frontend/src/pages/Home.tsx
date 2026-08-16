@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useGetProductsQuery, useGetCategoriesQuery } from '../store/api/productApi';
 import { HeroHeading, SectionHeading, PullQuote, JournalBody, MonoLabel, Eyebrow } from '../components/journal';
 import { JournalButton, JournalLinkButton, JournalButtonGroup } from '../components/journal';
+import { ProductCard } from '../components/ProductCard';
 import { marketingImageUrl } from '../constants/cloudinaryAssets';
 import { testimonials } from '../data/testimonials';
 
@@ -45,6 +46,7 @@ const featuredQuote = testimonials.find((t) => t.id === 7) ?? testimonials[0];
 
 export const Home = () => {
   const { data: productsData } = useGetProductsQuery({ page: 1, limit: 1 });
+  const { data: featuredData } = useGetProductsQuery({ badge: 'featured', limit: 4 });
   const { data: categoriesData } = useGetCategoriesQuery();
 
   const partsCount = productsData?.pagination.total;
@@ -156,6 +158,23 @@ export const Home = () => {
           })}
         </div>
       </section>
+
+      {/* Featured products */}
+      {featuredData?.products && featuredData.products.length > 0 && (
+        <section className="max-w-[1280px] mx-auto px-4 sm:px-10">
+          <div className="pt-14 pb-6 flex items-baseline justify-between">
+            <Eyebrow>Featured products</Eyebrow>
+            <Link to="/products" className="text-[13px] font-sans text-journal-teal hover:underline">
+              View all &rarr;
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 pb-12">
+            {featuredData.products.map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Three ways AutoTek keeps you moving */}
       <section className="bg-journal-ink text-journal-bone px-4 sm:px-10 py-16">

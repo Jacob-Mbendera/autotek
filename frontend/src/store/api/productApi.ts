@@ -55,6 +55,7 @@ interface ProductsQueryParams {
   minPrice?: number;
   maxPrice?: number;
   status?: 'available' | 'out-of-stock';
+  badge?: 'new' | 'sale' | 'featured';
   stockStatus?: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
   sortBy?: 'price' | 'name' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
@@ -80,6 +81,7 @@ interface CreateProductRequest {
   compatibility?: ProductCompatibilityEntry[];
   fitmentStatus?: ProductFitmentStatus;
   status?: 'available' | 'out-of-stock';
+  badge?: 'new' | 'sale' | 'featured';
   images?: File[];
 }
 
@@ -176,6 +178,7 @@ export const productApi = baseApi.injectEndpoints({
         if (params.minPrice) searchParams.append('minPrice', params.minPrice.toString());
         if (params.maxPrice) searchParams.append('maxPrice', params.maxPrice.toString());
         if (params.status) searchParams.append('status', params.status);
+        if (params.badge) searchParams.append('badge', params.badge);
         if (params.stockStatus) searchParams.append('stockStatus', params.stockStatus);
         if (params.sortBy) searchParams.append('sortBy', params.sortBy);
         if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);

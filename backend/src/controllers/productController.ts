@@ -186,6 +186,7 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
     const {
       category,
       status,
+      badge,
       minPrice,
       maxPrice,
       search,
@@ -211,6 +212,10 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
 
     if (status) {
       query.status = status;
+    }
+
+    if (badge) {
+      query.badge = badge;
     }
 
     if (minPrice || maxPrice) {
@@ -404,6 +409,7 @@ export const createProduct = async (req: MulterRequest, res: Response): Promise<
       stock: Number(stock) || 0,
       supplier,
       status: req.body.status,
+      badge: req.body.badge === 'none' ? undefined : req.body.badge,
       images: allImages,
       ...fitmentFields,
     });
@@ -539,7 +545,14 @@ export const updateProduct = async (req: MulterRequest, res: Response): Promise<
       updateData.supplier = optionalTrimmedString(req.body.supplier);
     }
     if (req.body.status !== undefined) updateData.status = req.body.status;
-    if (req.body.badge !== undefined) updateData.badge = req.body.badge;
+    let unsetBadge = false;
+    if (req.body.badge !== undefined) {
+      if (req.body.badge === 'none') {
+        unsetBadge = true;
+      } else {
+        updateData.badge = req.body.badge;
+      }
+    }
     if (
       uploadedEntries.length > 0 ||
       imagesToDelete.length > 0 ||
@@ -548,7 +561,12 @@ export const updateProduct = async (req: MulterRequest, res: Response): Promise<
       updateData.images = updatedImages;
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateData, {
+    const mongoUpdate: Record<string, unknown> = { $set: updateData };
+    if (unsetBadge) {
+      mongoUpdate.$unset = { badge: '' };
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, mongoUpdate, {
       new: true,
       runValidators: true,
     });
