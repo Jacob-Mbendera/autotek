@@ -96,7 +96,7 @@ export const Header = () => {
 
       {/* Masthead */}
       <div className="border-b border-journal-ink">
-        <nav className="max-w-[1280px] mx-auto grid grid-cols-[minmax(0,1fr)_auto_minmax(max-content,auto)] items-center gap-3 px-4 sm:px-10 py-4 sm:py-5">
+        <nav className="max-w-[1280px] mx-auto grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-10 py-4 sm:py-5">
           {/* Desktop nav — left */}
           <div className="hidden lg:flex items-center gap-4 xl:gap-6">
             {navigation.map((item) => (
