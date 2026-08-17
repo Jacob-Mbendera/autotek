@@ -150,13 +150,14 @@ export const ReturnDetail = () => {
     });
 
     if (returnDoc.status === 'approved' || returnDoc.status === 'rejected' || returnDoc.status === 'completed') {
+      const wasApproved = returnDoc.status === 'approved' || returnDoc.status === 'completed';
       steps.push({
         status: returnDoc.status,
-        label: returnDoc.status === 'approved' ? 'Return Approved' : 'Return Rejected',
-        description: returnDoc.status === 'approved'
+        label: wasApproved ? 'Return Approved' : 'Return Rejected',
+        description: wasApproved
           ? 'Your return has been approved. Please ship the items back.'
           : 'Your return request was rejected.',
-        icon: returnDoc.status === 'approved' ? CheckCircle : XCircle,
+        icon: wasApproved ? CheckCircle : XCircle,
         completed: true,
         date: returnDoc.updatedAt,
       });
