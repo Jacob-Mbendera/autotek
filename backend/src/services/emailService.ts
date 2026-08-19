@@ -115,6 +115,13 @@ class EmailService {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
+        // Every call site awaits this inline in the request path (registration, checkout,
+        // order/service status updates, refunds...). Without these, a slow or unreachable
+        // SMTP server hangs the underlying HTTP request for minutes instead of failing fast
+        // into the try/catch each call site already has.
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
       });
 
       console.log(`Email service initialized: ${process.env.EMAIL_HOST}`);
