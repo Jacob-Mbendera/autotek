@@ -133,9 +133,9 @@ app.use('/api/geocoding', geocodingRoutes);
 app.use('/api/mechanic', mechanicRoutes);
 
 if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../../frontend/dist');
+  const distPath = path.join(__dirname, '../../../../frontend/dist');
   app.use(express.static(distPath));
-  app.get('*', (req, res) => {
+  app.get('/{*splat}', (req, res) => {
     if (req.path.startsWith('/api')) {
       res.status(404).json({
         message: 'Not found',

@@ -48,7 +48,7 @@ logger.add(
 
 // File transports (production only)
 if (!isDevelopment) {
-  const logsDir = path.join(__dirname, '../../logs');
+  const logsDir = path.join(__dirname, '../../../../logs');
 
   // Combined logs
   logger.add(
