@@ -10,6 +10,7 @@ import './paymentApi';
 import './adminApi';
 import './serviceApi';
 import './wishlistApi';
+import './cartApi';
 import './reviewApi';
 import './customOrderApi';
 import './couponApi';

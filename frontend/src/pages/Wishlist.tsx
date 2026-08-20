@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch } from '../store/types';
-import { addItem } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { useGetWishlistQuery, useRemoveFromWishlistMutation, useClearWishlistMutation } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -15,6 +15,7 @@ import { Heart, Trash2, ShoppingBag, Package, ShoppingCart, Loader2,
 
 export const Wishlist = () => {
   const dispatch = useAppDispatch();
+  const { addItem } = useCart();
   const [showClearModal, setShowClearModal] = useState(false);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [movingAllToCart, setMovingAllToCart] = useState(false);
@@ -69,15 +70,13 @@ export const Wishlist = () => {
   const handleAddToCart = async (product: any) => {
     setAddingToCart(product._id);
     try {
-      dispatch(
-        addItem({
-          productId: product._id,
-          productName: product.name,
-          price: product.price,
-          quantity: 1,
-          image: getProductImageUrl(product.images?.[0]),
-        })
-      );
+      await addItem({
+        productId: product._id,
+        productName: product.name,
+        price: product.price,
+        quantity: 1,
+        image: getProductImageUrl(product.images?.[0]),
+      });
       await removeFromWishlist(product._id).unwrap();
       dispatch(showNotification({ message: 'Product moved to cart!', type: 'success' }));
     } catch (error) {
@@ -98,15 +97,13 @@ export const Wishlist = () => {
       let movedCount = 0;
       for (const product of products) {
         if (product.status !== 'out-of-stock' && (product.stock || 0) > 0) {
-          dispatch(
-            addItem({
-              productId: product._id,
-              productName: product.name,
-              price: product.price,
-              quantity: 1,
-              image: getProductImageUrl(product.images?.[0]),
-            })
-          );
+          await addItem({
+            productId: product._id,
+            productName: product.name,
+            price: product.price,
+            quantity: 1,
+            image: getProductImageUrl(product.images?.[0]),
+          });
           await removeFromWishlist(product._id).unwrap();
           movedCount++;
         }

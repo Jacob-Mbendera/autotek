@@ -2,7 +2,8 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/types';
 import { useGetPaymentByOrderQuery } from '../store/api/paymentApi';
 import { useGetOrderQuery } from '../store/api/orderApi';
-import { clearCart, removeCoupon } from '../store/slices/cartSlice';
+import { removeCoupon } from '../store/slices/cartSlice';
+import { useCart } from './useCart';
 import { showNotification } from '../store/slices/uiSlice';
 import { PaymentStatus } from '@shared/types';
 import {
@@ -84,6 +85,7 @@ export function useReconcilePendingPaychanguOrder(
   const isCartMode = mode === 'cart';
 
   const dispatch = useAppDispatch();
+  const { clearCart } = useCart();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const reconciledRef = useRef(false);
   const gaveUpPollingRef = useRef(false);
@@ -126,7 +128,7 @@ export function useReconcilePendingPaychanguOrder(
     reconciledRef.current = true;
     gaveUpPollingRef.current = false;
     setIsCheckingPayment(false);
-    dispatch(clearCart());
+    void clearCart();
     dispatch(removeCoupon());
     clearPendingPaychanguOrder();
     broadcastClientSync('orders');
@@ -137,7 +139,7 @@ export function useReconcilePendingPaychanguOrder(
         type: 'success',
       })
     );
-  }, [dispatch]);
+  }, [dispatch, clearCart]);
 
   useEffect(() => {
     if (prevPendingIdRef.current !== pendingOrderId) {

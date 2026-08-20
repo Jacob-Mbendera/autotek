@@ -100,6 +100,20 @@ const cartSlice = createSlice({
         state.totalItems = totalItems;
       }
     },
+    // Like saveForLater, but takes the full item rather than looking it up in
+    // state.items — needed when the item actually lives in the server cart
+    // (logged-in users), since "saved for later" itself stays client-only.
+    addToSavedForLater: (state, action: PayloadAction<CartItem>) => {
+      if (!state.savedForLater) {
+        state.savedForLater = [];
+      }
+      const alreadySaved = state.savedForLater.some(
+        (item) => item.productId === action.payload.productId
+      );
+      if (!alreadySaved) {
+        state.savedForLater.push(action.payload);
+      }
+    },
     moveToCart: (state, action: PayloadAction<string>) => {
       // Ensure savedForLater exists (for migration from old cart state)
       if (!state.savedForLater) {
@@ -165,6 +179,7 @@ export const {
   updateQuantity,
   clearCart,
   saveForLater,
+  addToSavedForLater,
   moveToCart,
   updateItemNote,
   removeFromSaved,

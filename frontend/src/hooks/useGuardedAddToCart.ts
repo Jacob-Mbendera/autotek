@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/types';
-import { addItem, type CartItem } from '../store/slices/cartSlice';
+import type { CartItem } from '../store/slices/cartSlice';
+import { useCart } from './useCart';
 import { useGetOrderQuery, useGetOrdersQuery } from '../store/api/orderApi';
 import { showNotification } from '../store/slices/uiSlice';
 import { OrderStatus, PaymentStatus } from '@shared/types';
@@ -27,6 +28,7 @@ function isUnpaidPendingOrder(order: {
 
 export function useGuardedAddToCart() {
   const dispatch = useAppDispatch();
+  const { addItem } = useCart();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const { orderId: localPendingId, guestEmail: localPendingEmail } = getPendingPaychanguOrder();
   const hasFreshLocalPending = Boolean(localPendingId) && isPendingPaychanguOrderFresh();
@@ -77,7 +79,7 @@ export function useGuardedAddToCart() {
   const hasPendingUnpaidOrder = localOrderStillBlocks || hasPendingUnpaidFromApi;
 
   const guardedAddToCart = useCallback(
-    (item: CartItem, options?: { skipNotification?: boolean }) => {
+    async (item: CartItem, options?: { skipNotification?: boolean }) => {
       if (hasPendingUnpaidOrder) {
         dispatch(
           showNotification({
@@ -88,15 +90,15 @@ export function useGuardedAddToCart() {
         return false;
       }
 
-      dispatch(addItem(item));
+      const success = await addItem(item);
 
-      if (!options?.skipNotification) {
+      if (success && !options?.skipNotification) {
         dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
       }
 
-      return true;
+      return success;
     },
-    [dispatch, hasPendingUnpaidOrder]
+    [addItem, dispatch, hasPendingUnpaidOrder]
   );
 
   return { guardedAddToCart, hasPendingUnpaidOrder };

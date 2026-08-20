@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLoginMutation } from '../store/api/authApi';
-import { useAppDispatch } from '../store/types';
+import { useMergeCartMutation } from '../store/api/cartApi';
+import { useAppDispatch, useAppSelector } from '../store/types';
 import { setUser } from '../store/slices/authSlice';
+import { clearCart } from '../store/slices/cartSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { broadcastClientSync } from '../utils/crossTabSync';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -16,6 +18,8 @@ export const Login = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const [login, { isLoading }] = useLoginMutation();
+  const [mergeCart] = useMergeCartMutation();
+  const guestCart = useAppSelector((state) => state.cart);
 
   const returnUrl = searchParams.get('returnUrl');
 
@@ -32,6 +36,23 @@ export const Login = () => {
     try {
       const result = await login(formData).unwrap();
       dispatch(setUser({ user: result.user }));
+
+      if (guestCart.items.length > 0) {
+        try {
+          await mergeCart({
+            items: guestCart.items.map((i) => ({
+              productId: i.productId,
+              quantity: i.quantity,
+              price: i.price,
+            })),
+          }).unwrap();
+          dispatch(clearCart());
+          broadcastClientSync('cart');
+        } catch {
+          dispatch(showNotification({ message: 'Could not sync your cart, but you are logged in.', type: 'warning' }));
+        }
+      }
+
       broadcastClientSync('auth');
       dispatch(showNotification({ message: 'Login successful', type: 'success' }));
       const redirectTo = getSafeRedirectPath(returnUrl, '/');

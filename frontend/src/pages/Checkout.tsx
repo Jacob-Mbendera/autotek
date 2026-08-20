@@ -4,7 +4,8 @@ import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation, useGetOrdersQuery } from '../store/api/orderApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
-import { clearCart, removeCoupon } from '../store/slices/cartSlice';
+import { removeCoupon } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { setUser } from '../store/slices/authSlice';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
@@ -24,7 +25,8 @@ import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Perce
 export const Checkout = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const cart = useAppSelector((state) => state.cart);
+  const guestCart = useAppSelector((state) => state.cart);
+  const { items: cartItems, totalAmount, clearCart } = useCart();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const { shouldBlockCheckout, isCheckingPayment } = useReconcilePendingPaychanguOrder();
@@ -98,7 +100,7 @@ export const Checkout = () => {
       ?.deliveryFee ?? 0;
 
   // Calculate final total with discount and delivery fee
-  const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0)) + deliveryFee;
+  const finalTotal = Math.max(0, totalAmount - (guestCart.discount || 0)) + deliveryFee;
 
   // Checkout steps
   const CHECKOUT_STEPS = [
@@ -218,7 +220,7 @@ export const Checkout = () => {
       return;
     }
 
-    if (cart.items.length === 0) {
+    if (cartItems.length === 0) {
       setError('Your cart is empty');
       return;
     }
@@ -233,7 +235,7 @@ export const Checkout = () => {
             type: 'info',
           })
         );
-        dispatch(clearCart());
+        await clearCart();
         dispatch(removeCoupon());
         broadcastClientSync('orders');
         broadcastClientSync('products');
@@ -246,7 +248,7 @@ export const Checkout = () => {
         return;
       }
 
-      const orderItems = cart.items.map((item) => ({
+      const orderItems = cartItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         price: item.price,
@@ -260,8 +262,8 @@ export const Checkout = () => {
       };
 
       // Add coupon code if applied
-      if (cart.appliedCoupon) {
-        orderData.couponCode = cart.appliedCoupon.code;
+      if (guestCart.appliedCoupon) {
+        orderData.couponCode = guestCart.appliedCoupon.code;
       }
 
       // Add guest info if not authenticated
@@ -293,7 +295,7 @@ export const Checkout = () => {
       }
 
       // Clear cart as soon as the order is created — inventory is already reserved (BR-03).
-      dispatch(clearCart());
+      await clearCart();
       dispatch(removeCoupon());
       broadcastClientSync('orders');
       broadcastClientSync('products');
@@ -342,7 +344,7 @@ export const Checkout = () => {
     }
   };
 
-  if (cart.items.length === 0) {
+  if (cartItems.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <JournalCard className="text-center py-16">
@@ -614,7 +616,7 @@ export const Checkout = () => {
                 <div className="mb-6">
                   <h3 className="font-sans font-semibold text-[14px] text-journal-ink mb-3">Order items</h3>
                   <div className="space-y-2">
-                    {cart.items.map((item) => (
+                    {cartItems.map((item) => (
                       <div key={item.productId} className="flex items-center gap-3 p-3 bg-journal-sand rounded-journal">
                         {item.image && (
                           <img
@@ -699,7 +701,7 @@ export const Checkout = () => {
                 </div>
 
                 {/* Applied Coupon */}
-                {cart.appliedCoupon && (
+                {guestCart.appliedCoupon && (
                   <div className="mb-6 pb-6 border-b border-journal-hairline">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -725,17 +727,17 @@ export const Checkout = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-[13px] font-sans font-medium text-journal-teal">
-                            {cart.appliedCoupon.code}
+                            {guestCart.appliedCoupon.code}
                           </p>
                           <p className="text-[12px] font-sans text-journal-teal">
-                            {cart.appliedCoupon.type === 'percentage'
-                              ? `${cart.appliedCoupon.value}% off`
-                              : `MWK ${cart.appliedCoupon.value.toLocaleString()} off`
+                            {guestCart.appliedCoupon.type === 'percentage'
+                              ? `${guestCart.appliedCoupon.value}% off`
+                              : `MWK ${guestCart.appliedCoupon.value.toLocaleString()} off`
                             }
                           </p>
                         </div>
                         <p className="text-[13px] font-sans font-semibold text-journal-teal">
-                          -MWK {cart.discount.toLocaleString()}
+                          -MWK {guestCart.discount.toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -848,7 +850,7 @@ export const Checkout = () => {
 
             {/* Cart Items */}
             <div className="space-y-3 mb-6">
-              {cart.items.map((item) => (
+              {cartItems.map((item) => (
                 <div key={item.productId} className="flex items-center gap-3">
                   {item.image && (
                     <img
@@ -873,15 +875,15 @@ export const Checkout = () => {
             <div className="border-t border-journal-hairline pt-4 space-y-2">
               <div className="flex justify-between text-journal-body text-[13px] font-sans">
                 <span>Subtotal</span>
-                <span>MWK {cart.totalAmount.toLocaleString()}</span>
+                <span>MWK {totalAmount.toLocaleString()}</span>
               </div>
-              {cart.discount > 0 && (
+              {guestCart.discount > 0 && (
                 <div className="flex justify-between text-journal-teal text-[13px] font-sans">
                   <span className="flex items-center gap-1.5">
                     <Percent className="h-3 w-3" />
-                    Discount {cart.appliedCoupon?.code && `(${cart.appliedCoupon.code})`}
+                    Discount {guestCart.appliedCoupon?.code && `(${guestCart.appliedCoupon.code})`}
                   </span>
-                  <span>-MWK {cart.discount.toLocaleString()}</span>
+                  <span>-MWK {guestCart.discount.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex justify-between text-journal-body text-[13px] font-sans">

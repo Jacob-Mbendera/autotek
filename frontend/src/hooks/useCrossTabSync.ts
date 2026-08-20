@@ -37,7 +37,10 @@ export function useCrossTabSync(): void {
         dispatch(baseApi.util.invalidateTags(['Product']));
       }
       if (scope === 'auth') {
-        dispatch(baseApi.util.invalidateTags(['User', 'Wishlist', 'Order']));
+        dispatch(baseApi.util.invalidateTags(['User', 'Wishlist', 'Order', 'Cart']));
+      }
+      if (scope === 'cart') {
+        dispatch(baseApi.util.invalidateTags(['Cart']));
       }
     };
 

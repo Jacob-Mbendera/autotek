@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetProductQuery } from '../store/api/productApi';
 import { useAppDispatch, useAppSelector } from '../store/types';
-import { addItem, clearCart } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { useGuardedAddToCart } from '../hooks/useGuardedAddToCart';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
@@ -32,6 +32,7 @@ export const ProductDetail = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { guardedAddToCart, hasPendingUnpaidOrder } = useGuardedAddToCart();
+  const { addItem, clearCart } = useCart();
   const [selectedImage, setSelectedImage] = useState({ productId: id, index: 0 });
   const selectedImageIndex = selectedImage.productId === id ? selectedImage.index : 0;
   const selectImage = (index: number) => setSelectedImage({ productId: id, index });
@@ -58,7 +59,7 @@ export const ProductDetail = () => {
     }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (data?.product) {
       if (hasPendingUnpaidOrder) {
         dispatch(
@@ -72,16 +73,14 @@ export const ProductDetail = () => {
       }
 
       // Clear cart and add only this product
-      dispatch(clearCart());
-      dispatch(
-        addItem({
-          productId: data.product._id,
-          productName: data.product.name,
-          price: data.product.price,
-          quantity: 1,
-          image: getProductImageUrl(data.product.images?.[0]),
-        })
-      );
+      await clearCart();
+      await addItem({
+        productId: data.product._id,
+        productName: data.product.name,
+        price: data.product.price,
+        quantity: 1,
+        image: getProductImageUrl(data.product.images?.[0]),
+      });
       navigate('/checkout');
     }
   };

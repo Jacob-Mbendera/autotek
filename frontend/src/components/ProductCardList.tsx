@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/types';
-import { addItem } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../store/api/wishlistApi';
 import { showNotification } from '../store/slices/uiSlice';
 import type { Product } from '../store/api/productApi';
@@ -20,6 +20,7 @@ interface ProductCardListProps {
 
 export const ProductCardList = ({ product, fitmentMatch = 'none' }: ProductCardListProps) => {
   const dispatch = useAppDispatch();
+  const { addItem } = useCart();
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [optimisticWishlistState, setOptimisticWishlistState] = useState<boolean | null>(null);
 
@@ -44,20 +45,20 @@ export const ProductCardList = ({ product, fitmentMatch = 'none' }: ProductCardL
     product.category
   );
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    dispatch(
-      addItem({
-        productId: product._id,
-        productName: product.name,
-        price: product.price,
-        quantity: 1,
-        image: getProductImageUrl(product.images?.[0]),
-      })
-    );
-    dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
+    const success = await addItem({
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      quantity: 1,
+      image: getProductImageUrl(product.images?.[0]),
+    });
+    if (success) {
+      dispatch(showNotification({ message: 'Product added to cart!', type: 'success' }));
+    }
   };
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
