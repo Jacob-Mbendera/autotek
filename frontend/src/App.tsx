@@ -59,6 +59,7 @@ import { AdminLayout } from './components/AdminLayout';
 import { Toast } from './components/ui/Toast';
 import { CrossTabSync } from './components/CrossTabSync';
 import { AuthBootstrap } from './components/AuthBootstrap';
+import { ScrollToTop } from './components/ScrollToTop';
 import { UserRole } from '@shared/types';
 
 // Loading fallback component
@@ -74,6 +75,7 @@ const PageLoader = () => (
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthBootstrap />
       <CrossTabSync />
       <Toast />

@@ -75,7 +75,7 @@ export const Header = () => {
     'text-[12px] font-sans font-medium tracking-[0.12em] uppercase text-journal-ink-nav hover:text-journal-teal transition-colors';
 
   return (
-    <header className="sticky top-0 z-50 bg-journal-bone">
+    <header className="sticky top-0 z-[60] bg-journal-bone">
       {/* Utility bar */}
       <div className="bg-journal-ink text-journal-footer-1">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between gap-4 px-4 sm:px-10 py-2.5 text-[11px] font-sans tracking-[0.13em] uppercase overflow-x-auto whitespace-nowrap">

@@ -56,7 +56,7 @@ export const Products = () => {
   const { filters, pagination, viewMode } = useAppSelector((state) => state.product);
 
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
-  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [priceRange, setPriceRange] = useState({
     min: filters.minPrice || 5000,
     max: filters.maxPrice || 50000000,
