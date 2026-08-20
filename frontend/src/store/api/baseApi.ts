@@ -72,6 +72,7 @@ export const baseApi = createApi({
     'Payment',
     'Admin',
     'Wishlist',
+    'Cart',
     'Review',
     'Return',
     'DeliveryLocation',

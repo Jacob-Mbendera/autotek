@@ -1,4 +1,4 @@
-export type ClientSyncScope = 'wishlist' | 'orders' | 'products' | 'auth';
+export type ClientSyncScope = 'wishlist' | 'orders' | 'products' | 'auth' | 'cart';
 
 const SYNC_STORAGE_KEY = 'autotek_client_sync';
 export const CLIENT_SYNC_EVENT = 'autotek-client-sync';
@@ -8,6 +8,7 @@ export interface ClientSyncPayload {
   orders?: number;
   products?: number;
   auth?: number;
+  cart?: number;
 }
 
 function readSyncPayload(): ClientSyncPayload {
@@ -59,11 +60,18 @@ export function subscribeClientSync(
     if (newPayload.orders !== oldPayload.orders) handler('orders');
     if (newPayload.products !== oldPayload.products) handler('products');
     if (newPayload.auth !== oldPayload.auth) handler('auth');
+    if (newPayload.cart !== oldPayload.cart) handler('cart');
   };
 
   const onCustom = (event: Event) => {
     const scope = (event as CustomEvent<{ scope?: ClientSyncScope }>).detail?.scope;
-    if (scope === 'wishlist' || scope === 'orders' || scope === 'products' || scope === 'auth') {
+    if (
+      scope === 'wishlist' ||
+      scope === 'orders' ||
+      scope === 'products' ||
+      scope === 'auth' ||
+      scope === 'cart'
+    ) {
       handler(scope);
     }
   };

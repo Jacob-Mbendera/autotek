@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
-import { removeItem, updateQuantity, saveForLater, moveToCart, updateItemNote, removeFromSaved, applyCoupon, removeCoupon } from '../store/slices/cartSlice';
+import { addToSavedForLater, removeFromSaved, applyCoupon, removeCoupon } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { useValidateCouponMutation } from '../store/api/couponApi';
 import { useReconcilePendingPaychanguOrder } from '../hooks/useReconcilePendingPaychanguOrder';
 import { showNotification } from '../store/slices/uiSlice';
@@ -9,7 +10,7 @@ import { getErrorInfo } from '../utils/errorHandler';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
-import { getProductImageUrl, resolveProductDisplayImage } from '../utils/productImage';
+import { resolveProductDisplayImage } from '../utils/productImage';
 import type { ProductImageField } from '../store/api/productApi';
 import { JournalCard, JournalButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
 import { cn } from '../utils/cn';
@@ -23,11 +24,20 @@ import {
 export const Cart = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const cart = useAppSelector((state) => state.cart);
+  const guestCart = useAppSelector((state) => state.cart);
   const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const {
+    items: cartItems,
+    totalAmount,
+    totalItems,
+    removeItem,
+    updateQuantity,
+    updateItemNote,
+    addItem,
+  } = useCart();
 
   // Safety check: ensure savedForLater exists (for persisted state migration)
-  const savedForLater = Array.isArray(cart.savedForLater) ? cart.savedForLater : [];
+  const savedForLater = Array.isArray(guestCart.savedForLater) ? guestCart.savedForLater : [];
 
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -46,30 +56,31 @@ export const Cart = () => {
       setRemovingItemId(productId);
     } else {
       setUpdatingQuantityId(productId);
-      // Simulate slight delay for animation
-      setTimeout(() => {
-        dispatch(updateQuantity({ productId, quantity: newQuantity }));
-        setUpdatingQuantityId(null);
-      }, 150);
+      await updateQuantity(productId, newQuantity);
+      setUpdatingQuantityId(null);
     }
   };
 
-  const handleSaveForLater = (productId: string) => {
-    const item = cart.items.find((item) => item.productId === productId);
-    dispatch(saveForLater(productId));
+  const handleSaveForLater = async (productId: string) => {
+    const item = cartItems.find((item) => item.productId === productId);
+    if (!item) return;
+    dispatch(addToSavedForLater(item));
+    await removeItem(productId);
     dispatch(showNotification({
-      message: item ? `${item.productName || 'Item'} saved for later` : 'Item saved for later',
+      message: `${item.productName || 'Item'} saved for later`,
       type: 'success'
     }));
     // Auto-expand saved items section so user can see the item moved
     setShowSavedItems(true);
   };
 
-  const handleMoveToCart = (productId: string) => {
+  const handleMoveToCart = async (productId: string) => {
     const item = savedForLater.find((item) => item.productId === productId);
-    dispatch(moveToCart(productId));
+    if (!item) return;
+    await addItem(item);
+    dispatch(removeFromSaved(productId));
     dispatch(showNotification({
-      message: item ? `${item.productName || 'Item'} moved to cart` : 'Item moved to cart',
+      message: `${item.productName || 'Item'} moved to cart`,
       type: 'success'
     }));
   };
@@ -79,8 +90,8 @@ export const Cart = () => {
     setNoteText(currentNote || '');
   };
 
-  const handleSaveNote = (productId: string) => {
-    dispatch(updateItemNote({ productId, note: noteText }));
+  const handleSaveNote = async (productId: string) => {
+    await updateItemNote(productId, noteText);
     setEditingNoteId(null);
     setNoteText('');
   };
@@ -99,7 +110,7 @@ export const Cart = () => {
     }));
   };
 
-  const getStockStatus = (item: typeof cart.items[0]) => {
+  const getStockStatus = (item: typeof cartItems[0]) => {
     if (item.stockStatus === 'out-of-stock') return { label: 'Out of stock', className: 'bg-journal-danger-bg text-journal-danger-text', icon: AlertCircle };
     if (item.stockStatus === 'low-stock' || (item.stock && item.stock < item.quantity)) {
       return { label: 'Low stock', className: 'bg-journal-warn-bg text-journal-warn-text', icon: AlertTriangle };
@@ -118,9 +129,9 @@ export const Cart = () => {
     setRemovingItemId(productId);
   };
 
-  const confirmRemoveItem = (productId: string) => {
-    const item = cart.items.find((item) => item.productId === productId);
-    dispatch(removeItem(productId));
+  const confirmRemoveItem = async (productId: string) => {
+    const item = cartItems.find((item) => item.productId === productId);
+    await removeItem(productId);
     setRemovingItemId(null);
     dispatch(showNotification({
       message: item ? `${item.productName || 'Item'} removed from cart` : 'Item removed from cart',
@@ -137,10 +148,10 @@ export const Cart = () => {
 
     setValidatingCoupon(true);
     try {
-      const productIds = cart.items.map(item => item.productId);
+      const productIds = cartItems.map(item => item.productId);
       const result = await validateCoupon({
         code: promoCode.trim(),
-        orderTotal: cart.totalAmount,
+        orderTotal: totalAmount,
         productIds,
       }).unwrap();
 
@@ -181,9 +192,9 @@ export const Cart = () => {
   };
 
   // Calculate final total with discount
-  const finalTotal = Math.max(0, cart.totalAmount - (cart.discount || 0));
+  const finalTotal = Math.max(0, totalAmount - (guestCart.discount || 0));
 
-  const getCartItemImage = (item: typeof cart.items[0]) =>
+  const getCartItemImage = (item: typeof cartItems[0]) =>
     resolveProductDisplayImage(
       item.image ? [item.image as ProductImageField] : [],
       undefined,
@@ -191,7 +202,7 @@ export const Cart = () => {
     );
 
   // Calculate statistics
-  const averageItemPrice = cart.items.length > 0 ? cart.totalAmount / cart.totalItems : 0;
+  const averageItemPrice = cartItems.length > 0 ? totalAmount / totalItems : 0;
 
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
@@ -199,7 +210,7 @@ export const Cart = () => {
   ];
 
   // Empty cart state
-  if (cart.items.length === 0 && savedForLater.length === 0) {
+  if (cartItems.length === 0 && savedForLater.length === 0) {
     return (
       <div className="min-h-screen bg-journal-bone">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -273,7 +284,7 @@ export const Cart = () => {
               <div>
                 <PageHeading className="!text-[28px] sm:!text-[32px] !text-journal-bone mb-1.5">Shopping cart</PageHeading>
                 <p className="text-[14px] font-sans text-journal-bone/80">
-                  {cart.totalItems} item{cart.totalItems !== 1 ? 's' : ''} &#183; MWK {cart.totalAmount.toLocaleString()} total
+                  {totalItems} item{totalItems !== 1 ? 's' : ''} &#183; MWK {totalAmount.toLocaleString()} total
                 </p>
               </div>
             </div>
@@ -296,10 +307,10 @@ export const Cart = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[12px] font-sans text-journal-muted mb-1">Cart total</p>
-                <p className="font-journal text-[24px] text-journal-ink">MWK {cart.totalAmount.toLocaleString()}</p>
+                <p className="font-journal text-[24px] text-journal-ink">MWK {totalAmount.toLocaleString()}</p>
                 <div className="flex items-center gap-1.5 mt-2">
                   <TrendingUp className="h-3.5 w-3.5 text-journal-teal" />
-                  <span className="text-[12px] font-sans font-medium text-journal-teal">{cart.totalItems} items</span>
+                  <span className="text-[12px] font-sans font-medium text-journal-teal">{totalItems} items</span>
                 </div>
               </div>
               <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
@@ -313,11 +324,11 @@ export const Cart = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[12px] font-sans text-journal-muted mb-1">Items in cart</p>
-                <p className="font-journal text-[24px] text-journal-ink">{cart.totalItems}</p>
+                <p className="font-journal text-[24px] text-journal-ink">{totalItems}</p>
                 <div className="flex items-center gap-1.5 mt-2">
                   <Package className="h-3.5 w-3.5 text-journal-body" />
                   <span className="text-[12px] font-sans font-medium text-journal-body">
-                    {cart.items.length} unique product{cart.items.length !== 1 ? 's' : ''}
+                    {cartItems.length} unique product{cartItems.length !== 1 ? 's' : ''}
                   </span>
                 </div>
               </div>
@@ -348,7 +359,7 @@ export const Cart = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items - Left Column (2/3 width) */}
           <div className="lg:col-span-2 space-y-4">
-            {cart.items.map((item) => {
+            {cartItems.map((item) => {
               const stockStatus = getStockStatus(item);
               const StatusIcon = stockStatus.icon;
               const cartImage = getCartItemImage(item);
@@ -608,13 +619,13 @@ export const Cart = () => {
 
               {/* Promo Code Section */}
               <div className="mb-6">
-                {cart.appliedCoupon ? (
+                {guestCart.appliedCoupon ? (
                   <div className="p-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-3.5 w-3.5 text-journal-teal" />
                         <span className="text-[13px] font-sans font-medium text-journal-teal">
-                          {cart.appliedCoupon.code}
+                          {guestCart.appliedCoupon.code}
                         </span>
                       </div>
                       <button
@@ -626,7 +637,7 @@ export const Cart = () => {
                       </button>
                     </div>
                     <p className="text-[12px] font-sans text-journal-teal">
-                      Discount: MWK {cart.discount.toLocaleString()}
+                      Discount: MWK {guestCart.discount.toLocaleString()}
                     </p>
                   </div>
                 ) : (
@@ -680,17 +691,17 @@ export const Cart = () => {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-journal-body">
                   <span className="text-[13px] font-sans">
-                    Subtotal ({cart.totalItems} {cart.totalItems === 1 ? 'item' : 'items'})
+                    Subtotal ({totalItems} {totalItems === 1 ? 'item' : 'items'})
                   </span>
-                  <span className="text-[13px] font-sans font-semibold">MWK {cart.totalAmount.toLocaleString()}</span>
+                  <span className="text-[13px] font-sans font-semibold">MWK {totalAmount.toLocaleString()}</span>
                 </div>
-                {cart.discount > 0 && (
+                {guestCart.discount > 0 && (
                   <div className="flex justify-between text-journal-teal">
                     <span className="text-[13px] font-sans flex items-center gap-1.5">
                       <Percent className="h-3 w-3" />
-                      Discount {cart.appliedCoupon?.code && `(${cart.appliedCoupon.code})`}
+                      Discount {guestCart.appliedCoupon?.code && `(${guestCart.appliedCoupon.code})`}
                     </span>
-                    <span className="text-[13px] font-sans font-semibold">-MWK {cart.discount.toLocaleString()}</span>
+                    <span className="text-[13px] font-sans font-semibold">-MWK {guestCart.discount.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-journal-body">

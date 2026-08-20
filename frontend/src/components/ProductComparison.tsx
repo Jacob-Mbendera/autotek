@@ -1,7 +1,7 @@
 import { X, ShoppingCart } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/types';
 import { removeFromComparison, clearComparison } from '../store/slices/comparisonSlice';
-import { addItem } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { Link } from 'react-router-dom';
 import type { Product } from '../store/api/productApi';
 import { OptimizedImage } from './ui/OptimizedImage';
@@ -10,6 +10,7 @@ import { CardHeading } from './journal';
 
 export const ProductComparison = () => {
   const dispatch = useAppDispatch();
+  const { addItem } = useCart();
   const { products, maxProducts } = useAppSelector((state) => state.comparison);
 
   if (products.length === 0) return null;
@@ -23,15 +24,13 @@ export const ProductComparison = () => {
   };
 
   const handleAddToCart = (product: Product) => {
-    dispatch(
-      addItem({
-        productId: product._id,
-        productName: product.name,
-        price: product.price,
-        quantity: 1,
-        image: getProductImageUrl(product.images?.[0]),
-      })
-    );
+    addItem({
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      quantity: 1,
+      image: getProductImageUrl(product.images?.[0]),
+    });
   };
 
   return (

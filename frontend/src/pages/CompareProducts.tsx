@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
 import { clearComparison, removeFromComparison } from '../store/slices/comparisonSlice';
-import { addItem } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { JournalButton, JournalLinkButton, PageHeading, CardHeading, JournalBody } from '../components/journal';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { ProductPlaceholderImage } from '../components/ProductPlaceholderImage';
@@ -19,6 +19,7 @@ export const CompareProducts = () => {
   }, []);
 
   const dispatch = useAppDispatch();
+  const { addItem } = useCart();
   const { products } = useAppSelector((state) => state.comparison);
 
   const handleRemove = (productId: string) => {
@@ -30,15 +31,13 @@ export const CompareProducts = () => {
   };
 
   const handleAddToCart = (product: any) => {
-    dispatch(
-      addItem({
-        productId: product._id,
-        productName: product.name,
-        price: product.price,
-        quantity: 1,
-        image: getProductImageUrl(product.images?.[0]),
-      })
-    );
+    addItem({
+      productId: product._id,
+      productName: product.name,
+      price: product.price,
+      quantity: 1,
+      image: getProductImageUrl(product.images?.[0]),
+    });
   };
 
   if (products.length === 0) {

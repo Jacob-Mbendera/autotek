@@ -5,6 +5,7 @@ import { useAppSelector, useAppDispatch } from '../store/types';
 import { logout } from '../store/slices/authSlice';
 import { useGetWishlistQuery } from '../store/api/wishlistApi';
 import { useLogoutMutation } from '../store/api/authApi';
+import { useCart } from '../hooks/useCart';
 import { broadcastClientSync } from '../utils/crossTabSync';
 import { UserRole } from '@shared/types';
 import { BrandLogo } from './BrandLogo';
@@ -25,7 +26,7 @@ export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [prevWishlistCount, setPrevWishlistCount] = useState(0);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
-  const cart = useAppSelector((state) => state.cart);
+  const { totalItems } = useCart();
   const { data: wishlistData } = useGetWishlistQuery(undefined, {
     skip: !isAuthenticated,
     refetchOnFocus: true,
@@ -142,9 +143,9 @@ export const Header = () => {
 
             <Link to="/cart" className="relative p-1 text-journal-ink hover:text-journal-teal transition-colors" aria-label="Shopping cart">
               <ShoppingCart className="h-5 w-5" />
-              {cart.totalItems > 0 && (
+              {totalItems > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-journal-ink text-journal-bone text-[10px] font-sans font-semibold flex items-center justify-center">
-                  {cart.totalItems}
+                  {totalItems}
                 </span>
               )}
             </Link>

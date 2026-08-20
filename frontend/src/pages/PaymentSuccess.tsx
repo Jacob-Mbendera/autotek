@@ -4,7 +4,7 @@ import { useAppDispatch } from '../store/types';
 import { useGetOrderQuery } from '../store/api/orderApi';
 import { useGetPaymentByOrderQuery, useVerifyPaymentMutation } from '../store/api/paymentApi';
 import { baseApi } from '../store/api/baseApi';
-import { clearCart } from '../store/slices/cartSlice';
+import { useCart } from '../hooks/useCart';
 import { clearPendingPaychanguOrder, clearPaychanguRedirectAt } from '../utils/pendingPaychanguOrder';
 import { broadcastClientSync } from '../utils/crossTabSync';
 import {
@@ -41,6 +41,7 @@ export const PaymentSuccess = () => {
   const [verificationTimedOut, setVerificationTimedOut] = useState(false);
   const maxVerificationAttempts = 5;
   const hasClearedCartRef = useRef(false);
+  const { clearCart } = useCart();
 
   const [serviceVerifyState, setServiceVerifyState] = useState<ServiceVerifyState>('idle');
   const [servicePaymentSummary, setServicePaymentSummary] = useState<ServicePaymentSummary | null>(
@@ -59,7 +60,7 @@ export const PaymentSuccess = () => {
 
   const clearCartOnce = () => {
     if (!hasClearedCartRef.current) {
-      dispatch(clearCart());
+      clearCart();
       clearPendingPaychanguOrder();
       clearPaychanguRedirectAt();
       broadcastClientSync('orders');
