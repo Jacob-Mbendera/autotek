@@ -9,6 +9,10 @@ import {
   getAllUsers,
   getUser,
   updateUserRole,
+  updateUserInfo,
+  deactivateUser,
+  reactivateUser,
+  resetUserPassword,
 } from '../controllers/adminController';
 import { listMediaAssets, uploadMediaLibrary, deleteMediaAsset } from '../controllers/mediaAssetController';
 import { uploadLibraryFiles } from '../middleware/upload';
@@ -60,6 +64,10 @@ router.get('/services', validate(validateGetAllServices), getAllServices);
 router.get('/users', getAllUsers);
 router.get('/users/:id', getUser);
 router.patch('/users/:id/role', updateUserRole);
+router.patch('/users/:id', updateUserInfo);
+router.patch('/users/:id/deactivate', deactivateUser);
+router.patch('/users/:id/reactivate', reactivateUser);
+router.post('/users/:id/reset-password', resetUserPassword);
 
 router.get('/garages', listGarages);
 router.post('/garages', validate(validateCreateGarage), createGarage);

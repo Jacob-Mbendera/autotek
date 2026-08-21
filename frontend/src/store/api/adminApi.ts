@@ -75,6 +75,8 @@ export interface User {
   phone: string;
   role: UserRole;
   address?: string;
+  isActive: boolean;
+  deactivatedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -302,6 +304,47 @@ export const adminApi = baseApi.injectEndpoints({
         { type: 'Admin', id: `user-${userId}` },
       ],
     }),
+    updateUserInfo: builder.mutation<
+      { user: User },
+      { userId: string; name?: string; phone?: string; address?: string; email?: string }
+    >({
+      query: ({ userId, ...body }) => ({
+        url: `/admin/users/${userId}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { userId }) => [
+        'Admin',
+        { type: 'Admin', id: `user-${userId}` },
+      ],
+    }),
+    deactivateUser: builder.mutation<{ user: User }, string>({
+      query: (userId) => ({
+        url: `/admin/users/${userId}/deactivate`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (_result, _error, userId) => [
+        'Admin',
+        { type: 'Admin', id: `user-${userId}` },
+      ],
+    }),
+    reactivateUser: builder.mutation<{ user: User }, string>({
+      query: (userId) => ({
+        url: `/admin/users/${userId}/reactivate`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (_result, _error, userId) => [
+        'Admin',
+        { type: 'Admin', id: `user-${userId}` },
+      ],
+    }),
+    resetUserPassword: builder.mutation<{ message: string }, { userId: string; newPassword: string }>({
+      query: ({ userId, newPassword }) => ({
+        url: `/admin/users/${userId}/reset-password`,
+        method: 'POST',
+        body: { newPassword },
+      }),
+    }),
     getGarages: builder.query<
       { garages: AdminGarage[]; pagination: unknown },
       { page?: number; limit?: number; search?: string } | void
@@ -413,6 +456,10 @@ export const {
   useGetAllUsersQuery,
   useGetUserQuery,
   useUpdateUserRoleMutation,
+  useUpdateUserInfoMutation,
+  useDeactivateUserMutation,
+  useReactivateUserMutation,
+  useResetUserPasswordMutation,
   useGetGaragesQuery,
   useCreateGarageMutation,
   useUpdateGarageMutation,
