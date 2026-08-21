@@ -48,7 +48,7 @@ export function useCart(): UseCartResult {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   const guestCart = useAppSelector((state) => state.cart);
 
-  const { data: serverCartData, isFetching } = useGetCartQuery(undefined, {
+  const { data: serverCartData, isLoading: isCartQueryLoading } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
   const [addToCartMutation] = useAddToCartMutation();
@@ -78,7 +78,7 @@ export function useCart(): UseCartResult {
       items,
       totalAmount,
       totalItems,
-      isLoading: isFetching,
+      isLoading: isCartQueryLoading,
       addItem: async (item) => {
         try {
           await addToCartMutation({ productId: item.productId, quantity: item.quantity }).unwrap();
