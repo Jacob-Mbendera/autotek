@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { useGetAllUsersQuery, useGetUserQuery, useUpdateUserRoleMutation, type User } from '../../store/api/adminApi';
+import {
+  useGetAllUsersQuery,
+  useGetUserQuery,
+  useUpdateUserRoleMutation,
+  useUpdateUserInfoMutation,
+  useDeactivateUserMutation,
+  useReactivateUserMutation,
+  useResetUserPasswordMutation,
+  type User,
+} from '../../store/api/adminApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
 import { getErrorInfo } from '../../utils/errorHandler';
@@ -7,7 +16,7 @@ import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, H2, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Users, Mail, Phone, MapPin, Calendar, Shield, ChevronLeft, X } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Users, Mail, Phone, MapPin, Calendar, Shield, ChevronLeft, X, Pencil, UserX, UserCheck, KeyRound } from 'lucide-react';
 import { UserRole } from '@shared/types';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
@@ -20,6 +29,11 @@ export const AdminUsers = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [newRole, setNewRole] = useState<UserRole>(UserRole.CUSTOMER);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', address: '', email: '' });
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
 
   const adminListQueryOptions = useAdminListQueryOptions();
 
@@ -39,6 +53,10 @@ export const AdminUsers = () => {
   );
 
   const [updateUserRole, { isLoading: isUpdatingRole }] = useUpdateUserRoleMutation();
+  const [updateUserInfo, { isLoading: isUpdatingInfo }] = useUpdateUserInfoMutation();
+  const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
+  const [reactivateUser, { isLoading: isReactivating }] = useReactivateUserMutation();
+  const [resetUserPassword, { isLoading: isResettingPassword }] = useResetUserPasswordMutation();
 
   const getRoleColor = (role: UserRole) => {
     switch (role) {
@@ -87,10 +105,91 @@ export const AdminUsers = () => {
       }
     } catch (error: any) {
       const errorInfo = getErrorInfo(error, 'Failed to update user role');
-      dispatch(showNotification({ 
-        message: errorInfo.message, 
-        type: 'error' 
+      dispatch(showNotification({
+        message: errorInfo.message,
+        type: 'error'
       }));
+    }
+  };
+
+  const handleOpenEditModal = (user: User) => {
+    setEditForm({
+      name: user.name,
+      phone: user.phone,
+      address: user.address || '',
+      email: user.email,
+    });
+    setSelectedUserId(user._id);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateInfo = async () => {
+    if (!selectedUserId) return;
+    try {
+      await updateUserInfo({ userId: selectedUserId, ...editForm }).unwrap();
+      dispatch(showNotification({ message: 'User info updated successfully!', type: 'success' }));
+      setShowEditModal(false);
+      await refetch();
+      if (selectedUserId) {
+        await refetchUser();
+      }
+    } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to update user info');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
+  const handleToggleActive = async (user: User) => {
+    if (user.isActive) {
+      setSelectedUserId(user._id);
+      setShowDeactivateConfirm(true);
+      return;
+    }
+    try {
+      await reactivateUser(user._id).unwrap();
+      dispatch(showNotification({ message: 'User reactivated successfully!', type: 'success' }));
+      await refetch();
+      if (selectedUserId) {
+        await refetchUser();
+      }
+    } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to reactivate user');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!selectedUserId) return;
+    try {
+      await deactivateUser(selectedUserId).unwrap();
+      dispatch(showNotification({ message: 'User deactivated successfully!', type: 'success' }));
+      setShowDeactivateConfirm(false);
+      await refetch();
+      if (selectedUserId) {
+        await refetchUser();
+      }
+    } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to deactivate user');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
+  const handleOpenResetPasswordModal = (user: User) => {
+    setNewPassword('');
+    setSelectedUserId(user._id);
+    setShowResetPasswordModal(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedUserId) return;
+    try {
+      await resetUserPassword({ userId: selectedUserId, newPassword }).unwrap();
+      dispatch(showNotification({ message: 'Password reset successfully!', type: 'success' }));
+      setShowResetPasswordModal(false);
+      setNewPassword('');
+    } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to reset password');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
 
@@ -118,9 +217,14 @@ export const AdminUsers = () => {
               <H1 className="text-3xl font-bold text-gray-50 mb-2">{user.name}</H1>
               <Body className="text-gray-400">User Details</Body>
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(user.role)}`}>
-              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(user.role)}`}>
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </span>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${user.isActive ? 'bg-green-500/20 text-green-500' : 'bg-gray-500/20 text-gray-400'}`}>
+                {user.isActive ? 'Active' : 'Deactivated'}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -161,14 +265,41 @@ export const AdminUsers = () => {
 
           <div className="mt-6 pt-6 border-t border-gray-700">
             <H2 className="text-xl font-semibold text-gray-50 mb-4">Actions</H2>
-            <Button
-              variant="primary"
-              onClick={() => handleOpenRoleModal(user)}
-              className="flex items-center gap-2"
-            >
-              <Shield className="h-4 w-4" />
-              Change Role
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="primary"
+                onClick={() => handleOpenEditModal(user)}
+                className="flex items-center gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Info
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleOpenRoleModal(user)}
+                className="flex items-center gap-2"
+              >
+                <Shield className="h-4 w-4" />
+                Change Role
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleOpenResetPasswordModal(user)}
+                className="flex items-center gap-2"
+              >
+                <KeyRound className="h-4 w-4" />
+                Reset Password
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleToggleActive(user)}
+                disabled={isDeactivating || isReactivating}
+                className={`flex items-center gap-2 ${user.isActive ? 'text-red-400 hover:text-red-300' : 'text-green-400 hover:text-green-300'}`}
+              >
+                {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                {user.isActive ? 'Deactivate' : 'Reactivate'}
+              </Button>
+            </div>
           </div>
         </AdminCard>
 
@@ -217,6 +348,176 @@ export const AdminUsers = () => {
                   variant="secondary"
                   onClick={() => setShowRoleModal(false)}
                   disabled={isUpdatingRole}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </AdminCard>
+          </div>
+        )}
+
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <AdminCard variant="default" className="max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <H2 className="text-xl font-semibold text-gray-50">Edit User Info</H2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                  <Input
+                    dark
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                  <Input
+                    dark
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Phone</label>
+                  <Input
+                    dark
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Address</label>
+                  <Input
+                    dark
+                    value={editForm.address}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  onClick={handleUpdateInfo}
+                  disabled={isUpdatingInfo}
+                  className="flex-1 gap-2"
+                >
+                  {isUpdatingInfo ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={isUpdatingInfo}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </AdminCard>
+          </div>
+        )}
+
+        {showResetPasswordModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <AdminCard variant="default" className="max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <H2 className="text-xl font-semibold text-gray-50">Reset Password</H2>
+                <button
+                  onClick={() => setShowResetPasswordModal(false)}
+                  className="text-gray-400 hover:text-gray-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">New Password</label>
+                <Input
+                  dark
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  onClick={handleResetPassword}
+                  disabled={isResettingPassword || newPassword.length < 6}
+                  className="flex-1 gap-2"
+                >
+                  {isResettingPassword ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    'Reset Password'
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowResetPasswordModal(false)}
+                  disabled={isResettingPassword}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </AdminCard>
+          </div>
+        )}
+
+        {showDeactivateConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <AdminCard variant="default" className="max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <H2 className="text-xl font-semibold text-gray-50">Deactivate User</H2>
+                <button
+                  onClick={() => setShowDeactivateConfirm(false)}
+                  className="text-gray-400 hover:text-gray-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <Body className="text-gray-300 mb-6">
+                This will immediately block this user from logging in and end any active session.
+                Their orders, reviews, and other data are kept and can be restored by reactivating
+                the account. Are you sure?
+              </Body>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  onClick={handleConfirmDeactivate}
+                  disabled={isDeactivating}
+                  className="flex-1 gap-2 bg-red-600 hover:bg-red-700"
+                >
+                  {isDeactivating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Deactivating...
+                    </>
+                  ) : (
+                    'Deactivate'
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowDeactivateConfirm(false)}
+                  disabled={isDeactivating}
                 >
                   Cancel
                 </Button>
@@ -314,6 +615,7 @@ export const AdminUsers = () => {
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">Email</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">Phone</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">Role</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">Status</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-300">Joined</th>
                     <th className="text-right py-3 px-4 text-sm font-semibold text-gray-300">Actions</th>
                   </tr>
@@ -336,10 +638,24 @@ export const AdminUsers = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-500/20 text-green-500' : 'bg-gray-500/20 text-gray-400'}`}>
+                          {user.isActive ? 'Active' : 'Deactivated'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
                         <Body className="text-gray-400">{formatDate(user.createdAt)}</Body>
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="small"
+                            onClick={() => handleOpenEditModal(user)}
+                            className="text-gray-300 hover:text-gray-100"
+                            title="Edit Info"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="small"
@@ -349,6 +665,16 @@ export const AdminUsers = () => {
                           >
                             <Shield className="h-4 w-4" />
                             Role
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="small"
+                            onClick={() => handleToggleActive(user)}
+                            disabled={isDeactivating || isReactivating}
+                            className={user.isActive ? 'text-red-400 hover:text-red-300' : 'text-green-400 hover:text-green-300'}
+                            title={user.isActive ? 'Deactivate' : 'Reactivate'}
+                          >
+                            {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                           </Button>
                           <Button
                             variant="ghost"
@@ -446,6 +772,51 @@ export const AdminUsers = () => {
                 variant="secondary"
                 onClick={() => setShowRoleModal(false)}
                 disabled={isUpdatingRole}
+              >
+                Cancel
+              </Button>
+            </div>
+          </AdminCard>
+        </div>
+      )}
+
+      {showDeactivateConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <AdminCard variant="default" className="max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <H2 className="text-xl font-semibold text-gray-50">Deactivate User</H2>
+              <button
+                onClick={() => setShowDeactivateConfirm(false)}
+                className="text-gray-400 hover:text-gray-50"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <Body className="text-gray-300 mb-6">
+              This will immediately block this user from logging in and end any active session.
+              Their orders, reviews, and other data are kept and can be restored by reactivating
+              the account. Are you sure?
+            </Body>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="primary"
+                onClick={handleConfirmDeactivate}
+                disabled={isDeactivating}
+                className="flex-1 gap-2 bg-red-600 hover:bg-red-700"
+              >
+                {isDeactivating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deactivating...
+                  </>
+                ) : (
+                  'Deactivate'
+                )}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowDeactivateConfirm(false)}
+                disabled={isDeactivating}
               >
                 Cancel
               </Button>

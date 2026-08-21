@@ -124,6 +124,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (!user.isActive) {
+      res.status(403).json({ message: 'Your account has been deactivated' });
+      return;
+    }
+
     // Generate token
     const token = generateToken({
       userId: user._id.toString(),

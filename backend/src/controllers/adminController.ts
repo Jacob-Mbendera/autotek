@@ -10,6 +10,7 @@ import User from '../models/User';
 import { OrderStatus, CustomOrderStatus, ServiceStatus, PaymentStatus, UserRole } from '../types/shared';
 import { parsePagination, createPaginationResponse } from '../utils/pagination';
 import { escapeRegex } from '../utils/regex';
+import { hashPassword } from '../utils/password';
 
 /**
  * Get dashboard statistics for admin
@@ -467,5 +468,132 @@ export const updateUserRole = async (req: AuthRequest, res: Response): Promise<v
   } catch (error: any) {
     console.error('[Admin] Error updating user role:', error);
     res.status(500).json({ message: error.message || 'Failed to update user role' });
+  }
+};
+
+/**
+ * Update a user's profile info on their behalf
+ */
+export const updateUserInfo = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, phone, address, email } = req.body;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ email, _id: { $ne: id as string } });
+      if (existing) {
+        res.status(400).json({ message: 'Email is already in use by another account' });
+        return;
+      }
+      user.email = email;
+    }
+
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+
+    await user.save();
+
+    const updatedUser = await User.findById(id).select('-password');
+    res.json({ user: updatedUser });
+  } catch (error: any) {
+    console.error('[Admin] Error updating user info:', error);
+    res.status(500).json({ message: error.message || 'Failed to update user info' });
+  }
+};
+
+/**
+ * Deactivate a user: blocks login and invalidates any existing session immediately.
+ */
+export const deactivateUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user!._id.toString()) {
+      res.status(400).json({ message: 'Cannot deactivate your own account' });
+      return;
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    user.isActive = false;
+    user.deactivatedAt = new Date();
+    user.tokenVersion += 1;
+    await user.save();
+
+    const updatedUser = await User.findById(id).select('-password');
+    res.json({ user: updatedUser });
+  } catch (error: any) {
+    console.error('[Admin] Error deactivating user:', error);
+    res.status(500).json({ message: error.message || 'Failed to deactivate user' });
+  }
+};
+
+/**
+ * Reactivate a previously deactivated user.
+ */
+export const reactivateUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    user.isActive = true;
+    user.deactivatedAt = undefined;
+    await user.save();
+
+    const updatedUser = await User.findById(id).select('-password');
+    res.json({ user: updatedUser });
+  } catch (error: any) {
+    console.error('[Admin] Error reactivating user:', error);
+    res.status(500).json({ message: error.message || 'Failed to reactivate user' });
+  }
+};
+
+/**
+ * Reset a user's password on their behalf.
+ */
+export const resetUserPassword = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6 || newPassword.length > 128) {
+      res.status(400).json({ message: 'Password must be between 6 and 128 characters' });
+      return;
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    user.password = await hashPassword(newPassword);
+    user.tokenVersion += 1;
+    await user.save();
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error: any) {
+    console.error('[Admin] Error resetting user password:', error);
+    res.status(500).json({ message: error.message || 'Failed to reset password' });
   }
 };

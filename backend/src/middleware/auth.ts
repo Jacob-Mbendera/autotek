@@ -34,6 +34,11 @@ export const authMiddleware = async (
       return;
     }
 
+    if (!user.isActive) {
+      res.status(401).json({ message: 'Account has been deactivated' });
+      return;
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -78,7 +83,7 @@ export const optionalAuthMiddleware = async (
       try {
         const decoded = verifyToken(token);
         const user = await User.findById(decoded.userId).select('-password');
-        if (user && decoded.tokenVersion === user.tokenVersion) {
+        if (user && decoded.tokenVersion === user.tokenVersion && user.isActive) {
           req.user = user;
         }
       } catch (error) {

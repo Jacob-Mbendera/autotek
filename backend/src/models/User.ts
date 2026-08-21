@@ -12,6 +12,8 @@ export interface IUser extends Document {
   resetToken?: string;
   resetTokenExpiry?: Date;
   tokenVersion: number;
+  isActive: boolean;
+  deactivatedAt?: Date;
   /** Only meaningful when role === 'mechanic': links this login to the garage-side ServiceProvider record. */
   serviceProvider?: Types.ObjectId;
   createdAt: Date;
@@ -58,6 +60,13 @@ const UserSchema = new Schema<IUser>(
     tokenVersion: {
       type: Number,
       default: 0,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    deactivatedAt: {
+      type: Date,
     },
     serviceProvider: {
       type: Schema.Types.ObjectId,
