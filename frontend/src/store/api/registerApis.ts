@@ -11,6 +11,7 @@ import './adminApi';
 import './serviceApi';
 import './wishlistApi';
 import './cartApi';
+import './contactApi';
 import './reviewApi';
 import './customOrderApi';
 import './couponApi';

@@ -29,6 +29,7 @@ import returnRoutes, { adminReturnRouter } from './routes/returnRoutes';
 import deliveryLocationRoutes from './routes/deliveryLocationRoutes';
 import geocodingRoutes from './routes/geocodingRoutes';
 import mechanicRoutes from './routes/mechanicRoutes';
+import contactRoutes from './routes/contactRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -133,6 +134,7 @@ app.use('/api/admin/returns', adminReturnRouter);
 app.use('/api/delivery-locations', deliveryLocationRoutes);
 app.use('/api/geocoding', geocodingRoutes);
 app.use('/api/mechanic', mechanicRoutes);
+app.use('/api/contact', contactRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '../../../../frontend/dist');
