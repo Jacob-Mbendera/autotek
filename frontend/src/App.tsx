@@ -13,6 +13,7 @@ import { Services } from './pages/Services';
 
 // Lazy load secondary routes (code splitting)
 const Wishlist = lazy(() => import('./pages/Wishlist').then(m => ({ default: m.Wishlist })));
+const Contact = lazy(() => import('./pages/Contact').then(m => ({ default: m.Contact })));
 const CompareProducts = lazy(() => import('./pages/CompareProducts').then(m => ({ default: m.CompareProducts })));
 const ProductDetail = lazy(() => import('./pages/ProductDetail').then(m => ({ default: m.ProductDetail })));
 const BookService = lazy(() => import('./pages/BookService').then(m => ({ default: m.BookService })));
@@ -107,6 +108,7 @@ function App() {
           }
         />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/cancel" element={<PaymentCancel />} />
         

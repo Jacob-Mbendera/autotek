@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForgotPasswordMutation } from '../store/api/authApi';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card } from '../components/ui/Card';
-import { H1, Body } from '../components/ui/Typography';
-import { Mail, ArrowLeft, CheckCircle, Loader2, Lock } from 'lucide-react';
+import { PageHeading, MonoLabel, JournalBody, JournalButton, JournalInput } from '../components/journal';
+import { ArrowLeft, CheckCircle, Lock } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 
 export const ForgotPassword = () => {
@@ -24,122 +21,101 @@ export const ForgotPassword = () => {
 
     try {
       await forgotPassword({ email: email.trim() }).unwrap();
-    } catch (err: any) {
+    } catch {
       // Even on error, we show success message to prevent email enumeration
       setError('');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md">
-        <Card variant="lg" className="shadow-2xl border-2 border-gray-200">
-          <div className="flex justify-center mb-6">
-            <BrandLogo variant="auth" to="/" imgClassName="h-9 w-auto max-w-[220px]" />
-          </div>
-          {!isSuccess ? (
-            <>
-              <div className="text-center mb-8">
-                <div className="h-16 w-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Lock className="h-8 w-8 text-teal-600" />
-                </div>
-                <H1 className="text-2xl font-bold text-gray-900 mb-2">Forgot Password?</H1>
-                <Body className="text-gray-600">
-                  Enter your email address and we'll send you a link to reset your password.
-                </Body>
-              </div>
+    <div className="min-h-screen flex items-center justify-center bg-journal-bone px-4 py-14">
+      <div className="w-full max-w-[440px]">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-2 text-[13px] text-journal-muted hover:text-journal-teal transition-colors mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Login</span>
+        </Link>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <Body className="text-sm text-red-600">{error}</Body>
-                  </div>
-                )}
+        <div className="flex justify-center mb-6">
+          <BrandLogo variant="auth" to="/" imgClassName="h-10 w-auto max-w-[240px]" />
+        </div>
 
-                <Input
-                  label="Email Address"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  icon={Mail}
-                  disabled={isLoading}
-                />
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="large"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="h-5 w-5 mr-2" />
-                      Send Reset Link
-                    </>
-                  )}
-                </Button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center text-sm text-teal-600 hover:text-teal-700 font-medium"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Back to Login
-                </Link>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </div>
-              <H1 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</H1>
-              <Body className="text-gray-600 mb-6">
-                If an account with <strong>{email}</strong> exists, we've sent you a password reset link.
-                Please check your email and click the link to reset your password.
-              </Body>
-              <Body className="text-sm text-gray-500 mb-6">
-                The link will expire in 1 hour. If you don't see the email, check your spam folder.
-              </Body>
-              <div className="space-y-3">
-                <Link to="/login">
-                  <Button variant="primary" className="w-full">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Login
-                  </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setEmail('');
-                    window.location.reload();
-                  }}
-                >
-                  Send Another Email
-                </Button>
+        {!isSuccess ? (
+          <>
+            <div className="flex justify-center mb-4">
+              <div className="h-14 w-14 bg-journal-teal-tint rounded-full flex items-center justify-center">
+                <Lock className="h-6 w-6 text-journal-teal" />
               </div>
             </div>
-          )}
-        </Card>
+            <MonoLabel className="block text-center mb-3">Reset your password</MonoLabel>
+            <PageHeading className="!text-[40px] text-center mb-4">Forgot password?</PageHeading>
+            <JournalBody className="!text-journal-muted text-center mb-6">
+              Enter your email address and we'll send you a link to reset your password.
+            </JournalBody>
+
+            {error && (
+              <div className="mb-4 border border-journal-error-border bg-journal-error-bg rounded-journal px-4 py-3">
+                <p className="text-[13px] text-journal-danger-text">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+              <JournalInput
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="you@example.com"
+                disabled={isLoading}
+              />
+
+              <JournalButton type="submit" variant="primary" className="w-full mt-1.5" disabled={isLoading}>
+                {isLoading ? 'Sending...' : 'Send reset link'}
+              </JournalButton>
+            </form>
+          </>
+        ) : (
+          <div className="text-center py-4">
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-10 w-10 text-journal-teal" />
+            </div>
+            <PageHeading className="!text-[32px] mb-2">Check your email</PageHeading>
+            <JournalBody className="!text-journal-muted mb-4">
+              If an account with <span className="font-semibold text-journal-ink">{email}</span> exists, we've sent you a password reset link.
+            </JournalBody>
+            <JournalBody className="!text-journal-muted text-[13px] mb-6">
+              The link will expire in 1 hour. If you don't see the email, check your spam folder.
+            </JournalBody>
+            <div className="flex flex-col gap-3">
+              <Link to="/login">
+                <JournalButton variant="primary" className="w-full">
+                  Back to login
+                </JournalButton>
+              </Link>
+              <JournalButton
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  setEmail('');
+                  window.location.reload();
+                }}
+              >
+                Send another email
+              </JournalButton>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 text-center">
-          <Body className="text-sm text-gray-600">
+          <JournalBody className="!text-journal-muted">
             Don't have an account?{' '}
-            <Link to="/register" className="text-teal-600 hover:text-teal-700 font-medium">
+            <Link to="/register" className="font-semibold text-journal-teal hover:underline">
               Sign up
             </Link>
-          </Body>
+          </JournalBody>
         </div>
       </div>
     </div>

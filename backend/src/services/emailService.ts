@@ -1004,6 +1004,47 @@ class EmailService {
 
     await this.sendEmail({ to: email, subject, html });
   }
+
+  /** Forward a public contact-form submission (e.g. from a deactivated user) to support. */
+  async sendContactMessage(params: {
+    name: string;
+    email: string;
+    message: string;
+    reason?: string;
+  }): Promise<void> {
+    const supportEmail = process.env.SUPPORT_EMAIL || process.env.ADMIN_NOTIFICATION_EMAIL;
+
+    const subject = `[AutoTek] Contact form${params.reason ? ` — ${params.reason}` : ''}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #0d9488;">Contact form submission</h2>
+        <div style="background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Name:</strong> ${escapeHtml(params.name)}</p>
+          <p style="margin: 4px 0;"><strong>Email:</strong> ${escapeHtml(params.email)}</p>
+          ${params.reason ? `<p style="margin: 4px 0;"><strong>Reason:</strong> ${escapeHtml(params.reason)}</p>` : ''}
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">
+          <h3 style="margin-top: 0; color: #0d9488;">Message</h3>
+          <p style="white-space: pre-wrap;">${escapeHtml(params.message)}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    if (supportEmail) {
+      await this.sendEmail({ to: supportEmail, subject, html });
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log('\n=== CONTACT FORM (no support email configured) ===');
+      console.log(subject);
+      console.log(params);
+      console.log('===================================================\n');
+    } else {
+      console.error('SUPPORT_EMAIL or ADMIN_NOTIFICATION_EMAIL not set — contact form message skipped');
+    }
+  }
 }
 
 export const emailService = new EmailService();

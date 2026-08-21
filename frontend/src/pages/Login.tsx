@@ -28,6 +28,7 @@ export const Login = () => {
     password: '',
   });
   const [error, setError] = useState('');
+  const [isDeactivated, setIsDeactivated] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +61,7 @@ export const Login = () => {
     } catch (err: any) {
       const errorInfo = getErrorInfo(err);
       setError(errorInfo.message);
+      setIsDeactivated(errorInfo.statusCode === 403 && errorInfo.message.toLowerCase().includes('deactivated'));
       // Also show notification for network/server errors
       if (errorInfo.type === 'network' || errorInfo.type === 'server') {
         dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
@@ -94,6 +96,14 @@ export const Login = () => {
         {error && (
           <div className="mb-4 border border-journal-error-border bg-journal-error-bg rounded-journal px-4 py-3">
             <p className="text-[13px] text-journal-danger-text">{error}</p>
+            {isDeactivated && (
+              <p className="text-[13px] text-journal-danger-text mt-1">
+                <Link to="/contact?reason=account-deactivated" className="font-semibold underline">
+                  Contact us
+                </Link>{' '}
+                to find out why or request reactivation.
+              </p>
+            )}
           </div>
         )}
 
