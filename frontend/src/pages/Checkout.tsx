@@ -20,13 +20,13 @@ import { DeliveryLocationSelector } from '../components/DeliveryLocationSelector
 import { useGetDeliveryLocationsQuery } from '../store/api/deliveryLocationApi';
 import { JournalCard, JournalButton, JournalInput, PageHeading, CardHeading, JournalBody } from '../components/journal';
 import { cn } from '../utils/cn';
-import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil, Smartphone, Building2, Shield, Lock } from 'lucide-react';
+import { ShoppingCart, MapPin, CreditCard, CheckCircle, User, Mail, Phone, Percent, ChevronRight, ArrowLeft, X, Pencil, Smartphone, Building2, Shield, Lock, Loader2 } from 'lucide-react';
 
 export const Checkout = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const guestCart = useAppSelector((state) => state.cart);
-  const { items: cartItems, totalAmount, clearCart } = useCart();
+  const { items: cartItems, totalAmount, clearCart, isLoading: isCartLoading } = useCart();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const { shouldBlockCheckout, isCheckingPayment } = useReconcilePendingPaychanguOrder();
@@ -343,6 +343,20 @@ export const Checkout = () => {
       dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
+
+  // Loading state: server cart hasn't resolved yet for a logged-in user.
+  // Without this guard, the empty-cart state below flashes first and can be
+  // mistaken for data loss on a fresh page load.
+  if (isCartLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <JournalCard className="text-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-journal-teal mx-auto mb-4" aria-hidden />
+          <JournalBody className="!text-journal-muted">Loading your cart...</JournalBody>
+        </JournalCard>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
