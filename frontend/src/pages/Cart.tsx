@@ -30,6 +30,7 @@ export const Cart = () => {
     items: cartItems,
     totalAmount,
     totalItems,
+    isLoading: isCartLoading,
     removeItem,
     updateQuantity,
     updateItemNote,
@@ -208,6 +209,25 @@ export const Cart = () => {
     { label: 'Home', href: '/' },
     { label: 'Cart' },
   ];
+
+  // Loading state: server cart hasn't resolved yet for a logged-in user.
+  // Without this guard, the empty-cart state below flashes first and can be
+  // mistaken for data loss on a fresh page load.
+  if (isCartLoading) {
+    return (
+      <div className="min-h-screen bg-journal-bone">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Breadcrumb items={breadcrumbItems} />
+          <JournalCard className="text-center py-16 mt-8">
+            <div className="flex flex-col items-center">
+              <Loader2 className="h-8 w-8 animate-spin text-journal-teal mb-4" aria-hidden />
+              <JournalBody className="!text-journal-muted">Loading your cart...</JournalBody>
+            </div>
+          </JournalCard>
+        </div>
+      </div>
+    );
+  }
 
   // Empty cart state
   if (cartItems.length === 0 && savedForLater.length === 0) {
