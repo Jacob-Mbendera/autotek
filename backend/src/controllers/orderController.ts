@@ -419,6 +419,23 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       reason: 'Order cancelled by customer',
     });
 
+    try {
+      if (result.order.user) {
+        const user = await User.findById(result.order.user);
+        if (user) {
+          await emailService.sendOrderStatusUpdate(result.order, user);
+        }
+      } else if (result.order.guestInfo) {
+        await emailService.sendOrderStatusUpdate(
+          result.order,
+          undefined,
+          result.order.guestInfo.email
+        );
+      }
+    } catch (emailError) {
+      console.error('Failed to send order status update email:', emailError);
+    }
+
     res.json({
       order: result.order,
       message: result.message,
