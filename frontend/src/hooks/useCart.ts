@@ -50,6 +50,8 @@ export function useCart(): UseCartResult {
 
   const { data: serverCartData, isLoading: isCartQueryLoading } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
   const [addToCartMutation] = useAddToCartMutation();
   const [updateCartItemMutation] = useUpdateCartItemMutation();

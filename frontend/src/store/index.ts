@@ -1,5 +1,6 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import type { Middleware } from '@reduxjs/toolkit';
+import { setupListeners } from '@reduxjs/toolkit/query';
 import {
   persistStore,
   persistReducer,
@@ -87,6 +88,10 @@ export const store = configureStore({
       .concat(rtkQueryCacheResetMiddleware),
   devTools: import.meta.env.DEV,
 });
+
+// Required for refetchOnFocus/refetchOnReconnect to work on any RTK Query
+// endpoint - without this, those options are declared but silently inert.
+setupListeners(store.dispatch);
 
 export const persistor = persistStore(store);
 
