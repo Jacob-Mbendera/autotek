@@ -48,6 +48,14 @@ interface ResetPasswordRequest {
   newPassword: string;
 }
 
+interface VerifyEmailRequest {
+  token: string;
+}
+
+interface ResendVerificationRequest {
+  email: string;
+}
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     register: builder.mutation<RegisterResponse, RegisterRequest>({
@@ -111,6 +119,20 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    verifyEmail: builder.mutation<{ message: string }, VerifyEmailRequest>({
+      query: (body) => ({
+        url: '/auth/verify-email',
+        method: 'POST',
+        body,
+      }),
+    }),
+    resendVerificationEmail: builder.mutation<{ message: string }, ResendVerificationRequest>({
+      query: (body) => ({
+        url: '/auth/resend-verification',
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
@@ -123,5 +145,7 @@ export const {
   useChangePasswordMutation,
   useForgotPasswordMutation,
   useVerifyResetTokenMutation,
-  useResetPasswordMutation
+  useResetPasswordMutation,
+  useVerifyEmailMutation,
+  useResendVerificationEmailMutation
 } = authApi;

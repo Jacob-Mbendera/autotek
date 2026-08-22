@@ -45,6 +45,11 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
+    if (req.user && !req.user.isEmailVerified) {
+      res.status(403).json({ message: 'Please verify your email before placing an order', code: 'EMAIL_NOT_VERIFIED' });
+      return;
+    }
+
     const { items, shippingAddress, paymentMethod, guestInfo, couponCode, password } = req.body;
 
     if (!items || items.length === 0) {

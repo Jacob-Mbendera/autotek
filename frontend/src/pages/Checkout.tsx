@@ -4,6 +4,7 @@ import { useAppSelector, useAppDispatch } from '../store/types';
 import { useCreateOrderMutation, useGetOrdersQuery } from '../store/api/orderApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
+import { useResendVerificationEmailMutation } from '../store/api/authApi';
 import { removeCoupon } from '../store/slices/cartSlice';
 import { useCart } from '../hooks/useCart';
 import { setUser } from '../store/slices/authSlice';
@@ -81,6 +82,9 @@ export const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paychangu' as PaymentMethod);
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
+  const [isEmailNotVerified, setIsEmailNotVerified] = useState(false);
+  const [resendVerificationEmail, { isLoading: isResendingVerification, isSuccess: resendVerificationSuccess }] =
+    useResendVerificationEmailMutation();
 
   const isLoading = isCreatingOrder || isInitiatingPayment || isCompletingPayment;
 
@@ -338,6 +342,10 @@ export const Checkout = () => {
       // Navigate to order detail (email retrieved from sessionStorage, not URL for privacy)
       navigate(`/orders/${orderResult.order._id}`);
     } catch (err: any) {
+      if (err?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        setIsEmailNotVerified(true);
+        return;
+      }
       const errorInfo = getErrorInfo(err);
       setError(errorInfo.message);
       dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
@@ -853,6 +861,35 @@ export const Checkout = () => {
           {error && (
             <div className="p-4 bg-journal-danger-bg border border-journal-error-border rounded-journal">
               <p className="text-[13px] font-sans text-journal-danger-text">{error}</p>
+            </div>
+          )}
+
+          {isEmailNotVerified && (
+            <div className="p-4 bg-journal-danger-bg border border-journal-error-border rounded-journal">
+              <p className="text-[13px] font-sans text-journal-danger-text mb-2">
+                Please verify your email before placing an order.
+              </p>
+              {resendVerificationSuccess ? (
+                <p className="text-[13px] font-sans text-journal-body">
+                  If your account is unverified, a new verification link has been sent.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!user?.email) return;
+                    try {
+                      await resendVerificationEmail({ email: user.email }).unwrap();
+                    } catch {
+                      // Enumeration-safe: backend always returns a generic success message.
+                    }
+                  }}
+                  disabled={isResendingVerification}
+                  className="text-[13px] font-sans font-medium text-journal-teal hover:underline disabled:opacity-60"
+                >
+                  {isResendingVerification ? 'Sending...' : 'Resend verification email'}
+                </button>
+              )}
             </div>
           )}
         </div>
