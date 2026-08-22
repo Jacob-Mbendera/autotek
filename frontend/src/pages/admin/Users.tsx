@@ -7,6 +7,7 @@ import {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useResetUserPasswordMutation,
+  useDeleteUserMutation,
   type User,
 } from '../../store/api/adminApi';
 import { useAppDispatch } from '../../store/types';
@@ -16,7 +17,7 @@ import { AdminCard } from '../../components/ui/AdminCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { H1, H2, Body } from '../../components/ui/Typography';
-import { Search, Filter, Eye, Loader2, Users, Mail, Phone, MapPin, Calendar, Shield, ChevronLeft, X, Pencil, UserX, UserCheck, KeyRound } from 'lucide-react';
+import { Search, Filter, Eye, Loader2, Users, Mail, Phone, MapPin, Calendar, Shield, ChevronLeft, X, Pencil, UserX, UserCheck, KeyRound, Trash2 } from 'lucide-react';
 import { UserRole } from '@shared/types';
 import { useAdminListQueryOptions } from '../../hooks/useAdminListQueryOptions';
 
@@ -34,6 +35,8 @@ export const AdminUsers = () => {
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
 
   const adminListQueryOptions = useAdminListQueryOptions();
 
@@ -57,6 +60,7 @@ export const AdminUsers = () => {
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
   const [reactivateUser, { isLoading: isReactivating }] = useReactivateUserMutation();
   const [resetUserPassword, { isLoading: isResettingPassword }] = useResetUserPasswordMutation();
+  const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
 
   const getRoleColor = (role: UserRole) => {
     switch (role) {
@@ -170,6 +174,27 @@ export const AdminUsers = () => {
       }
     } catch (error: any) {
       const errorInfo = getErrorInfo(error, 'Failed to deactivate user');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
+  const handleOpenDeleteConfirm = (user: User) => {
+    setSelectedUserId(user._id);
+    setDeleteConfirmEmail('');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedUserId) return;
+    try {
+      await deleteUser(selectedUserId).unwrap();
+      dispatch(showNotification({ message: 'User permanently deleted', type: 'success' }));
+      setShowDeleteConfirm(false);
+      setDeleteConfirmEmail('');
+      setSelectedUserId(null);
+      await refetch();
+    } catch (error: any) {
+      const errorInfo = getErrorInfo(error, 'Failed to delete user');
       dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
@@ -298,6 +323,14 @@ export const AdminUsers = () => {
               >
                 {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                 {user.isActive ? 'Deactivate' : 'Reactivate'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleOpenDeleteConfirm(user)}
+                className="flex items-center gap-2 text-red-500 hover:text-red-400 border-red-900"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Permanently
               </Button>
             </div>
           </div>
@@ -518,6 +551,62 @@ export const AdminUsers = () => {
                   variant="secondary"
                   onClick={() => setShowDeactivateConfirm(false)}
                   disabled={isDeactivating}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </AdminCard>
+          </div>
+        )}
+
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <AdminCard variant="default" className="max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <H2 className="text-xl font-semibold text-gray-50">Delete User Permanently</H2>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-gray-400 hover:text-gray-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <Body className="text-gray-300 mb-4">
+                This will permanently delete {user.name} ({user.email}) and cannot be undone.
+                Their cart and wishlist will also be deleted. This is only possible because they
+                have no order history.
+              </Body>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Type the user's email to confirm
+                </label>
+                <Input
+                  dark
+                  value={deleteConfirmEmail}
+                  onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                  placeholder={user.email}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting || deleteConfirmEmail.trim().toLowerCase() !== user.email.toLowerCase()}
+                  className="flex-1 gap-2 bg-red-600 hover:bg-red-700"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Permanently'
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
                 >
                   Cancel
                 </Button>

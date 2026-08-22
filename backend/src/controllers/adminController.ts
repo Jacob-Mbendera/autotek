@@ -7,6 +7,8 @@ import CarService from '../models/CarService';
 import Payment from '../models/Payment';
 import Product from '../models/Product';
 import User from '../models/User';
+import Cart from '../models/Cart';
+import Wishlist from '../models/Wishlist';
 import { OrderStatus, CustomOrderStatus, ServiceStatus, PaymentStatus, UserRole } from '../types/shared';
 import { parsePagination, createPaginationResponse } from '../utils/pagination';
 import { escapeRegex } from '../utils/regex';
@@ -595,5 +597,43 @@ export const resetUserPassword = async (req: AuthRequest, res: Response): Promis
   } catch (error: any) {
     console.error('[Admin] Error resetting user password:', error);
     res.status(500).json({ message: error.message || 'Failed to reset password' });
+  }
+};
+
+/**
+ * Permanently delete a user. Only allowed when the user has no order history,
+ * so financial/audit records are never left pointing at a deleted account.
+ * Cascades to the user's cart and wishlist (personal data with no standalone
+ * value); reviews/ratings are left in place since they're public content.
+ */
+export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user!._id.toString()) {
+      res.status(400).json({ message: 'Cannot delete your own account' });
+      return;
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const orderCount = await Order.countDocuments({ user: id });
+    if (orderCount > 0) {
+      res.status(400).json({ message: 'Cannot permanently delete a user with existing orders. Deactivate the account instead.' });
+      return;
+    }
+
+    await Cart.deleteOne({ user: id });
+    await Wishlist.deleteOne({ user: id });
+    await User.findByIdAndDelete(id);
+
+    res.json({ message: 'User permanently deleted' });
+  } catch (error: any) {
+    console.error('[Admin] Error deleting user:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete user' });
   }
 };

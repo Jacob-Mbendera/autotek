@@ -345,6 +345,13 @@ export const adminApi = baseApi.injectEndpoints({
         body: { newPassword },
       }),
     }),
+    deleteUser: builder.mutation<{ message: string }, string>({
+      query: (userId) => ({
+        url: `/admin/users/${userId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Admin'],
+    }),
     getGarages: builder.query<
       { garages: AdminGarage[]; pagination: unknown },
       { page?: number; limit?: number; search?: string } | void
@@ -460,6 +467,7 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useResetUserPasswordMutation,
+  useDeleteUserMutation,
   useGetGaragesQuery,
   useCreateGarageMutation,
   useUpdateGarageMutation,

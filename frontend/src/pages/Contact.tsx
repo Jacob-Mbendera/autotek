@@ -55,6 +55,14 @@ export const Contact = () => {
           </div>
         )}
 
+        {reason === 'delete-account' && (
+          <div className="mb-4 border border-journal-teal-tint-border bg-journal-teal-tint rounded-journal px-4 py-3">
+            <p className="text-[13px] text-journal-teal">
+              Want your account permanently deleted? Let us know below and our team will verify and process your request.
+            </p>
+          </div>
+        )}
+
         {!isSuccess ? (
           <>
             {error && (
