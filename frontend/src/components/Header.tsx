@@ -25,7 +25,7 @@ const navigation = [
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [prevWishlistCount, setPrevWishlistCount] = useState(0);
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated, isInitialized } = useAppSelector((state) => state.auth);
   const { totalItems } = useCart();
   const { data: wishlistData } = useGetWishlistQuery(undefined, {
     skip: !isAuthenticated,
@@ -125,7 +125,7 @@ export const Header = () => {
 
           {/* Right cluster */}
           <div className="flex items-center justify-end gap-4 sm:gap-6">
-            {isAuthenticated && (
+            {isInitialized && isAuthenticated && (
               <Link to="/wishlist" className="relative p-1 text-journal-ink hover:text-journal-teal transition-colors" aria-label="Wishlist">
                 <Heart className={`h-5 w-5 ${wishlistCount > 0 ? 'fill-journal-danger-text text-journal-danger-text' : ''}`} />
                 {wishlistCount > 0 && (
@@ -150,7 +150,13 @@ export const Header = () => {
               )}
             </Link>
 
-            {isAuthenticated && user ? (
+            {!isInitialized ? (
+              // On a hard page load, isAuthenticated starts false until the
+              // auth bootstrap has asked the server who the httpOnly cookie
+              // belongs to. Rendering the logged-out links here would flash
+              // "Log in / Sign up" for a genuinely logged-in visitor.
+              <div className="hidden lg:block w-[88px]" aria-hidden />
+            ) : isAuthenticated && user ? (
               <div className="hidden lg:flex items-center gap-4 xl:gap-5 text-[12px] font-sans font-medium tracking-[0.1em] uppercase">
                 {user.role === UserRole.ADMIN && (
                   <Link to="/admin/dashboard" className="flex items-center gap-1.5 whitespace-nowrap text-journal-ink-nav hover:text-journal-teal transition-colors">
@@ -200,7 +206,7 @@ export const Header = () => {
                   {item.name}
                 </Link>
               ))}
-              {isAuthenticated && user ? (
+              {!isInitialized ? null : isAuthenticated && user ? (
                 <>
                   {user.role === UserRole.ADMIN && (
                     <Link
