@@ -779,7 +779,7 @@ export const OrderDetail = () => {
                 return (
                   <div
                     key={index}
-                    className="flex items-start gap-4 pb-4 border-b border-journal-hairline last:border-0 last:pb-0"
+                    className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 pb-4 border-b border-journal-hairline last:border-0 last:pb-0"
                   >
                     {product?.images && product.images.length > 0 ? (
                       <OptimizedImage
@@ -796,7 +796,7 @@ export const OrderDetail = () => {
                         <Package className="h-6 w-6 text-journal-faint" />
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0 w-full">
                       <p className="font-sans font-semibold text-[14px] text-journal-ink mb-1">
                         {isProductDeleted ? (
                           <span className="text-journal-faint italic">Product no longer available</span>
@@ -809,7 +809,7 @@ export const OrderDetail = () => {
                           This product has been removed from the catalog
                         </p>
                       )}
-                      <div className="flex items-center justify-between flex-wrap gap-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-1">
                         <p className="text-[13px] font-sans text-journal-muted">
                           Quantity: {item.quantity} × MWK {item.price.toLocaleString()}
                         </p>
