@@ -4,7 +4,6 @@ import User from '../models/User';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken, setAuthCookie, clearAuthCookie } from '../utils/jwt';
 import { UserRole } from '../types/shared';
-import { sendPasswordResetEmail } from '../utils/email';
 import { emailService } from '../services/emailService';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -323,7 +322,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
       // Send password reset email
       const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-      await sendPasswordResetEmail(user.email, user.name, resetUrl);
+      await emailService.sendPasswordReset(user, resetUrl);
     }
 
     // Always return success to prevent email enumeration
