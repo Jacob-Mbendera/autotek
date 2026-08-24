@@ -1,7 +1,6 @@
 import nodemailer from 'nodemailer';
 import { IOrder, IShippingAddress } from '../models/Order';
 import User, { IUser } from '../models/User';
-import { sendPasswordResetEmail } from '../utils/email';
 import { ServiceStatus } from '../types/shared';
 
 interface EmailOptions {
@@ -92,16 +91,33 @@ function determineServiceEmailTrigger(
   return null;
 }
 
+function parseEmailFrom(raw: string): { name?: string; email: string } {
+  const match = raw.match(/^(.*)<(.+)>$/);
+  if (match) {
+    return { name: match[1].trim().replace(/^"|"$/g, '') || undefined, email: match[2].trim() };
+  }
+  return { email: raw.trim() };
+}
+
 class EmailService {
+  // Legacy SMTP transporter, kept as a fallback for self-hosted/SMTP-based deployments.
+  // Render (and many PaaS hosts) block or can't reliably reach SMTP ports, so BREVO_API_KEY
+  // is preferred when set — it sends over HTTPS instead.
   private transporter: nodemailer.Transporter | null = null;
+  private brevoApiKey: string | null = null;
 
   constructor() {
-    // Initialize transporter if email credentials are provided
-    // Supports multiple email service configurations:
+    this.brevoApiKey = process.env.BREVO_API_KEY || null;
+
+    if (this.brevoApiKey) {
+      console.log('Email service initialized: Brevo API');
+      return;
+    }
+
+    // Supports multiple SMTP configurations:
     // 1. SendGrid: EMAIL_HOST=smtp.sendgrid.net, EMAIL_USER=apikey, EMAIL_PASS=<api_key>
     // 2. Gmail: EMAIL_HOST=smtp.gmail.com, EMAIL_USER=<email>, EMAIL_PASS=<app_password>
     // 3. Custom SMTP: Any SMTP server credentials
-
     if (
       process.env.EMAIL_HOST &&
       process.env.EMAIL_USER &&
@@ -129,18 +145,44 @@ class EmailService {
       // Warn in production if email not configured
       if (process.env.NODE_ENV === 'production') {
         console.error('WARNING: Email service not configured in production!');
-        console.error('Please set EMAIL_HOST, EMAIL_USER, EMAIL_PASS environment variables');
+        console.error('Please set BREVO_API_KEY, or EMAIL_HOST/EMAIL_USER/EMAIL_PASS');
       } else {
         console.log('INFO: Email service not configured - emails will be logged to console');
       }
     }
   }
 
+  private async sendViaBrevo(options: EmailOptions): Promise<void> {
+    const emailFrom = process.env.EMAIL_FROM || 'AutoTek <noreply@autotek.mw>';
+    const sender = parseEmailFrom(emailFrom);
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': this.brevoApiKey as string,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: sender.name || 'AutoTek', email: sender.email },
+        to: [{ email: options.to }],
+        subject: options.subject,
+        htmlContent: options.html,
+        textContent: options.text || options.html.replace(/<[^>]*>/g, ''),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`Brevo API error ${response.status}: ${body}`);
+    }
+  }
+
   private async sendEmail(options: EmailOptions): Promise<void> {
     const emailFrom = process.env.EMAIL_FROM || 'AutoTek <noreply@autotek.mw>';
 
-    // If no transporter configured, log in development or error in production
-    if (!this.transporter) {
+    // If nothing configured, log in development or error in production
+    if (!this.brevoApiKey && !this.transporter) {
       if (process.env.NODE_ENV === 'development') {
         console.log('\n=== EMAIL (Not Sent - Dev Mode) ===');
         console.log('To:', options.to);
@@ -149,7 +191,7 @@ class EmailService {
         console.log('===================================\n');
         return;
       } else {
-        console.error('ERROR: Attempted to send email but no transporter configured!');
+        console.error('ERROR: Attempted to send email but no email provider configured!');
         console.error('Email details:', { to: options.to, subject: options.subject });
         // In production, we should log this but not crash
         return;
@@ -157,13 +199,17 @@ class EmailService {
     }
 
     try {
-      await this.transporter.sendMail({
-        from: emailFrom,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-        text: options.text || options.html.replace(/<[^>]*>/g, ''),
-      });
+      if (this.brevoApiKey) {
+        await this.sendViaBrevo(options);
+      } else if (this.transporter) {
+        await this.transporter.sendMail({
+          from: emailFrom,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text || options.html.replace(/<[^>]*>/g, ''),
+        });
+      }
 
       console.log(`Email sent successfully to ${options.to}: ${options.subject}`);
     } catch (error) {
@@ -612,8 +658,40 @@ class EmailService {
     await this.sendEmail({ to: user.email, subject, html });
   }
 
-  async sendPasswordReset(user: IUser, resetToken: string): Promise<void> {
-    await sendPasswordResetEmail(user.email, user.name, resetToken);
+  async sendPasswordReset(user: IUser, resetUrl: string): Promise<void> {
+    const subject = 'Password Reset Request - AutoTek';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">AutoTek</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #1f2937; margin-top: 0;">Password Reset Request</h2>
+          <p>Hello ${escapeHtml(user.name)},</p>
+          <p>We received a request to reset your password for your AutoTek account.</p>
+          <p>Click the button below to reset your password:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background: #14b8a6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Reset Password</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">Or copy and paste this link into your browser:</p>
+          <p style="color: #6b7280; font-size: 12px; word-break: break-all; background: #e5e7eb; padding: 10px; border-radius: 4px;">${resetUrl}</p>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px;"><strong>This link will expire in 1 hour.</strong></p>
+          <p style="color: #6b7280; font-size: 14px;">If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">© ${new Date().getFullYear()} AutoTek. All rights reserved.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({ to: user.email, subject, html });
   }
 
   async sendMechanicInviteEmail(email: string, providerName: string, setPasswordUrl: string): Promise<void> {
