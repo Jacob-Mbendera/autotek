@@ -30,6 +30,7 @@ import deliveryLocationRoutes from './routes/deliveryLocationRoutes';
 import geocodingRoutes from './routes/geocodingRoutes';
 import mechanicRoutes from './routes/mechanicRoutes';
 import contactRoutes from './routes/contactRoutes';
+import configRoutes from './routes/configRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -135,6 +136,7 @@ app.use('/api/delivery-locations', deliveryLocationRoutes);
 app.use('/api/geocoding', geocodingRoutes);
 app.use('/api/mechanic', mechanicRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/config', configRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '../../../../frontend/dist');

@@ -55,6 +55,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       // Don't fail registration if email fails
     }
 
+    // Generate and send email verification token
+    try {
+      const emailVerifyToken = crypto.randomBytes(32).toString('hex');
+      user.emailVerifyToken = emailVerifyToken;
+      user.emailVerifyTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+      await user.save();
+
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${emailVerifyToken}`;
+      await emailService.sendVerificationEmail(user, verifyUrl);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email fails
+    }
+
     // Generate token
     const token = generateToken({
       userId: user._id.toString(),
@@ -396,5 +410,74 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     res.json({ message: 'Password reset successfully' });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to reset password' });
+  }
+};
+
+/**
+ * Verify email using the token sent on registration
+ */
+export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      res.status(400).json({ message: 'Verification token is required' });
+      return;
+    }
+
+    const user = await User.findOne({
+      emailVerifyToken: token,
+      emailVerifyTokenExpiry: { $gt: new Date() }, // Token not expired
+    });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired verification token' });
+      return;
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerifyToken = undefined;
+    user.emailVerifyTokenExpiry = undefined;
+    await user.save();
+
+    res.json({ message: 'Email verified successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to verify email' });
+  }
+};
+
+/**
+ * Resend the email verification link
+ */
+export const resendVerificationEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ message: 'Email is required' });
+      return;
+    }
+
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+
+    // Always return success to prevent email enumeration
+    if (user && !user.isEmailVerified) {
+      const emailVerifyToken = crypto.randomBytes(32).toString('hex');
+      user.emailVerifyToken = emailVerifyToken;
+      user.emailVerifyTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+      await user.save();
+
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${emailVerifyToken}`;
+      await emailService.sendVerificationEmail(user, verifyUrl);
+    }
+
+    res.json({
+      message: 'If an account with that email exists and is unverified, a verification link has been sent.',
+    });
+  } catch (error: any) {
+    console.error('Error in resendVerificationEmail:', error);
+    res.json({
+      message: 'If an account with that email exists and is unverified, a verification link has been sent.',
+    });
   }
 };

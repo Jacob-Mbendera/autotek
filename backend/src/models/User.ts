@@ -11,6 +11,9 @@ export interface IUser extends Document {
   address?: IShippingAddress | string;
   resetToken?: string;
   resetTokenExpiry?: Date;
+  isEmailVerified: boolean;
+  emailVerifyToken?: string;
+  emailVerifyTokenExpiry?: Date;
   tokenVersion: number;
   isActive: boolean;
   deactivatedAt?: Date;
@@ -55,6 +58,16 @@ const UserSchema = new Schema<IUser>(
       type: String,
     },
     resetTokenExpiry: {
+      type: Date,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerifyToken: {
+      type: String,
+    },
+    emailVerifyTokenExpiry: {
       type: Date,
     },
     tokenVersion: {

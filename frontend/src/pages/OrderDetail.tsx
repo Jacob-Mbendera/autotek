@@ -33,7 +33,7 @@ import {
   RefreshCw,
   Store,
 } from 'lucide-react';
-import { OrderStatus, PaymentStatus } from '@shared/types';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '@shared/types';
 import {
   assertCustomerCanCancelOrder,
   canCustomerCancelOrder,
@@ -135,7 +135,7 @@ const formatDate = (dateString: string) => {
 const formatPaymentMethod = (method?: string) => {
   if (!method) return 'Not specified';
   return method
-    .split('-')
+    .split(/[-_]/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
@@ -449,10 +449,23 @@ export const OrderDetail = () => {
     navigate(`/returns/new?orderId=${id}`);
   };
 
+  const isBankTransfer = order.paymentMethod === PaymentMethod.BANK_TRANSFER;
+
   const needsPayment =
+    !isBankTransfer &&
     order.status !== OrderStatus.CANCELLED &&
     (order.paymentStatus === PaymentStatus.PENDING ||
       order.paymentStatus === PaymentStatus.FAILED);
+
+  const awaitingBankTransferVerification =
+    isBankTransfer &&
+    order.status !== OrderStatus.CANCELLED &&
+    order.paymentStatus === PaymentStatus.PENDING;
+
+  const bankTransferRejected =
+    isBankTransfer &&
+    order.status !== OrderStatus.CANCELLED &&
+    order.paymentStatus === PaymentStatus.FAILED;
 
   const customerCanCancel = canCustomerCancelOrder(order.status);
   const customerCancelBlockedMessage = !canCustomerCancelOrder(order.status)
@@ -552,6 +565,42 @@ export const OrderDetail = () => {
                 </>
               )}
             </JournalButton>
+          </div>
+        </JournalCard>
+      )}
+
+      {awaitingBankTransferVerification && (
+        <JournalCard className="mb-6 bg-journal-warn-bg border-journal-warn-bg">
+          <div className="flex items-start gap-3">
+            <Clock className="h-4 w-4 text-journal-warn-text mt-0.5 shrink-0" aria-hidden />
+            <div>
+              <p className="font-sans font-medium text-[14px] text-journal-warn-text mb-1">
+                Verifying your payment
+              </p>
+              <p className="text-[13px] font-sans text-journal-warn-text">
+                We've received your proof of payment and our team is manually verifying the bank
+                transfer. Your order will be processed once this is confirmed.
+              </p>
+            </div>
+          </div>
+        </JournalCard>
+      )}
+
+      {bankTransferRejected && (
+        <JournalCard className="mb-6 bg-journal-warn-bg border-journal-warn-bg">
+          <div className="flex items-start gap-3">
+            <XCircle className="h-4 w-4 text-journal-warn-text mt-0.5 shrink-0" aria-hidden />
+            <div>
+              <p className="font-sans font-medium text-[14px] text-journal-warn-text mb-1">
+                Payment not verified
+              </p>
+              <p className="text-[13px] font-sans text-journal-warn-text">
+                {order.paymentRejectionReason
+                  ? `We couldn't verify your bank transfer: ${order.paymentRejectionReason}`
+                  : "We couldn't verify your bank transfer."}{' '}
+                Please contact support if you believe this is a mistake.
+              </p>
+            </div>
           </div>
         </JournalCard>
       )}

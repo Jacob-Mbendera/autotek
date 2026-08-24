@@ -32,6 +32,10 @@ export interface IOrder extends Document {
   shippingAddress: IShippingAddress | string;
   /** Admin/customer-provided reason when order is cancelled (audit / refunds). */
   cancelReason?: string;
+  /** Cloudinary URL of the buyer-uploaded bank transfer receipt (image or PDF). */
+  paymentProofUrl?: string;
+  /** Admin-provided reason when a bank transfer payment is rejected. */
+  paymentRejectionReason?: string;
   /** Set when reserved stock is returned to inventory (cancel / auto-expire). */
   stockReleasedAt?: Date;
   createdAt: Date;
@@ -133,6 +137,15 @@ const OrderSchema = new Schema<IOrder>(
       required: false,
     },
     cancelReason: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    paymentProofUrl: {
+      type: String,
+      trim: true,
+    },
+    paymentRejectionReason: {
       type: String,
       trim: true,
       maxlength: 500,

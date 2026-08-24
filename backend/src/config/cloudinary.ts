@@ -93,6 +93,41 @@ export const uploadMultipleImages = async (
 };
 
 /**
+ * Upload a bank transfer proof of payment (image or PDF) to Cloudinary.
+ * PDFs require resource_type: 'raw' — Cloudinary rejects them under 'image'.
+ * @param filePath - Path to the file (from multer)
+ * @param mimetype - The uploaded file's mimetype
+ * @param folder - Folder name in Cloudinary
+ * @returns Promise with upload result containing secure_url
+ */
+export const uploadPaymentProofFile = async (
+  filePath: string,
+  mimetype: string,
+  folder: string = 'autotek/payment-proofs'
+): Promise<{ secure_url: string; public_id: string }> => {
+  try {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      throw new Error('Cloudinary credentials not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env file');
+    }
+
+    const isPdf = mimetype === 'application/pdf';
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder,
+      resource_type: isPdf ? 'raw' : 'image',
+      ...(isPdf ? {} : { transformation: [{ quality: 'auto' }, { fetch_format: 'auto' }] }),
+    });
+
+    return {
+      secure_url: result.secure_url,
+      public_id: result.public_id,
+    };
+  } catch (error: any) {
+    console.error('Cloudinary payment proof upload error:', error);
+    throw new Error(`Failed to upload payment proof: ${error.message}`);
+  }
+};
+
+/**
  * Delete an image from Cloudinary
  * @param publicId - Public ID of the image to delete
  * @returns Promise with deletion result

@@ -13,6 +13,7 @@ import {
   deactivateUser,
   reactivateUser,
   resetUserPassword,
+  deleteUser,
 } from '../controllers/adminController';
 import { listMediaAssets, uploadMediaLibrary, deleteMediaAsset } from '../controllers/mediaAssetController';
 import { uploadLibraryFiles } from '../middleware/upload';
@@ -68,6 +69,7 @@ router.patch('/users/:id', updateUserInfo);
 router.patch('/users/:id/deactivate', deactivateUser);
 router.patch('/users/:id/reactivate', reactivateUser);
 router.post('/users/:id/reset-password', resetUserPassword);
+router.delete('/users/:id', deleteUser);
 
 router.get('/garages', listGarages);
 router.post('/garages', validate(validateCreateGarage), createGarage);

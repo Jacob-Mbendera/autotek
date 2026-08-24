@@ -76,3 +76,23 @@ export const validateResetPassword = [
     .isLength({ min: 6, max: 128 })
     .withMessage('New password must be between 6 and 128 characters'),
 ];
+
+export const validateVerifyEmail = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('Verification token is required')
+    .isString()
+    .isLength({ min: 10, max: 256 })
+    .withMessage('Invalid verification token'),
+];
+
+export const validateResendVerification = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+];
