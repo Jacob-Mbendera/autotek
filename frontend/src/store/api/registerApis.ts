@@ -18,3 +18,4 @@ import './couponApi';
 import './deliveryLocationApi';
 import './refundApi';
 import './geocodingApi';
+import './configApi';

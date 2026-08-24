@@ -4,7 +4,12 @@ import { useGetOrderQuery, useCancelOrderMutation } from '../../store/api/orderA
 import type { ShippingAddress } from '../../store/api/orderApi';
 import { useGetReturnsQuery } from '../../store/api/returnApi';
 import { useAppSelector } from '../../store/types';
-import { useGetAdminOrderQuery, useUpdateOrderStatusMutation } from '../../store/api/adminApi';
+import {
+  useGetAdminOrderQuery,
+  useUpdateOrderStatusMutation,
+  useConfirmBankTransferPaymentMutation,
+  useRejectBankTransferPaymentMutation,
+} from '../../store/api/adminApi';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { H1, Body } from '../../components/ui/Typography';
@@ -55,8 +60,9 @@ import {
   ExternalLink,
   RefreshCw,
   Store,
+  Building2,
 } from 'lucide-react';
-import { OrderStatus, PaymentStatus } from '@shared/types';
+import { OrderStatus, PaymentStatus, PaymentMethod } from '@shared/types';
 import {
   assertCustomerCanCancelOrder,
   assertValidOrderStatusTransition,
@@ -164,7 +170,7 @@ const formatDate = (dateString: string) => {
 const formatPaymentMethod = (method?: string) => {
   if (!method) return 'Not specified';
   return method
-    .split('-')
+    .split(/[-_]/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
@@ -280,6 +286,11 @@ export const AdminOrderDetail = () => {
 
   // Admin-only: Order status update mutation
   const [updateOrderStatus, { isLoading: isUpdatingStatus }] = useUpdateOrderStatusMutation();
+  const [confirmBankTransferPayment, { isLoading: isConfirmingPayment }] = useConfirmBankTransferPaymentMutation();
+  const [rejectBankTransferPayment, { isLoading: isRejectingPayment }] = useRejectBankTransferPaymentMutation();
+  const [showConfirmPaymentModal, setShowConfirmPaymentModal] = useState(false);
+  const [showRejectPaymentModal, setShowRejectPaymentModal] = useState(false);
+  const [paymentRejectionReason, setPaymentRejectionReason] = useState('');
   
   // Order cancellation mutation
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
@@ -576,6 +587,53 @@ export const AdminOrderDetail = () => {
         message: errorInfo.message,
         type: 'error',
       }));
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!id) return;
+    try {
+      await confirmBankTransferPayment(id).unwrap();
+      setShowConfirmPaymentModal(false);
+      dispatch(showNotification({ message: 'Payment verified successfully!', type: 'success' }));
+      await adminQueryResult.refetch();
+    } catch (error: any) {
+      setShowConfirmPaymentModal(false);
+      const errorInfo = getErrorInfo(error, 'Failed to confirm payment');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
+  const handleRejectPaymentClick = () => {
+    if (paymentRejectionReason.trim().length < 3) {
+      dispatch(showNotification({
+        message: 'Please enter a rejection reason (at least 3 characters)',
+        type: 'warning',
+      }));
+      return;
+    }
+    setShowRejectPaymentModal(true);
+  };
+
+  const handleRejectPaymentConfirm = async () => {
+    if (!id) return;
+    if (paymentRejectionReason.trim().length < 3) {
+      dispatch(showNotification({
+        message: 'Please enter a rejection reason (at least 3 characters)',
+        type: 'warning',
+      }));
+      return;
+    }
+    try {
+      await rejectBankTransferPayment({ id, reason: paymentRejectionReason.trim() }).unwrap();
+      setShowRejectPaymentModal(false);
+      setPaymentRejectionReason('');
+      dispatch(showNotification({ message: 'Payment rejected', type: 'success' }));
+      await adminQueryResult.refetch();
+    } catch (error: any) {
+      setShowRejectPaymentModal(false);
+      const errorInfo = getErrorInfo(error, 'Failed to reject payment');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
     }
   };
 
@@ -952,6 +1010,80 @@ export const AdminOrderDetail = () => {
             </div>
           </Card>
 
+          {/* Bank Transfer Verification */}
+          {isAdmin && order.paymentMethod === PaymentMethod.BANK_TRANSFER && order.paymentStatus === PaymentStatus.PENDING && (
+            <Card variant="md">
+              <div className="flex items-center gap-2 mb-4">
+                <Building2 className="h-5 w-5 text-teal-600" />
+                <H1 className="text-lg font-bold text-gray-900">Bank Transfer Verification</H1>
+              </div>
+              <Body className="text-gray-600 mb-4">
+                Check the merchant bank account for this payment before confirming. Verify the amount and
+                sender match this order — do not rely on the proof alone, as receipts can be forged or
+                reversed after being sent.
+              </Body>
+              {order.paymentProofUrl && (
+                <div className="mb-4">
+                  {order.paymentProofUrl.toLowerCase().endsWith('.pdf') ? (
+                    <a
+                      href={order.paymentProofUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium text-sm"
+                    >
+                      <FileText className="h-4 w-4" />
+                      View PDF Receipt
+                    </a>
+                  ) : (
+                    <a href={order.paymentProofUrl} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={order.paymentProofUrl}
+                        alt="Proof of payment"
+                        className="max-w-full max-h-96 rounded-lg border border-gray-200"
+                      />
+                    </a>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="primary"
+                  onClick={() => setShowConfirmPaymentModal(true)}
+                  className="flex-1 gap-2 bg-teal-600 hover:bg-teal-700"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Confirm Payment
+                </Button>
+                <div className="flex-1 space-y-2">
+                  <Input
+                    dark={false}
+                    value={paymentRejectionReason}
+                    onChange={(e) => setPaymentRejectionReason(e.target.value)}
+                    placeholder="Reason for rejecting (min 3 chars)"
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={handleRejectPaymentClick}
+                    className="w-full gap-2 text-red-600 hover:text-red-700 border-red-200"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Reject Payment
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {order.paymentMethod === PaymentMethod.BANK_TRANSFER && order.paymentStatus === PaymentStatus.FAILED && order.paymentRejectionReason && (
+            <Card variant="md">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="h-5 w-5 text-red-600" />
+                <H1 className="text-lg font-bold text-gray-900">Payment Rejected</H1>
+              </div>
+              <Body className="text-gray-600">{order.paymentRejectionReason}</Body>
+            </Card>
+          )}
+
           {/* Order Summary */}
           <Card variant="md">
             <H1 className="text-lg font-bold text-gray-900 mb-4">Order Summary</H1>
@@ -1208,6 +1340,32 @@ export const AdminOrderDetail = () => {
         cancelText="Back"
         variant={selectedStatus === OrderStatus.CANCELLED ? 'warning' : 'info'}
         isLoading={isUpdatingStatus}
+      />
+
+      {/* Confirm Bank Transfer Payment Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmPaymentModal}
+        onClose={() => setShowConfirmPaymentModal(false)}
+        onConfirm={handleConfirmPayment}
+        title="Confirm Payment"
+        message="Have you verified this payment landed in the bank account? This will mark the order as paid and allow it to be processed."
+        confirmText="Confirm Payment"
+        cancelText="Cancel"
+        variant="success"
+        isLoading={isConfirmingPayment}
+      />
+
+      {/* Reject Bank Transfer Payment Modal */}
+      <ConfirmationModal
+        isOpen={showRejectPaymentModal}
+        onClose={() => setShowRejectPaymentModal(false)}
+        onConfirm={handleRejectPaymentConfirm}
+        title="Reject Payment"
+        message={`Reject this payment for reason: "${paymentRejectionReason.trim()}"? The customer will be notified and the order will remain unpaid.`}
+        confirmText="Reject Payment"
+        cancelText="Back"
+        variant="danger"
+        isLoading={isRejectingPayment}
       />
     </div>
   );

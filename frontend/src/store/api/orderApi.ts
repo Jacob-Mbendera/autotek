@@ -48,6 +48,8 @@ export interface Order {
   paymentStatus: PaymentStatus;
   shippingAddress: ShippingAddress | string;
   cancelReason?: string;
+  paymentProofUrl?: string;
+  paymentRejectionReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -67,6 +69,10 @@ interface CreateOrderRequest {
   };
   couponCode?: string;
   password?: string;
+}
+
+interface CreateBankTransferOrderRequest extends CreateOrderRequest {
+  proof: File;
 }
 
 interface OrdersResponse {
@@ -93,6 +99,42 @@ export const orderApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
+      invalidatesTags: (_result, _error, arg) => [
+        'Order',
+        'Admin',
+        ...productInvalidationTags(arg.items.map((item) => item.productId)),
+      ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          broadcastClientSync('orders');
+          broadcastClientSync('products');
+        } catch {
+          /* ignore */
+        }
+      },
+    }),
+    createBankTransferOrder: builder.mutation<
+      { order: Order; token?: string; user?: any },
+      CreateBankTransferOrderRequest
+    >({
+      query: ({ proof, ...data }) => {
+        const formData = new FormData();
+        formData.append('items', JSON.stringify(data.items));
+        formData.append('shippingAddress', JSON.stringify(data.shippingAddress));
+        if (data.guestInfo) formData.append('guestInfo', JSON.stringify(data.guestInfo));
+        if (data.couponCode) formData.append('couponCode', data.couponCode);
+        if (data.password) formData.append('password', data.password);
+        formData.append('proof', proof);
+
+        return {
+          url: '/orders/bank-transfer',
+          method: 'POST',
+          body: formData,
+          // Don't set Content-Type - browser will set it with boundary for FormData
+          headers: {},
+        };
+      },
       invalidatesTags: (_result, _error, arg) => [
         'Order',
         'Admin',
@@ -170,4 +212,10 @@ export const orderApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useCreateOrderMutation, useGetOrdersQuery, useGetOrderQuery, useCancelOrderMutation } = orderApi;
+export const {
+  useCreateOrderMutation,
+  useCreateBankTransferOrderMutation,
+  useGetOrdersQuery,
+  useGetOrderQuery,
+  useCancelOrderMutation,
+} = orderApi;

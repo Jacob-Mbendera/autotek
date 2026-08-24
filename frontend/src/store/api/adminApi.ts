@@ -208,6 +208,47 @@ export const adminApi = baseApi.injectEndpoints({
         }
       },
     }),
+    confirmBankTransferPayment: builder.mutation<{ order: Order; message: string }, string>({
+      query: (id) => ({
+        url: `/orders/${id}/payment/confirm`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        'Admin',
+        { type: 'Admin', id },
+        'Order',
+        { type: 'Order', id },
+      ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          broadcastClientSync('orders');
+        } catch {
+          /* ignore */
+        }
+      },
+    }),
+    rejectBankTransferPayment: builder.mutation<{ order: Order; message: string }, { id: string; reason: string }>({
+      query: ({ id, reason }) => ({
+        url: `/orders/${id}/payment/reject`,
+        method: 'PUT',
+        body: { reason },
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        'Admin',
+        { type: 'Admin', id },
+        'Order',
+        { type: 'Order', id },
+      ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          broadcastClientSync('orders');
+        } catch {
+          /* ignore */
+        }
+      },
+    }),
     getCustomOrder: builder.query<{ customOrder: AdminCustomOrder }, string>({
       query: (id) => `/admin/custom-orders/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Admin', id }],
@@ -457,6 +498,8 @@ export const {
   useGetAllOrdersQuery,
   useGetAdminOrderQuery,
   useUpdateOrderStatusMutation,
+  useConfirmBankTransferPaymentMutation,
+  useRejectBankTransferPaymentMutation,
   useGetCustomOrderQuery,
   useGetAllCustomOrdersQuery,
   useGetAllServicesQuery,

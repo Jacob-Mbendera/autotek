@@ -1,10 +1,11 @@
 import React, { useEffect, useState, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/types';
-import { useCreateOrderMutation, useGetOrdersQuery } from '../store/api/orderApi';
+import { useCreateOrderMutation, useCreateBankTransferOrderMutation, useGetOrdersQuery } from '../store/api/orderApi';
 import type { ShippingAddress } from '../store/api/orderApi';
 import { useInitiatePaymentMutation } from '../store/api/paymentApi';
 import { useResendVerificationEmailMutation } from '../store/api/authApi';
+import { useGetBankTransferDetailsQuery } from '../store/api/configApi';
 import { removeCoupon } from '../store/slices/cartSlice';
 import { useCart } from '../hooks/useCart';
 import { setUser } from '../store/slices/authSlice';
@@ -33,7 +34,9 @@ export const Checkout = () => {
   const { shouldBlockCheckout, isCheckingPayment } = useReconcilePendingPaychanguOrder();
 
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
+  const [createBankTransferOrder, { isLoading: isCreatingBankTransferOrder }] = useCreateBankTransferOrderMutation();
   const [initiatePayment, { isLoading: isInitiatingPayment }] = useInitiatePaymentMutation();
+  const { data: bankTransferDetails } = useGetBankTransferDetailsQuery();
   const { completePayment, isCompletingPayment } = useCompleteOrderPayment();
 
   const { data: pendingOrdersData } = useGetOrdersQuery(
@@ -86,7 +89,10 @@ export const Checkout = () => {
   const [resendVerificationEmail, { isLoading: isResendingVerification, isSuccess: resendVerificationSuccess }] =
     useResendVerificationEmailMutation();
 
-  const isLoading = isCreatingOrder || isInitiatingPayment || isCompletingPayment;
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [paymentProofError, setPaymentProofError] = useState('');
+
+  const isLoading = isCreatingOrder || isCreatingBankTransferOrder || isInitiatingPayment || isCompletingPayment;
 
   useEffect(() => {
     if (user?.role === UserRole.ADMIN) {
@@ -166,8 +172,36 @@ export const Checkout = () => {
     setError('');
   };
 
-  // Payment method constant
+  // Payment method constants
   const PAYMENT_METHOD_PAYCHANGU = 'paychangu' as PaymentMethod;
+  const PAYMENT_METHOD_BANK_TRANSFER = 'bank_transfer' as PaymentMethod;
+
+  const ACCEPTED_PROOF_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+  const MAX_PROOF_FILE_SIZE = 10 * 1024 * 1024; // 10MB, matches backend limit
+
+  const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setPaymentProofError('');
+
+    if (!file) {
+      setPaymentProofFile(null);
+      return;
+    }
+
+    if (!ACCEPTED_PROOF_TYPES.includes(file.type)) {
+      setPaymentProofError('Please upload a JPEG, PNG, WebP, GIF image or a PDF receipt.');
+      setPaymentProofFile(null);
+      return;
+    }
+
+    if (file.size > MAX_PROOF_FILE_SIZE) {
+      setPaymentProofError('File is too large. Maximum size is 10MB.');
+      setPaymentProofFile(null);
+      return;
+    }
+
+    setPaymentProofFile(file);
+  };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,6 +255,11 @@ export const Checkout = () => {
 
     if (!paymentMethod) {
       setError('Please select a payment method');
+      return;
+    }
+
+    if (paymentMethod === PAYMENT_METHOD_BANK_TRANSFER && !paymentProofFile) {
+      setError('Please upload proof of payment to place a bank transfer order');
       return;
     }
 
@@ -284,7 +323,10 @@ export const Checkout = () => {
       }
 
       // Create order first
-      const orderResult = await createOrder(orderData).unwrap();
+      const orderResult =
+        paymentMethod === PAYMENT_METHOD_BANK_TRANSFER
+          ? await createBankTransferOrder({ ...orderData, proof: paymentProofFile as File }).unwrap()
+          : await createOrder(orderData).unwrap();
 
       // If account was created, log the user in automatically. orderResult.token
       // is just a signal here (the actual session cookie is already set by the
@@ -545,7 +587,7 @@ export const Checkout = () => {
                         Choose from multiple secure payment options:
                       </p>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                         {/* Cards */}
                         <div className="bg-white border border-journal-hairline rounded-journal p-4 hover:border-journal-ink transition-colors">
                           <div className="flex items-center gap-3 mb-2">
@@ -575,20 +617,6 @@ export const Checkout = () => {
                             <span className="px-2 py-0.5 bg-journal-sand rounded text-[11px] font-sans font-medium text-journal-body">TNM</span>
                           </div>
                         </div>
-
-                        {/* Bank Transfer */}
-                        <div className="bg-white border border-journal-hairline rounded-journal p-4 hover:border-journal-ink transition-colors">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="p-1.5 bg-journal-teal-tint rounded-journal">
-                              <Building2 className="h-4 w-4 text-journal-teal" />
-                            </div>
-                            <h4 className="font-sans font-semibold text-journal-ink text-[13px]">Bank transfer</h4>
-                          </div>
-                          <p className="text-[12px] font-sans text-journal-muted">Direct bank payment</p>
-                          <div className="mt-2">
-                            <span className="px-2 py-0.5 bg-journal-sand rounded text-[11px] font-sans font-medium text-journal-body">All major banks</span>
-                          </div>
-                        </div>
                       </div>
 
                       {/* Security Notice */}
@@ -599,6 +627,86 @@ export const Checkout = () => {
                           <p className="text-[12px] font-sans text-journal-muted mt-0.5">Your payment information is fully encrypted and secure. Licensed by Reserve Bank of Malawi.</p>
                         </div>
                       </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Bank Transfer Payment Section */}
+              <div className="mt-4 border border-journal-hairline rounded-journal overflow-hidden">
+                <div className="bg-journal-sand px-5 py-4 border-b border-journal-hairline">
+                  <div className="flex items-center gap-4">
+                    <div className="p-1.5 bg-journal-teal-tint rounded-journal">
+                      <Building2 className="h-5 w-5 text-journal-teal" />
+                    </div>
+                    <div>
+                      <p className="text-journal-ink text-[13px] font-sans font-semibold">Bank transfer</p>
+                      <p className="text-journal-body text-[12px] font-sans">Pay directly into our bank account</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <label className="flex items-start cursor-pointer">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value={PAYMENT_METHOD_BANK_TRANSFER}
+                      checked={paymentMethod === PAYMENT_METHOD_BANK_TRANSFER}
+                      onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                      className="mt-1 w-4 h-4 text-journal-teal border-journal-input-border focus:ring-journal-teal"
+                    />
+                    <div className="ml-4 flex-1">
+                      <p className="text-[13px] font-sans text-journal-muted mb-4">
+                        Transfer the order total to our account, then upload your proof of payment.
+                        Your order will be processed once our team manually verifies the transfer.
+                      </p>
+
+                      {paymentMethod === PAYMENT_METHOD_BANK_TRANSFER && (
+                        <div className="space-y-4">
+                          {bankTransferDetails && (
+                            <div className="bg-white border border-journal-hairline rounded-journal p-4 space-y-1.5">
+                              <div className="flex justify-between text-[13px] font-sans">
+                                <span className="text-journal-muted">Bank</span>
+                                <span className="text-journal-ink font-medium">{bankTransferDetails.bankName}</span>
+                              </div>
+                              <div className="flex justify-between text-[13px] font-sans">
+                                <span className="text-journal-muted">Account name</span>
+                                <span className="text-journal-ink font-medium">{bankTransferDetails.accountName}</span>
+                              </div>
+                              <div className="flex justify-between text-[13px] font-sans">
+                                <span className="text-journal-muted">Account number</span>
+                                <span className="text-journal-ink font-medium">{bankTransferDetails.accountNumber}</span>
+                              </div>
+                              <div className="flex justify-between text-[13px] font-sans">
+                                <span className="text-journal-muted">Branch</span>
+                                <span className="text-journal-ink font-medium">{bankTransferDetails.branch}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div>
+                            <label className="block text-[13px] font-sans font-medium text-journal-ink mb-1.5">
+                              Upload proof of payment
+                            </label>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+                              onChange={handleProofFileChange}
+                              className="block w-full text-[13px] font-sans text-journal-muted file:mr-4 file:py-2 file:px-4 file:rounded-journal file:border-0 file:text-[13px] file:font-sans file:font-medium file:bg-journal-teal-tint file:text-journal-teal hover:file:bg-journal-teal-tint-border"
+                            />
+                            <p className="text-[11px] font-sans text-journal-muted mt-1.5">
+                              Screenshot or PDF receipt, up to 10MB.
+                            </p>
+                            {paymentProofFile && (
+                              <p className="text-[12px] font-sans text-journal-teal mt-1.5">{paymentProofFile.name} selected</p>
+                            )}
+                            {paymentProofError && (
+                              <p className="text-[12px] font-sans text-journal-danger-text mt-1.5">{paymentProofError}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </label>
                 </div>
@@ -706,20 +814,34 @@ export const Checkout = () => {
                       Edit
                     </button>
                   </div>
-                  <div className="flex items-center gap-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal p-3">
-                    <img
-                      src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771401/autotek/payment%20methods/PayChangu_Logo-04_blue-DXGspjyy_zgdgpp.png"
-                      alt="PayChangu"
-                      className="h-6 w-auto flex-shrink-0"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-sans font-semibold text-journal-teal text-[13px]">Secure payment</p>
-                        <Shield className="h-3.5 w-3.5 text-journal-teal" />
+                  {paymentMethod === PAYMENT_METHOD_BANK_TRANSFER ? (
+                    <div className="flex items-center gap-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal p-3">
+                      <div className="p-1.5 bg-white rounded-journal flex-shrink-0">
+                        <Building2 className="h-4 w-4 text-journal-teal" />
                       </div>
-                      <p className="text-[12px] font-sans text-journal-teal">Cards, mobile money & bank transfer available</p>
+                      <div className="flex-1">
+                        <p className="font-sans font-semibold text-journal-teal text-[13px]">Bank transfer</p>
+                        <p className="text-[12px] font-sans text-journal-teal">
+                          {paymentProofFile ? `Proof of payment attached: ${paymentProofFile.name}` : 'Proof of payment required'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-3 bg-journal-teal-tint border border-journal-teal-tint-border rounded-journal p-3">
+                      <img
+                        src="https://res.cloudinary.com/dhbe6wtod/image/upload/v1773771401/autotek/payment%20methods/PayChangu_Logo-04_blue-DXGspjyy_zgdgpp.png"
+                        alt="PayChangu"
+                        className="h-6 w-auto flex-shrink-0"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-sans font-semibold text-journal-teal text-[13px]">Secure payment</p>
+                          <Shield className="h-3.5 w-3.5 text-journal-teal" />
+                        </div>
+                        <p className="text-[12px] font-sans text-journal-teal">Cards, mobile money & bank transfer available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Applied Coupon */}

@@ -54,6 +54,28 @@ export const uploadCustomOrderImages = upload.array('images', 3);
 /** Admin media library: upload many files into shared library (admin). */
 export const uploadLibraryFiles = upload.array('files', 30);
 
+// Bank transfer receipts: images or PDF, since bank apps often export PDF receipts.
+const proofFileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG, WebP, GIF images or PDF receipts are allowed.'));
+  }
+};
+
+const proofUpload = multer({
+  storage,
+  fileFilter: proofFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+});
+
+/** Bank transfer proof of payment: single image or PDF receipt. */
+export const uploadPaymentProof = proofUpload.single('proof');
+
 /**
  * Clean up uploaded file after processing
  * @param filePath - Path to the file to delete

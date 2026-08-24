@@ -4,12 +4,15 @@ import Order, { IShippingAddress } from '../models/Order';
 import Coupon from '../models/Coupon';
 import User from '../models/User';
 import DeliveryLocation from '../models/DeliveryLocation';
-import { OrderStatus, UserRole } from '../types/shared';
+import { OrderStatus, PaymentMethod, PaymentStatus, UserRole } from '../types/shared';
 import { emailService } from '../services/emailService';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken, setAuthCookie } from '../utils/jwt';
 import { applyOrderCancellation } from '../utils/orderCancelSideEffects';
 import { assertCustomerCanCancelOrder, assertValidOrderStatusTransition } from '../utils/orderStatusTransitions';
+import { recordCouponUsageForPaidOrder } from '../utils/couponUsage';
+import { uploadPaymentProofFile } from '../config/cloudinary';
+import { cleanupFile } from '../middleware/upload';
 import {
   assertSufficientStock,
   deductStockForOrderItem,
@@ -38,8 +41,18 @@ const formatShippingAddress = (address: IShippingAddress | string): string => {
   return 'Address not specified';
 };
 
-export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
+/**
+ * Shared order-creation logic used by both the JSON create-order route (PayChangu /
+ * pay-later methods) and the bank-transfer multipart route. `extraOrderData` lets the
+ * caller force fields (e.g. bank transfer forces paymentMethod/paymentStatus and attaches
+ * the uploaded proof URL) after the normal validation/stock/coupon pipeline runs, but
+ * before the order is saved.
+ */
+const buildAndSaveOrder = async (
+  req: AuthRequest,
+  res: Response,
+  extraOrderData: Record<string, any> = {}
+): Promise<void> => {
     if (req.user?.role === UserRole.ADMIN) {
       res.status(403).json({ message: 'Admin accounts cannot place customer orders' });
       return;
@@ -194,6 +207,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       shippingAddress,
       paymentMethod,
       paymentStatus: 'pending',
+      ...extraOrderData,
     };
 
     // Add coupon code if it actually did something (discount or waived fee)
@@ -313,9 +327,143 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     }
 
     res.status(201).json(response);
+};
+
+export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await buildAndSaveOrder(req, res);
   } catch (error: any) {
     console.error('Order creation error:', error);
     res.status(500).json({ message: error.message || 'Failed to create order' });
+  }
+};
+
+/**
+ * Bank transfer orders: the proof of payment is required at checkout, uploaded in the
+ * same multipart request as the order itself (see uploadPaymentProof middleware). The
+ * order is created with paymentStatus 'pending' — an admin must manually verify the
+ * transfer really landed (confirmBankTransferPayment) before it can be processed.
+ */
+export const createBankTransferOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  const file = req.file;
+
+  if (!file) {
+    res.status(400).json({ message: 'Proof of payment is required for bank transfer orders' });
+    return;
+  }
+
+  // multipart/form-data arrives as strings — parse the JSON-shaped fields back into
+  // objects the same way createOrder's JSON route already expects them.
+  try {
+    if (typeof req.body.items === 'string') {
+      req.body.items = JSON.parse(req.body.items);
+    }
+    if (typeof req.body.shippingAddress === 'string') {
+      req.body.shippingAddress = JSON.parse(req.body.shippingAddress);
+    }
+    if (typeof req.body.guestInfo === 'string') {
+      req.body.guestInfo = JSON.parse(req.body.guestInfo);
+    }
+  } catch {
+    cleanupFile(file.path);
+    res.status(400).json({ message: 'Invalid order data' });
+    return;
+  }
+
+  try {
+    const uploadResult = await uploadPaymentProofFile(file.path, file.mimetype);
+    cleanupFile(file.path);
+
+    await buildAndSaveOrder(req, res, {
+      paymentMethod: PaymentMethod.BANK_TRANSFER,
+      paymentStatus: PaymentStatus.PENDING,
+      paymentProofUrl: uploadResult.secure_url,
+    });
+  } catch (error: any) {
+    cleanupFile(file.path);
+    console.error('Bank transfer order creation error:', error);
+    res.status(500).json({ message: error.message || 'Failed to create order' });
+  }
+};
+
+/**
+ * Admin confirms a bank transfer payment after manually checking the real bank account.
+ */
+export const confirmBankTransferPayment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
+
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+
+    if (order.paymentMethod !== PaymentMethod.BANK_TRANSFER || order.paymentStatus !== PaymentStatus.PENDING) {
+      res.status(400).json({ message: 'This order is not awaiting bank transfer verification' });
+      return;
+    }
+
+    order.paymentStatus = PaymentStatus.COMPLETED;
+    await order.save();
+    await recordCouponUsageForPaidOrder(order);
+
+    try {
+      const user = order.user ? await User.findById(order.user) : undefined;
+      await emailService.sendPaymentConfirmation(
+        order,
+        { amount: order.totalAmount, method: 'bank_transfer' },
+        user || undefined,
+        order.guestInfo?.email
+      );
+    } catch (emailError) {
+      console.error('Failed to send payment confirmation email:', emailError);
+    }
+
+    res.json({ order, message: 'Payment verified successfully' });
+  } catch (error: any) {
+    console.error('Error confirming bank transfer payment:', error);
+    res.status(500).json({ message: error.message || 'Failed to confirm payment' });
+  }
+};
+
+/**
+ * Admin rejects a bank transfer payment (forged/incomplete/reversed proof). The order
+ * stays blocked from processing — paymentStatus FAILED never satisfies the transition
+ * gate that requires COMPLETED.
+ */
+export const rejectBankTransferPayment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findById(id);
+
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+
+    if (order.paymentMethod !== PaymentMethod.BANK_TRANSFER || order.paymentStatus !== PaymentStatus.PENDING) {
+      res.status(400).json({ message: 'This order is not awaiting bank transfer verification' });
+      return;
+    }
+
+    order.paymentStatus = PaymentStatus.FAILED;
+    order.paymentRejectionReason = reason;
+    await order.save();
+
+    try {
+      const user = order.user ? await User.findById(order.user) : undefined;
+      await emailService.sendPaymentRejected(order, reason, user || undefined, order.guestInfo?.email);
+    } catch (emailError) {
+      console.error('Failed to send payment rejection email:', emailError);
+    }
+
+    res.json({ order, message: 'Payment rejected' });
+  } catch (error: any) {
+    console.error('Error rejecting bank transfer payment:', error);
+    res.status(500).json({ message: error.message || 'Failed to reject payment' });
   }
 };
 
@@ -352,7 +500,10 @@ export const getOrder = async (req: AuthRequest, res: Response): Promise<void> =
 
     let order;
 
-    if (req.user) {
+    if (req.user?.role === UserRole.ADMIN) {
+      // Admin - can access any order, including guest orders
+      order = await Order.findById(orderId).populate('items.product', 'name images price description');
+    } else if (req.user) {
       // Authenticated user - can access their own orders
       order = await Order.findOne({
         _id: orderId,

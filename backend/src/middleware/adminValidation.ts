@@ -285,6 +285,14 @@ export const validateUpdateOrderStatus = [
     .withMessage('Cancel reason must be between 3 and 500 characters'),
 ];
 
+export const validateRejectBankTransferPayment = [
+  param('id').isMongoId().withMessage('Invalid order ID format'),
+  body('reason')
+    .trim()
+    .isLength({ min: 3, max: 500 })
+    .withMessage('Rejection reason must be between 3 and 500 characters'),
+];
+
 export const validateUpdateCustomOrder = [
   param('id').isMongoId().withMessage('Invalid custom order ID format'),
   body('status')

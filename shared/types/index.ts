@@ -44,6 +44,7 @@ export enum ServiceStatus {
 
 export enum PaymentMethod {
   PAYCHANGU = 'paychangu',
+  BANK_TRANSFER = 'bank_transfer',
 }
 
 export enum PaymentStatus {
