@@ -605,13 +605,7 @@ export const AdminOrderDetail = () => {
   };
 
   const handleRejectPaymentClick = () => {
-    if (paymentRejectionReason.trim().length < 3) {
-      dispatch(showNotification({
-        message: 'Please enter a rejection reason (at least 3 characters)',
-        type: 'warning',
-      }));
-      return;
-    }
+    setPaymentRejectionReason('');
     setShowRejectPaymentModal(true);
   };
 
@@ -963,6 +957,35 @@ export const AdminOrderDetail = () => {
               })}
             </div>
           </Card>
+
+          {/* Receipt Preview */}
+          {order.paymentMethod === PaymentMethod.BANK_TRANSFER && order.paymentProofUrl && (
+            <Card variant="md">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="h-5 w-5 text-teal-600" />
+                <H1 className="text-xl font-bold text-gray-900">Receipt Preview</H1>
+              </div>
+              {order.paymentProofUrl.toLowerCase().endsWith('.pdf') ? (
+                <a
+                  href={order.paymentProofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium text-sm"
+                >
+                  <FileText className="h-4 w-4" />
+                  View PDF Receipt
+                </a>
+              ) : (
+                <a href={order.paymentProofUrl} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={order.paymentProofUrl}
+                    alt="Proof of payment"
+                    className="max-w-full max-h-96 rounded-lg border border-gray-200"
+                  />
+                </a>
+              )}
+            </Card>
+          )}
         </div>
 
         {/* Order Summary - Right Column (1/3 width) */}
@@ -1020,31 +1043,8 @@ export const AdminOrderDetail = () => {
               <Body className="text-gray-600 mb-4">
                 Check the merchant bank account for this payment before confirming. Verify the amount and
                 sender match this order — do not rely on the proof alone, as receipts can be forged or
-                reversed after being sent.
+                reversed after being sent. See the Receipt Preview under Order Items to view the proof.
               </Body>
-              {order.paymentProofUrl && (
-                <div className="mb-4">
-                  {order.paymentProofUrl.toLowerCase().endsWith('.pdf') ? (
-                    <a
-                      href={order.paymentProofUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium text-sm"
-                    >
-                      <FileText className="h-4 w-4" />
-                      View PDF Receipt
-                    </a>
-                  ) : (
-                    <a href={order.paymentProofUrl} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={order.paymentProofUrl}
-                        alt="Proof of payment"
-                        className="max-w-full max-h-96 rounded-lg border border-gray-200"
-                      />
-                    </a>
-                  )}
-                </div>
-              )}
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   variant="primary"
@@ -1054,22 +1054,14 @@ export const AdminOrderDetail = () => {
                   <CheckCircle className="h-4 w-4" />
                   Confirm Payment
                 </Button>
-                <div className="flex-1 space-y-2">
-                  <Input
-                    dark={false}
-                    value={paymentRejectionReason}
-                    onChange={(e) => setPaymentRejectionReason(e.target.value)}
-                    placeholder="Reason for rejecting (min 3 chars)"
-                  />
-                  <Button
-                    variant="secondary"
-                    onClick={handleRejectPaymentClick}
-                    className="w-full gap-2 text-red-600 hover:text-red-700 border-red-200"
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Reject Payment
-                  </Button>
-                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleRejectPaymentClick}
+                  className="flex-1 gap-2 text-red-600 hover:text-red-700 border-red-200"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Reject Payment
+                </Button>
               </div>
             </Card>
           )}
@@ -1358,14 +1350,33 @@ export const AdminOrderDetail = () => {
       {/* Reject Bank Transfer Payment Modal */}
       <ConfirmationModal
         isOpen={showRejectPaymentModal}
-        onClose={() => setShowRejectPaymentModal(false)}
+        onClose={() => {
+          setShowRejectPaymentModal(false);
+          setPaymentRejectionReason('');
+        }}
         onConfirm={handleRejectPaymentConfirm}
         title="Reject Payment"
-        message={`Reject this payment for reason: "${paymentRejectionReason.trim()}"? The customer will be notified and the order will remain unpaid.`}
+        message={
+          <div>
+            <p className="mb-3">
+              The customer will be notified and the order will remain unpaid. Explain why this
+              payment is being rejected:
+            </p>
+            <textarea
+              value={paymentRejectionReason}
+              onChange={(e) => setPaymentRejectionReason(e.target.value)}
+              placeholder="Reason for rejecting (min 3 characters)"
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
+              autoFocus
+            />
+          </div>
+        }
         confirmText="Reject Payment"
         cancelText="Back"
         variant="danger"
         isLoading={isRejectingPayment}
+        confirmDisabled={paymentRejectionReason.trim().length < 3}
       />
     </div>
   );

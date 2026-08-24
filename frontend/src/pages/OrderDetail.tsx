@@ -9,8 +9,9 @@ import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { OptimizedImage } from '../components/ui/OptimizedImage';
 import { showNotification } from '../store/slices/uiSlice';
 import { getErrorInfo } from '../utils/errorHandler';
-import { getProductImageBlur, getProductImageUrl } from '../utils/productImage';
+import { getPrimaryProductImage, getProductImageBlur, getProductImageUrl } from '../utils/productImage';
 import { useCompleteOrderPayment } from '../hooks/useCompleteOrderPayment';
+import { useCart } from '../hooks/useCart';
 import { JournalCard, JournalButton, PageHeading, CardHeading, JournalBody } from '../components/journal';
 import { cn } from '../utils/cn';
 import {
@@ -148,6 +149,7 @@ export const OrderDetail = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { addItem: addCartItem } = useCart();
 
   // Get email from sessionStorage for guest orders (not URL for privacy)
   // Fallback to URL param for backward compatibility with old links
@@ -374,7 +376,41 @@ export const OrderDetail = () => {
       : []),
   ];
 
-  const handleReorder = () => {
+  const handleReorder = async () => {
+    const availableItems = order.items.filter((item) => item.product !== null);
+
+    if (availableItems.length === 0) {
+      dispatch(showNotification({
+        message: 'These items are no longer available to reorder.',
+        type: 'error',
+      }));
+      return;
+    }
+
+    for (const item of availableItems) {
+      // Safe: filtered to non-null products above.
+      const product = item.product as NonNullable<typeof item.product>;
+      await addCartItem({
+        productId: product._id,
+        productName: product.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: getProductImageUrl(getPrimaryProductImage(product.images)),
+      });
+    }
+
+    if (availableItems.length < order.items.length) {
+      dispatch(showNotification({
+        message: 'Some items in this order are no longer available and were skipped.',
+        type: 'warning',
+      }));
+    } else {
+      dispatch(showNotification({
+        message: 'Items added to your cart.',
+        type: 'success',
+      }));
+    }
+
     navigate('/cart');
   };
 
