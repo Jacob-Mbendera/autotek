@@ -747,23 +747,25 @@ export const Checkout = () => {
                   <h3 className="font-sans font-semibold text-[14px] text-journal-ink mb-3">Order items</h3>
                   <div className="space-y-2">
                     {cartItems.map((item) => (
-                      <div key={item.productId} className="flex items-center gap-3 p-3 bg-journal-sand rounded-journal">
-                        {item.image && (
-                          <img
-                            src={item.image}
-                            alt="Product"
-                            className="w-14 h-14 object-cover rounded-journal"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <div className="text-[13px] font-sans font-medium text-journal-ink">
-                            Product ID: {item.productId.slice(0, 8)}...
-                          </div>
-                          <div className="text-[12px] font-sans text-journal-muted">
-                            Qty: {item.quantity} × MWK {item.price.toLocaleString()}
+                      <div key={item.productId} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-journal-sand rounded-journal">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {item.image && (
+                            <img
+                              src={item.image}
+                              alt="Product"
+                              className="w-14 h-14 object-cover rounded-journal flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-sans font-medium text-journal-ink truncate">
+                              Product ID: {item.productId.slice(0, 8)}...
+                            </div>
+                            <div className="text-[12px] font-sans text-journal-muted">
+                              Qty: {item.quantity} × MWK {item.price.toLocaleString()}
+                            </div>
                           </div>
                         </div>
-                        <div className="text-[13px] font-sans font-semibold text-journal-ink">
+                        <div className="text-[13px] font-sans font-semibold text-journal-ink sm:text-right flex-shrink-0">
                           MWK {(item.quantity * item.price).toLocaleString()}
                         </div>
                       </div>
