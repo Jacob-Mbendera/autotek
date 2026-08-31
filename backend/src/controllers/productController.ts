@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
+import fs from 'fs';
+import { parse as parseCsv } from 'csv-parse/sync';
 import Product from '../models/Product';
 import { uploadImage, deleteImage, extractPublicId } from '../config/cloudinary';
 import { cleanupFile } from '../middleware/upload';
@@ -574,6 +576,185 @@ export const updateProduct = async (req: MulterRequest, res: Response): Promise<
     res.json({ product: updatedProduct });
   } catch (error: any) {
     res.status(500).json({ message: error.message || 'Failed to update product' });
+  }
+};
+
+interface BulkImportRowResult {
+  row: number;
+  name: string;
+  status: 'created' | 'updated' | 'failed';
+  error?: string;
+}
+
+const REQUIRED_IMPORT_FIELDS = ['name', 'description', 'category', 'price'] as const;
+
+const parseImportImages = (value: unknown): unknown[] => {
+  if (value === undefined || value === null) return [];
+  const raw = String(value).trim();
+  if (!raw) return [];
+  return raw
+    .split('|')
+    .map((url) => url.trim())
+    .filter(Boolean)
+    .map((url) => normalizeProductImage(url));
+};
+
+const buildImportRow = (rawRow: Record<string, unknown>): Record<string, unknown> => {
+  const row: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(rawRow)) {
+    if (typeof value === 'string' && value.trim() === '') continue;
+    row[key.trim()] = value;
+  }
+  return row;
+};
+
+export const bulkImportProducts = async (req: MulterRequest, res: Response): Promise<void> => {
+  const uploadedFile = (req as unknown as { file?: Express.Multer.File }).file;
+  const cleanup = () => {
+    if (uploadedFile) {
+      cleanupFile(path.join(process.cwd(), 'uploads', uploadedFile.filename));
+    }
+  };
+
+  try {
+    if (!uploadedFile) {
+      res.status(400).json({ message: 'No file uploaded' });
+      return;
+    }
+
+    let records: Record<string, unknown>[];
+    try {
+      const fileContent = fs.readFileSync(uploadedFile.path);
+      records = parseCsv(fileContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      }) as Record<string, unknown>[];
+    } catch (parseError: unknown) {
+      cleanup();
+      res.status(400).json({
+        message: `Could not parse CSV file: ${
+          parseError instanceof Error ? parseError.message : 'invalid format'
+        }`,
+      });
+      return;
+    }
+
+    const results: BulkImportRowResult[] = [];
+    let created = 0;
+    let updated = 0;
+    let failed = 0;
+
+    for (let i = 0; i < records.length; i++) {
+      const rowNumber = i + 2; // header is row 1, data starts at row 2
+      const raw = buildImportRow(records[i]);
+      const name = optionalTrimmedString(raw.name) || '(unnamed)';
+
+      try {
+        const missing = REQUIRED_IMPORT_FIELDS.filter((field) => raw[field] === undefined);
+        if (missing.length > 0) {
+          throw new Error(`Missing required field(s): ${missing.join(', ')}`);
+        }
+
+        const price = Number(raw.price);
+        if (!Number.isFinite(price) || price < 0) {
+          throw new Error('price must be a non-negative number');
+        }
+        const stock = raw.stock !== undefined ? Number(raw.stock) : 0;
+        if (!Number.isFinite(stock) || stock < 0) {
+          throw new Error('stock must be a non-negative number');
+        }
+
+        const oemPartNumber = optionalTrimmedString(raw.oemPartNumber);
+        const existing = oemPartNumber
+          ? await Product.findOne({ oemPartNumber })
+          : null;
+
+        let fitmentFields: Record<string, unknown>;
+        try {
+          fitmentFields = parseFitmentFields(
+            raw,
+            existing
+              ? {
+                  isUniversal: existing.isUniversal,
+                  compatibility: existing.compatibility,
+                  fitmentStatus: existing.fitmentStatus,
+                }
+              : undefined
+          );
+        } catch (fitmentError: unknown) {
+          throw fitmentError instanceof Error ? fitmentError : new Error('Invalid fitment data');
+        }
+
+        const images = parseImportImages(raw.images);
+        const status = raw.status === 'out-of-stock' ? 'out-of-stock' : 'available';
+        const badge =
+          raw.badge && ['new', 'sale', 'featured'].includes(String(raw.badge))
+            ? String(raw.badge)
+            : undefined;
+
+        if (existing) {
+          const updateData: Record<string, unknown> = {
+            ...fitmentFields,
+            name: String(raw.name).trim(),
+            description: String(raw.description).trim(),
+            category: String(raw.category).trim(),
+            price,
+            stock,
+            status,
+          };
+          if (raw.supplier !== undefined) updateData.supplier = optionalTrimmedString(raw.supplier);
+          if (images.length > 0) updateData.images = images;
+
+          const mongoUpdate: Record<string, unknown> = { $set: updateData };
+          if (badge) {
+            updateData.badge = badge;
+          } else {
+            mongoUpdate.$unset = { badge: '' };
+          }
+
+          await Product.findByIdAndUpdate(existing._id, mongoUpdate, {
+            runValidators: true,
+          });
+          updated++;
+          results.push({ row: rowNumber, name, status: 'updated' });
+        } else {
+          const product = new Product({
+            name: String(raw.name).trim(),
+            description: String(raw.description).trim(),
+            category: String(raw.category).trim(),
+            price,
+            stock,
+            supplier: optionalTrimmedString(raw.supplier),
+            oemPartNumber,
+            status,
+            badge,
+            images,
+            ...fitmentFields,
+          });
+          await product.save();
+          created++;
+          results.push({ row: rowNumber, name, status: 'created' });
+        }
+      } catch (rowError: unknown) {
+        failed++;
+        results.push({
+          row: rowNumber,
+          name,
+          status: 'failed',
+          error: rowError instanceof Error ? rowError.message : 'Unknown error',
+        });
+      }
+    }
+
+    cleanup();
+    res.json({
+      summary: { total: records.length, created, updated, failed },
+      results,
+    });
+  } catch (error: any) {
+    cleanup();
+    res.status(500).json({ message: error.message || 'Failed to import products' });
   }
 };
 

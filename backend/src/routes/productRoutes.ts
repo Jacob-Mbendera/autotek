@@ -9,15 +9,17 @@ import {
   getProductSuggestions,
   assignMediaToProduct,
   setPrimaryProductImage,
+  bulkImportProducts,
 } from '../controllers/productController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
-import { uploadMultiple } from '../middleware/upload';
+import { uploadMultiple, uploadBulkImportFile } from '../middleware/upload';
 
 const router = Router();
 
 router.get('/', getProducts);
 router.get('/categories', getCategories);
 router.get('/suggestions', getProductSuggestions);
+router.post('/bulk-import', authMiddleware, adminMiddleware, uploadBulkImportFile, bulkImportProducts);
 router.post('/:id/assign-media', authMiddleware, adminMiddleware, assignMediaToProduct);
 router.patch('/:id/primary-image', authMiddleware, adminMiddleware, setPrimaryProductImage);
 router.get('/:id', getProduct);

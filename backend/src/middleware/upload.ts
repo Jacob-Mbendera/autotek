@@ -76,6 +76,35 @@ const proofUpload = multer({
 /** Bank transfer proof of payment: single image or PDF receipt. */
 export const uploadPaymentProof = proofUpload.single('proof');
 
+// Product bulk import: CSV only. Some OSes/browsers report .csv as
+// application/vnd.ms-excel instead of text/csv, so both are allowed.
+const csvFileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimes = [
+    'text/csv',
+    'application/vnd.ms-excel',
+    'application/csv',
+    'text/plain',
+    'application/octet-stream',
+  ];
+
+  if (allowedMimes.includes(file.mimetype) && file.originalname.toLowerCase().endsWith('.csv')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Please save your sheet as CSV (.csv) and upload that.'));
+  }
+};
+
+const csvUpload = multer({
+  storage,
+  fileFilter: csvFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  },
+});
+
+/** Admin product bulk import: single CSV file. */
+export const uploadBulkImportFile = csvUpload.single('file');
+
 /**
  * Clean up uploaded file after processing
  * @param filePath - Path to the file to delete

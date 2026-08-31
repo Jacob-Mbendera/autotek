@@ -6,7 +6,9 @@ import {
   useDeleteProductMutation,
   useGetCategoriesQuery,
   useSetPrimaryProductImageMutation,
+  useBulkImportProductsMutation,
 } from '../../store/api/productApi';
+import type { BulkImportProductsResponse } from '../../store/api/productApi';
 import { useAppDispatch } from '../../store/types';
 import { showNotification } from '../../store/slices/uiSlice';
 import { getErrorInfo } from '../../utils/errorHandler';
@@ -32,6 +34,10 @@ import {
   Star,
   Car,
   ShieldCheck,
+  Upload,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
 } from 'lucide-react';
 import type { Product } from '../../store/api/productApi';
 import type {
@@ -110,6 +116,10 @@ export const AdminProducts = () => {
   const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
   const [setPrimaryProductImage, { isLoading: isSettingPrimary }] = useSetPrimaryProductImageMutation();
   const [settingPrimaryUrl, setSettingPrimaryUrl] = useState<string | null>(null);
+  const [bulkImportProducts, { isLoading: isImporting }] = useBulkImportProductsMutation();
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<BulkImportProductsResponse | null>(null);
 
   // Clear image errors when products change (page, filters, etc.)
   useEffect(() => {
@@ -336,6 +346,36 @@ export const AdminProducts = () => {
     }
   };
 
+  const handleOpenImportModal = () => {
+    setImportFile(null);
+    setImportResult(null);
+    setShowImportModal(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setShowImportModal(false);
+    setImportFile(null);
+    setImportResult(null);
+    if (importResult) {
+      refetch();
+    }
+  };
+
+  const handleImportSubmit = async () => {
+    if (!importFile) return;
+    try {
+      const result = await bulkImportProducts({ file: importFile }).unwrap();
+      setImportResult(result);
+      dispatch(showNotification({
+        message: `${result.summary.created} created, ${result.summary.updated} updated, ${result.summary.failed} failed`,
+        type: result.summary.failed > 0 ? 'warning' : 'success',
+      }));
+    } catch (error: unknown) {
+      const errorInfo = getErrorInfo(error, 'Failed to import products. Please try again.');
+      dispatch(showNotification({ message: errorInfo.message, type: 'error' }));
+    }
+  };
+
   const handleDeleteClick = (id: string) => {
     setDeletingProductId(id);
     setShowDeleteModal(true);
@@ -438,10 +478,16 @@ export const AdminProducts = () => {
             fitment.
           </Body>
         </div>
-        <Button onClick={() => handleOpenModal()}>
-          <Plus className="h-5 w-5 mr-2" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={handleOpenImportModal}>
+            <Upload className="h-5 w-5 mr-2" />
+            Import
+          </Button>
+          <Button onClick={() => handleOpenModal()}>
+            <Plus className="h-5 w-5 mr-2" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -1232,6 +1278,134 @@ export const AdminProducts = () => {
                 </Button>
               </div>
             </form>
+          </AdminCard>
+        </div>
+      )}
+
+      {/* Bulk Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <AdminCard variant="default" className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <H2 className="text-2xl font-bold text-gray-50">Import Products</H2>
+              <Button variant="ghost" size="small" dark onClick={handleCloseImportModal}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {!importResult && (
+              <>
+                <div className="mb-4 p-4 rounded-lg border border-gray-700 bg-gray-900/40 text-sm text-gray-300 space-y-2">
+                  <p>Upload a CSV file with columns:</p>
+                  <p className="font-mono text-xs text-gray-400 break-words">
+                    name, description, category, price, stock, oemPartNumber, brand, supplier,
+                    status, badge, isUniversal, alternatePartNumbers, images
+                  </p>
+                  <p>
+                    <span className="text-gray-200 font-medium">name, description, category, price</span> are
+                    required. A row matches an existing product by <span className="text-gray-200 font-medium">oemPartNumber</span> and
+                    updates it; otherwise a new product is created.
+                  </p>
+                  <p>
+                    Separate multiple <span className="text-gray-200 font-medium">images</span> URLs in one cell
+                    with a pipe character (<span className="font-mono">|</span>), and multiple{' '}
+                    <span className="text-gray-200 font-medium">alternatePartNumbers</span> with commas.
+                  </p>
+                  <p className="text-amber-300/90">
+                    Vehicle fitment (compatibility) is not imported from the sheet — add it per-product
+                    afterward if needed.
+                  </p>
+                </div>
+
+                <div className="border border-dashed border-gray-700 rounded-lg p-6 text-center mb-6">
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    id="bulk-import-file"
+                    className="hidden"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                  />
+                  <label htmlFor="bulk-import-file" className="cursor-pointer">
+                    <Upload className="h-8 w-8 text-gray-500 mx-auto mb-2" />
+                    <Body className="text-gray-300">
+                      {importFile ? importFile.name : 'Click to choose a CSV file'}
+                    </Body>
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <Button variant="secondary" onClick={handleCloseImportModal}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleImportSubmit} disabled={!importFile || isImporting}>
+                    {isImporting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      'Import'
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {importResult && (
+              <>
+                <div className="mb-4 grid grid-cols-4 gap-3 text-center">
+                  <div className="p-3 rounded-lg bg-gray-900/40 border border-gray-700">
+                    <div className="text-xl font-bold text-gray-50">{importResult.summary.total}</div>
+                    <div className="text-xs text-gray-400">Total</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-green-900/20 border border-green-700/50">
+                    <div className="text-xl font-bold text-green-400">{importResult.summary.created}</div>
+                    <div className="text-xs text-gray-400">Created</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-900/20 border border-blue-700/50">
+                    <div className="text-xl font-bold text-blue-400">{importResult.summary.updated}</div>
+                    <div className="text-xs text-gray-400">Updated</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-red-900/20 border border-red-700/50">
+                    <div className="text-xl font-bold text-red-400">{importResult.summary.failed}</div>
+                    <div className="text-xs text-gray-400">Failed</div>
+                  </div>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto border border-gray-700 rounded-lg divide-y divide-gray-800">
+                  {importResult.results.map((row) => (
+                    <div key={row.row} className="flex items-start gap-3 p-3 text-sm">
+                      {row.status === 'failed' ? (
+                        <XCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                      ) : row.status === 'updated' ? (
+                        <RefreshCw className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-gray-200">
+                          Row {row.row}: {row.name}
+                        </div>
+                        {row.error && <div className="text-red-300 text-xs mt-0.5">{row.error}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setImportFile(null);
+                      setImportResult(null);
+                    }}
+                  >
+                    Import Another
+                  </Button>
+                  <Button onClick={handleCloseImportModal}>Done</Button>
+                </div>
+              </>
+            )}
           </AdminCard>
         </div>
       )}
