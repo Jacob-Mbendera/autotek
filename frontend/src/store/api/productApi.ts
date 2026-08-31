@@ -144,6 +144,18 @@ export interface MediaLibraryUploadResponse {
   summary: { total: number; ok: number; failed: number };
 }
 
+export interface BulkImportRowResult {
+  row: number;
+  name: string;
+  status: 'created' | 'updated' | 'failed';
+  error?: string;
+}
+
+export interface BulkImportProductsResponse {
+  summary: { total: number; created: number; updated: number; failed: number };
+  results: BulkImportRowResult[];
+}
+
 export interface ProductSuggestionParams {
   make?: string;
   model?: string;
@@ -264,6 +276,18 @@ export const productApi = baseApi.injectEndpoints({
       query: () => '/products/categories',
       providesTags: ['Product'],
     }),
+    bulkImportProducts: builder.mutation<BulkImportProductsResponse, { file: File }>({
+      query: ({ file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: '/products/bulk-import',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Product'],
+    }),
     getMediaAssets: builder.query<
       MediaAssetsListResponse,
       { page?: number; limit?: number; q?: string }
@@ -357,6 +381,7 @@ export const {
   useUpdateProductMutation,
   useDeleteProductMutation,
   useGetCategoriesQuery,
+  useBulkImportProductsMutation,
   useGetMediaAssetsQuery,
   useUploadMediaLibraryMutation,
   useDeleteMediaAssetMutation,

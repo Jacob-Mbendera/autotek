@@ -17,10 +17,7 @@ export const errorHandler = (
     return;
   }
 
-  if (
-    err.message.includes('Invalid file type') &&
-    err.message.includes('Only JPEG, PNG, WebP, and GIF')
-  ) {
+  if (err.message.includes('Invalid file type')) {
     res.status(400).json({
       message: err.message,
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),

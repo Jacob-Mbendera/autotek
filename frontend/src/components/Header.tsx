@@ -92,7 +92,7 @@ export const Header = () => {
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-2">
               <MalawiFlagIcon className="h-3 w-4 flex-shrink-0" />
-              Malawi &middot; MWK
+              Malawi
             </span>
             <span className="hidden sm:inline text-journal-footer-2">Nationwide delivery &amp; 24/7 towing</span>
           </div>
