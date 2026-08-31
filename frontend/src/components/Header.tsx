@@ -14,6 +14,15 @@ import { cn } from '../utils/cn';
 const SUPPORT_PHONE = '+265 887 111 444';
 const SUPPORT_PHONE_HREF = 'tel:+265887111444';
 
+const MalawiFlagIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 3 2" className={className} role="img" aria-label="Malawi flag">
+    <rect width="3" height="2" y="0" fill="#000000" />
+    <rect width="3" height="2" y="0.667" fill="#CE1126" />
+    <rect width="3" height="0.667" y="1.333" fill="#009543" />
+    <circle cx="1.5" cy="0.667" r="0.4" fill="#CE1126" />
+  </svg>
+);
+
 const navigation = [
   { name: 'Products', href: '/products' },
   { name: 'Orders', href: '/orders' },
@@ -81,18 +90,25 @@ export const Header = () => {
       <div className="bg-journal-ink text-journal-footer-1">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between gap-4 px-4 sm:px-10 py-2.5 text-[11px] font-sans tracking-[0.13em] uppercase overflow-x-auto whitespace-nowrap">
           <div className="flex items-center gap-6">
-            <span>Malawi &middot; MWK</span>
+            <span className="flex items-center gap-2">
+              <MalawiFlagIcon className="h-3 w-4 flex-shrink-0" />
+              Malawi &middot; MWK
+            </span>
             <span className="hidden sm:inline text-journal-footer-2">Nationwide delivery &amp; 24/7 towing</span>
           </div>
           <div className="flex items-center gap-6">
-            <Link to={trackOrderHref} className="hover:text-white transition-colors">
+            <Link to={trackOrderHref} className="hover:text-[#00A651] transition-colors">
               Track an order
             </Link>
-            <a href={SUPPORT_PHONE_HREF} className="hover:text-white transition-colors">
+            <a href={SUPPORT_PHONE_HREF} className="hover:text-[#CE1126] transition-colors">
               Support &middot; {SUPPORT_PHONE}
             </a>
           </div>
         </div>
+      </div>
+      <div className="h-[3px] flex" aria-hidden="true">
+        <div className="flex-1 bg-[#CE1126]" />
+        <div className="flex-1 bg-[#009543]" />
       </div>
 
       {/* Masthead */}
